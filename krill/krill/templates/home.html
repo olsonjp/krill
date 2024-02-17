@@ -1,11 +1,14 @@
+{% load static %}
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
-    <title>Krill</title>
+    <link rel="stylesheet" href="{% static 'style.css' %}">
+    <title>{% block title %}Krill{% endblock title %}</title>
+    {% block extrahead %}{% endblock extrahead %}
 </head>
 <body>
     <div class="container">
@@ -13,7 +16,7 @@
         <aside>
             <div class="toggle">
                 <div class="logo">
-                    <img src="images/krill.png">
+                    <img src="static/images/krill.png">
                     <h2>Krill</h2>
                 </div>
                 <div class="close" id="close-btn">
@@ -64,48 +67,41 @@
         </aside>
         <!-- End of Sidebar -->
 
-        <!-- Main Content -->
-        <main>
-            <h1>Samples</h1>
-            <!-- Samples -->
-            <div class="samples">
-                Samples list
+        
+    {% block content %}
+    <!-- Main content goes here -->
+    {% endblock content %}
+
+
+    <!-- Right Sidebar -->
+    <div class="right-section">
+        <div class="nav">
+            <button id="menu-btn">
+                <span class="material-icons-round">
+                    menu
+                </span>
+            </button>
+            <div class="dark-mode">
+                <span class="material-icons-round active">
+                    light_mode
+                </span>
+                <span class="material-icons-round">
+                    dark_mode
+                </span>
             </div>
-        </main>
 
-        <!-- End of Main Content -->
-
-        <!-- Right Sidebar -->
-        <div class="right-section">
-            <div class="nav">
-                <button id="menu-btn">
-                    <span class="material-icons-round">
-                        menu
-                    </span>
-                </button>
-                <div class="dark-mode">
-                    <span class="material-icons-round active">
-                        light_mode
-                    </span>
-                    <span class="material-icons-round">
-                        dark_mode
-                    </span>
+            <div class="profile">
+                <div class="info">
+                    <p> Hey, <b>Jacob</b></p>
+                    <small class="text-muted">Admin</small>
                 </div>
 
-                <div class="profile">
-                    <div class="info">
-                        <p> Hey, <b>Jacob</b></p>
-                        <small class="text-muted">Admin</small>
-                    </div>
-
-                </div>
             </div>
         </div>
-
-        <!-- End of Right Sidebar -->
     </div>
 
-    <script src="index.js"></script>
-    
+    <!-- End of Right Sidebar -->
+    </div>
+    <script src="{% static 'index.js'%}"></script>
 </body>
 </html>
