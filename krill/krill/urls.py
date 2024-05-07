@@ -31,4 +31,5 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('sample.urls')),
     path('', HomeView.as_view()),
+    path('home', HomeView.as_view()),
 ]

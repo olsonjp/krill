@@ -1,8 +1,8 @@
 from django.urls import path
 from . import views
+from sample.views import SampleView
 
 
 urlpatterns = [
-    path('samples/', views.index, name='index'),
-    path('sample/', views.TempSampleView.as_view()),
+    path('samples/', SampleView.as_view()),
 ]
