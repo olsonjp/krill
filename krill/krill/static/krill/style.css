@@ -41,6 +41,11 @@
     box-sizing: border-box;
 }
 
+table, th, td {
+  border: 1px solid black;
+  border-collapse: collapse;
+}
+
 html{
     font-size: 14px 
 }
@@ -213,6 +218,18 @@ aside .sidebar a:hover span{
 }
 
 /* This is where CSS for the sub-pages will live */
+
+.main{
+    margin-top: 4rem;
+    justify-content: center;
+    align-items: center;
+}
+
+.main .nav{
+    display: flex;
+    justify-content: end;
+    gap: 2rem;
+}
 
 .right-section{
     margin-top: 1.4rem;
