@@ -1,19 +1,15 @@
 module github.com/olsonjp/krill
 
-go 1.21
+go 1.22
+
+require gorm.io/gorm v1.25.12
 
 require (
-	github.com/google/uuid v1.3.1
-	github.com/hashicorp/go-memdb v1.3.4
-	github.com/stretchr/testify v1.8.4
-)
-
-require (
-	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/hashicorp/go-immutable-radix v1.3.0 // indirect
-	github.com/hashicorp/golang-lru v0.5.4 // indirect
-	github.com/kr/pretty v0.3.0 // indirect
-	github.com/pmezard/go-difflib v1.0.0 // indirect
-	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
+	github.com/go-chi/chi v1.5.5 // indirect
+	github.com/go-chi/chi/v5 v5.1.0 // indirect
+	github.com/jinzhu/inflection v1.0.0 // indirect
+	github.com/jinzhu/now v1.1.5 // indirect
+	github.com/mattn/go-sqlite3 v1.14.22 // indirect
+	golang.org/x/text v0.19.0 // indirect
+	gorm.io/driver/sqlite v1.5.6 // indirect
 )

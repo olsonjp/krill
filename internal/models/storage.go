@@ -1,59 +1,49 @@
 package models
 
-import "time"
+import (
+	"gorm.io/gorm"
+)
 
 // Site represents a physical locale where Samples are stored.
 type Site struct {
-	ID        int
-	Name      string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	gorm.Model
+	Name string
 }
 
 // Location represents a specific building or office where Samples are stored.
 type Location struct {
-	ID        int
-	Name      string
-	SiteID    int
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	gorm.Model
+	Name   string
+	SiteID int
 }
 
 // Device represents a freezer or dewer in which Samples are stored.
 type Device struct {
-	ID        int
-	Name      string
-	SiteID    int
-	Shelves   int
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	gorm.Model
+	Name    string
+	SiteID  int
+	Shelves int
 }
 
 // Shelf represents a shelf in a freezer in which Samples are stored. Dewers will have a single shelf.
 type Shelf struct {
-	ID        int
-	Name      string
-	DeviceID  int
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	gorm.Model
+	Name     string
+	DeviceID int
 }
 
 // Rack represents a rack in a freezer or dewer in which Samples are stored.
 type Rack struct {
-	ID        int
-	Name      string
-	ShelfID   int
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	gorm.Model
+	Name    string
+	ShelfID int
 }
 
 // Box represents a box in which aliquots are stored.
 type Box struct {
-	ID        int
-	Name      string
-	Rows      int
-	Columns   int
-	RackID    int
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	gorm.Model
+	Name    string
+	Rows    int
+	Columns int
+	RackID  int
 }
