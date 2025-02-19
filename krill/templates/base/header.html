@@ -1,0 +1,29 @@
+{% load static %}
+<div class="header">
+    <div class="logo-container">
+        <img src="{% static 'images/krill.png' %}" alt="Krill Logo">
+        <h2>Krill</h2>
+    </div>
+    <div class="right-controls">
+        <button id="menu-btn">
+            <span class="material-icons-round">
+                menu
+            </span>
+        </button>
+        <div class="dark-mode">
+            <span class="material-icons-round active">
+                light_mode
+            </span>
+            <span class="material-icons-round">
+                dark_mode
+            </span>
+        </div>
+
+        <div class="profile">
+            <div class="info">
+                <p>Hey, <b>Jacob</b></p>
+                <small class="text-muted">Admin</small>
+            </div>
+        </div>
+    </div>
+</div>

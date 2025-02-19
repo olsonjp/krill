@@ -1,0 +1,45 @@
+{% load static %}
+
+{# Display left sidebar for navigation #}
+<div class=container>
+    <aside>
+        <div class="sidebar">
+            <a href="{% url 'home' %}" class="{% if request.path == '/' %}active{% endif %}">
+                <span class="material-icons-round">
+                    dashboard
+                </span>
+                <h3>Home</h3>
+            </a>
+            <a href="{% url 'samples' %}" class="{% if 'samples' in request.path %}active{% endif %}">
+                <span class="material-icons-round">
+                    science
+                </span>
+                <h3>Samples</h3>
+            </a>
+            <a href="{% url 'storage' %}" class="{% if 'storage' in request.path %}active{% endif %}">
+                <span class="material-icons-round">
+                    inventory_2
+                </span>
+                <h3>Storage</h3>
+            </a>
+            <a href="{% url 'reports' %}" class="{% if 'reports' in request.path %}active{% endif %}">
+                <span class="material-icons-round">
+                    description
+                </span>
+                <h3>Reports</h3>
+            </a>
+            <a href="{% url 'settings' %}" class="{% if 'settings' in request.path %}active{% endif %}">
+                <span class="material-icons-round">
+                    settings
+                </span>
+                <h3>Settings</h3>
+            </a>
+            <a href="#">
+                <span class="material-icons-round">
+                    logout
+                </span>
+                <h3>Logout</h3>
+            </a>
+        </div>
+    </aside>
+</div>

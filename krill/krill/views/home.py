@@ -11,10 +11,12 @@ from django.views.generic import View
 
 __all__ = (
     'HomeView',
+    'ReportsView',
+    'SettingsView',
 )
 
 class HomeView(View):
-    template_name = 'home.html'
+    template_name = 'krill/home.html'
 
     def get(self, request):
         """
@@ -47,3 +49,15 @@ class HomeView(View):
         'dashboard': dashboard,
         'new_release': new_release,
         })"""
+
+class ReportsView(View):
+    template_name = 'krill/reports.html'
+
+    def get(self, request):
+        return render(request, self.template_name)
+    
+class SettingsView(View):
+    template_name = 'krill/settings.html'
+
+    def get(self, request):
+        return render(request, self.template_name)

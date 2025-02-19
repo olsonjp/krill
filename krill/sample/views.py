@@ -5,7 +5,7 @@ from django.views.generic import View
 def index(request):
     return HttpResponse('Hello, welcome to the index page.')
 
-class TempSampleView(View):
+class SamplesView(View):
     template_name = 'sample/sample.html'
 
     def get(self, request):

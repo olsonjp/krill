@@ -22,13 +22,16 @@ from django.urls import path
 from django.views.decorators.csrf import csrf_exempt
 from django.views.static import serve
 
-from krill.views import HomeView
-
+from krill.views import HomeView, ReportsView, SettingsView
+from sample.views import SamplesView
+from storage.views import StorageView
 admin.site.site_header = "Krill Admin"
-
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include('sample.urls')),
-    path('', HomeView.as_view()),
+    path('', HomeView.as_view(), name='home'),
+    path('samples/', SamplesView.as_view(), name='samples'),
+    path('storage/', StorageView.as_view(), name='storage'),
+    path('reports/', ReportsView.as_view(), name='reports'),
+    path('settings/', SettingsView.as_view(), name='settings'),
 ]
