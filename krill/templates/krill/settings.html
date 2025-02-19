@@ -1,0 +1,134 @@
+{% extends 'base/layout.html' %}
+{% load static %}
+
+{% block content %}
+<div class="settings-container">
+    <!-- Settings Overview -->
+    <div class="settings-overview">
+        <h1>Settings</h1>
+        <p class="settings-description">Manage your application preferences and configurations</p>
+    </div>
+
+    <!-- Settings Sections -->
+    <div class="settings-grid">
+        <!-- User Preferences -->
+        <div class="settings-section">
+            <h2>
+                <span class="material-icons-round">person</span>
+                User Preferences
+            </h2>
+            <div class="settings-content">
+                <div class="setting-item">
+                    <label>Display Name</label>
+                    <input type="text" value="John Doe" />
+                </div>
+                <div class="setting-item">
+                    <label>Email Notifications</label>
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="email-notifications" checked>
+                        <label for="email-notifications"></label>
+                    </div>
+                </div>
+                <div class="setting-item">
+                    <label>Language</label>
+                    <select>
+                        <option>English</option>
+                        <option>Spanish</option>
+                        <option>French</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Settings -->
+        <div class="settings-section">
+            <h2>
+                <span class="material-icons-round">settings</span>
+                System Settings
+            </h2>
+            <div class="settings-content">
+                <div class="setting-item">
+                    <label>Dark Mode</label>
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="dark-mode">
+                        <label for="dark-mode"></label>
+                    </div>
+                </div>
+                <div class="setting-item">
+                    <label>Auto-save Interval</label>
+                    <select>
+                        <option>1 minute</option>
+                        <option>5 minutes</option>
+                        <option>15 minutes</option>
+                        <option>30 minutes</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label>Data Retention Period</label>
+                    <select>
+                        <option>30 days</option>
+                        <option>60 days</option>
+                        <option>90 days</option>
+                        <option>180 days</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Storage Settings -->
+        <div class="settings-section">
+            <h2>
+                <span class="material-icons-round">storage</span>
+                Storage Settings
+            </h2>
+            <div class="settings-content">
+                <div class="setting-item">
+                    <label>Default Storage Location</label>
+                    <select>
+                        <option>Freezer A</option>
+                        <option>Freezer B</option>
+                        <option>Freezer C</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label>Auto-archive Old Samples</label>
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="auto-archive">
+                        <label for="auto-archive"></label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Report Settings -->
+        <div class="settings-section">
+            <h2>
+                <span class="material-icons-round">description</span>
+                Report Settings
+            </h2>
+            <div class="settings-content">
+                <div class="setting-item">
+                    <label>Default Report Format</label>
+                    <select>
+                        <option>PDF</option>
+                        <option>Excel</option>
+                        <option>CSV</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label>Auto-generate Reports</label>
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="auto-reports" checked>
+                        <label for="auto-reports"></label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Save Button -->
+    <div class="settings-actions">
+        <button class="save-settings">Save Changes</button>
+    </div>
+</div>
+{% endblock %}
