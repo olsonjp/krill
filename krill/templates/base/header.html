@@ -11,18 +11,18 @@
             </span>
         </button>
         <div class="dark-mode">
-            <span class="material-icons-round active">
+            <span class="material-icons-round {% if not user.preference.dark_mode %}active{% endif %}">
                 light_mode
             </span>
-            <span class="material-icons-round">
+            <span class="material-icons-round {% if user.preference.dark_mode %}active{% endif %}">
                 dark_mode
             </span>
         </div>
 
         <div class="profile">
             <div class="info">
-                <p>Hey, <b>Jacob</b></p>
-                <small class="text-muted">Admin</small>
+                <p>Hey, <b>{{ user.first_name|default:user.username }}</b></p>
+                <small class="text-muted">{{ user.groups.first.name|default:"User" }}</small>
             </div>
         </div>
     </div>

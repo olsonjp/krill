@@ -1,10 +1,7 @@
-from django.shortcuts import render
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
-from .models import UserPreference
-
-# Create your views here.
+from person.models import UserPreference
 
 @login_required
 @require_http_methods(["POST"])
@@ -22,4 +19,4 @@ def toggle_theme(request):
     return JsonResponse({
         'dark_mode': preference.dark_mode,
         'success': True
-    })
+    }) 

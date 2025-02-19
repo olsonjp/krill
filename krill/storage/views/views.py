@@ -37,6 +37,7 @@ class HomeView(View):
         'new_release': new_release,
         })"""
 
+
 class StorageView(View):
     template_name = 'storage/storage.html'
 
