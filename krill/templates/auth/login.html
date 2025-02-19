@@ -1,0 +1,47 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block layout %}
+<body class="login-page">
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <img src="{% static 'images/krill.png' %}" alt="Krill Logo" class="login-logo">
+                <h1>Welcome to Krill</h1>
+            </div>
+
+            <form method="post" class="login-form">
+                {% csrf_token %}
+                
+                {% if form.errors %}
+                <div class="error-message">
+                    Invalid username or password.
+                </div>
+                {% endif %}
+
+                {% if next %}
+                    {% if user.is_authenticated %}
+                    <div class="error-message">
+                        Your account doesn't have access to this page.
+                    </div>
+                    {% endif %}
+                {% endif %}
+
+                <div class="form-field">
+                    <label for="username">Username</label>
+                    <input type="text" name="username" id="username" required autofocus>
+                </div>
+
+                <div class="form-field">
+                    <label for="password">Password</label>
+                    <input type="password" name="password" id="password" required>
+                </div>
+
+                <input type="hidden" name="next" value="{{ next }}">
+                
+                <button type="submit" class="login-btn">Log In</button>
+            </form>
+        </div>
+    </div>
+</body>
+{% endblock %} 

@@ -21,17 +21,22 @@ from django.conf.urls import include
 from django.urls import path
 from django.views.decorators.csrf import csrf_exempt
 from django.views.static import serve
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import LogoutView
+from .views.auth import KrillLoginView
+from .views.home import HomeView, SettingsView, ReportsView
+from person.views import toggle_theme  
 
-from krill.views import HomeView, ReportsView, SettingsView
-from sample.views import SamplesView
-from storage.views import StorageView
 admin.site.site_header = "Krill Admin"
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', HomeView.as_view(), name='home'),
-    path('samples/', SamplesView.as_view(), name='samples'),
-    path('storage/', StorageView.as_view(), name='storage'),
-    path('reports/', ReportsView.as_view(), name='reports'),
-    path('settings/', SettingsView.as_view(), name='settings'),
+    path('login/', KrillLoginView.as_view(), name='login'),
+    path('logout/', LogoutView.as_view(next_page='login'), name='logout'),
+    path('', login_required(HomeView.as_view()), name='home'),
+    path('samples/', include('sample.urls')),
+    path('storage/', include('storage.urls')),
+    path('reports/', login_required(ReportsView.as_view()), name='reports'),
+    path('settings/', login_required(SettingsView.as_view()), name='settings'),
+    path('preferences/theme/', toggle_theme, name='toggle_theme'),
 ]

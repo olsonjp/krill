@@ -1,13 +1,13 @@
 from django.db import models
+from .site import Site
 
 class Device(models.Model):
     """
     A Device represents a freezer or dewer in which Samples are stored.
     """
-    name = models.CharField(max_length=200)
-    site = models.ForeignKey(to='storage.Site',
-        on_delete=models.PROTECT)
-    shelves = models.IntegerField()
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    site = models.ForeignKey(Site, on_delete=models.PROTECT, related_name='devices')
     
     def __str__(self):
         return self.name
@@ -16,9 +16,9 @@ class Shelf(models.Model):
     """
     A Shelf represents a shelf in a freezer in which Samples are stored. Dewers will have a single shelf.
     """
-    name = models.CharField(max_length=200)
-    site = models.ForeignKey(to='storage.Device',
-        on_delete=models.PROTECT)
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    device = models.ForeignKey(Device, on_delete=models.PROTECT, related_name='shelves')
 
     class Meta:
         verbose_name_plural = "shelves"
@@ -30,9 +30,9 @@ class Rack(models.Model):
     """
     A Rack represents a rack in a freezer or dewer in which Samples are stored.
     """
-    name = models.CharField(max_length=200)
-    site = models.ForeignKey(to='storage.Shelf',
-        on_delete=models.PROTECT)
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    shelf = models.ForeignKey(Shelf, on_delete=models.PROTECT, related_name='racks')
 
     def __str__(self):
         return self.name
@@ -41,14 +41,20 @@ class Box(models.Model):
     """
     A Box represents a box in which aliquots are stored.
     """
-    name = models.CharField(max_length=200)
-    rows = models.PositiveSmallIntegerField(default=1)
-    columns = models.PositiveSmallIntegerField(default=1)
-    site = models.ForeignKey(to='storage.Rack',
-        on_delete=models.PROTECT)
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    rack = models.ForeignKey(Rack, on_delete=models.PROTECT, related_name='boxes')
+    rows = models.IntegerField()
+    columns = models.IntegerField()
+
+    def __str__(self):
+        return self.name
 
     class Meta:
         verbose_name_plural = "boxes"
 
-    def __str__(self):
-        return self.name
+    @property
+    def aliquots(self):
+        """Get all aliquots in this box."""
+        from sample.models.aliquot import Aliquot
+        return Aliquot.objects.filter(box=self)

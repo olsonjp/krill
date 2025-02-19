@@ -1,0 +1,86 @@
+{% extends 'base/layout.html' %}
+{% load static %}
+
+{% block content %}
+<div class="list-container">
+    <div class="list-header">
+        <h1>Samples</h1>
+        <div class="header-actions">
+            <a href="{% url 'sample:new' 'sample' %}" class="action-btn">
+                <span class="material-icons-round">add</span>
+                New Sample
+            </a>
+            <a href="{% url 'sample:new' 'aliquot' %}" class="action-btn">
+                <span class="material-icons-round">add</span>
+                New Aliquot
+            </a>
+            <a href="{% url 'sample:new' 'aliquot-type' %}" class="action-btn">
+                <span class="material-icons-round">add</span>
+                New Aliquot Type
+            </a>
+            <a href="{% url 'sample:new' 'aliquot-disposition' %}" class="action-btn">
+                <span class="material-icons-round">add</span>
+                New Disposition
+            </a>
+        </div>
+    </div>
+
+    <div class="list-section">
+        <h2>Samples</h2>
+        <div class="list-grid">
+            {% for sample in samples %}
+            <div class="list-item">
+                <h3>{{ sample.name }}</h3>
+                <p>{{ sample.notes|truncatechars:100 }}</p>
+            </div>
+            {% empty %}
+            <p class="empty-message">No samples found.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="list-section">
+        <h2>Aliquots</h2>
+        <div class="list-grid">
+            {% for aliquot in aliquots %}
+            <div class="list-item">
+                <h3>{{ aliquot.sample.name }} - {{ aliquot.quantity }}</h3>
+                <p>Type: {{ aliquot.aliquotType.name }}</p>
+                <p>Location: Box {{ aliquot.box.name }} ({{ aliquot.row }}, {{ aliquot.column }})</p>
+            </div>
+            {% empty %}
+            <p class="empty-message">No aliquots found.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="list-section">
+        <h2>Aliquot Types</h2>
+        <div class="list-grid">
+            {% for type in aliquot_types %}
+            <div class="list-item">
+                <h3>{{ type.name }}</h3>
+                <p>{{ type.description|truncatechars:100 }}</p>
+            </div>
+            {% empty %}
+            <p class="empty-message">No aliquot types found.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="list-section">
+        <h2>Aliquot Dispositions</h2>
+        <div class="list-grid">
+            {% for disposition in aliquot_dispositions %}
+            <div class="list-item">
+                <h3>{{ disposition.name }}</h3>
+                <p>Type: {{ disposition.get_dispositionType_display }}</p>
+                <p>{{ disposition.description|truncatechars:100 }}</p>
+            </div>
+            {% empty %}
+            <p class="empty-message">No dispositions found.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %} 

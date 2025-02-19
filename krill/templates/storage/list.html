@@ -1,0 +1,105 @@
+{% extends 'base/layout.html' %}
+{% load static %}
+
+{% block content %}
+<div class="list-container">
+    <div class="list-header">
+        <h1>Storage</h1>
+        <div class="header-actions">
+            <a href="{% url 'storage:new' 'site' %}" class="action-btn">
+                <span class="material-icons-round">add</span>
+                New Site
+            </a>
+            <a href="{% url 'storage:new' 'device' %}" class="action-btn">
+                <span class="material-icons-round">add</span>
+                New Device
+            </a>
+            <a href="{% url 'storage:new' 'shelf' %}" class="action-btn">
+                <span class="material-icons-round">add</span>
+                New Shelf
+            </a>
+            <a href="{% url 'storage:new' 'rack' %}" class="action-btn">
+                <span class="material-icons-round">add</span>
+                New Rack
+            </a>
+            <a href="{% url 'storage:new' 'box' %}" class="action-btn">
+                <span class="material-icons-round">add</span>
+                New Box
+            </a>
+        </div>
+    </div>
+
+    <div class="list-section">
+        <h2>Sites</h2>
+        <div class="list-grid">
+            {% for site in sites %}
+            <div class="list-item">
+                <h3>{{ site.name }}</h3>
+                <p>{{ site.description|truncatechars:100 }}</p>
+            </div>
+            {% empty %}
+            <p class="empty-message">No sites found.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="list-section">
+        <h2>Devices</h2>
+        <div class="list-grid">
+            {% for device in devices %}
+            <div class="list-item">
+                <h3>{{ device.name }}</h3>
+                <p>{{ device.description|truncatechars:100 }}</p>
+            </div>
+            {% empty %}
+            <p class="empty-message">No devices found.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="list-section">
+        <h2>Shelves</h2>
+        <div class="list-grid">
+            {% for shelf in shelves %}
+            <div class="list-item">
+                <h3>{{ shelf.name }}</h3>
+                <p>Device: {{ shelf.device.name }}</p>
+                <p>{{ shelf.description|truncatechars:100 }}</p>
+            </div>
+            {% empty %}
+            <p class="empty-message">No shelves found.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="list-section">
+        <h2>Racks</h2>
+        <div class="list-grid">
+            {% for rack in racks %}
+            <div class="list-item">
+                <h3>{{ rack.name }}</h3>
+                <p>Shelf: {{ rack.shelf.name }}</p>
+                <p>{{ rack.description|truncatechars:100 }}</p>
+            </div>
+            {% empty %}
+            <p class="empty-message">No racks found.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="list-section">
+        <h2>Boxes</h2>
+        <div class="list-grid">
+            {% for box in boxes %}
+            <div class="list-item">
+                <h3>{{ box.name }}</h3>
+                <p>Rack: {{ box.rack.name }}</p>
+                <p>{{ box.description|truncatechars:100 }}</p>
+            </div>
+            {% empty %}
+            <p class="empty-message">No boxes found.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %} 

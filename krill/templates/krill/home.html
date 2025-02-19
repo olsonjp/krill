@@ -95,4 +95,39 @@
         </div>
     </div>
 </div>
+
+<!-- Add the dashboard.js script -->
+<script src="{% static 'js/dashboard.js' %}"></script>
+
+<style>
+    .storage-card .progress svg circle {
+        stroke-dashoffset: calc(227 - (227 * var(--percentage)) / 100);
+    }
+</style>
+
+<script>
+    // Update progress circle when percentage changes
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.type === 'characterData' || mutation.type === 'childList') {
+                const percentage = parseInt(mutation.target.textContent);
+                if (!isNaN(percentage)) {
+                    const circle = document.querySelector('.storage-card .progress svg circle');
+                    if (circle) {
+                        circle.style.setProperty('--percentage', percentage);
+                    }
+                }
+            }
+        });
+    });
+
+    const percentageElement = document.querySelector('.storage-card .percentage');
+    if (percentageElement) {
+        observer.observe(percentageElement, {
+            characterData: true,
+            childList: true,
+            subtree: true
+        });
+    }
+</script>
 {% endblock %}
