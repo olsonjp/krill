@@ -1,0 +1,34 @@
+{# Base layout for the core Krill UI w/navbar and page content #}
+{% extends 'base/base.html' %}
+{% load static %}
+{% load i18n %}
+
+{% comment %}
+Blocks:
+  header: Page header
+  tabs: Horizontal navigation tabs
+  content: Page content
+  modals: Bootstrap 5 modal components
+{% endcomment %}
+
+{% block layout %}
+    <div class="container">
+        {# Header #}
+        {% include 'base/header.html' %}
+
+        <div class="content-wrapper">
+            {# Left Sidebar #}
+            {% include 'base/left_sidebar.html' %}
+
+            {# Content #}
+            <div class="main">
+                {% block content %}
+                <!-- Main content goes here -->
+                {% endblock content %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Add this before closing body tag -->
+    <script src="{% static 'js/sidebar.js' %}"></script>
+{% endblock layout %}
