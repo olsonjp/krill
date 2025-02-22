@@ -3,84 +3,47 @@
 
 {% block content %}
 <div class="list-container">
-    <div class="list-header">
-        <h1>Samples</h1>
-        <div class="header-actions">
-            <a href="{% url 'sample:new' 'sample' %}" class="action-btn">
-                <span class="material-icons-round">add</span>
-                New Sample
-            </a>
-            <a href="{% url 'sample:new' 'aliquot' %}" class="action-btn">
-                <span class="material-icons-round">add</span>
-                New Aliquot
-            </a>
-            <a href="{% url 'sample:new' 'aliquot-type' %}" class="action-btn">
-                <span class="material-icons-round">add</span>
-                New Aliquot Type
-            </a>
-            <a href="{% url 'sample:new' 'aliquot-disposition' %}" class="action-btn">
-                <span class="material-icons-round">add</span>
-                New Disposition
-            </a>
-        </div>
+    <h1>{{ model_name }}</h1>
+    <div class="search-box">
+        <span class="material-icons-round">search</span>
+        <input type="text" id="searchInput" placeholder="Search {{ model_name|lower }}...">
     </div>
-
-    <div class="list-section">
-        <h2>Samples</h2>
-        <div class="list-grid">
-            {% for sample in samples %}
-            <div class="list-item">
-                <h3>{{ sample.name }}</h3>
-                <p>{{ sample.notes|truncatechars:100 }}</p>
+    <div class="items-list">
+        {% for item in items %}
+            <div class="item-card searchable">
+                <h3>{{ item.name }}</h3>
+                <!-- Add appropriate fields based on model type -->
+                {% if model_name == 'Aliquots' %}
+                    <p>Sample: {{ item.sample.name }}</p>
+                    <p>Type: {{ item.aliquotType.name }}</p>
+                    <p>Disposition: {{ item.disposition.name }}</p>
+                {% elif model_name == 'Aliquot Types' %}
+                    <p>Description: {{ item.description }}</p>
+                {% elif model_name == 'Sources' %}
+                    <p>Description: {{ item.description }}</p>
+                {% else %}
+                    <p>Notes: {{ item.notes }}</p>
+                {% endif %}
             </div>
-            {% empty %}
-            <p class="empty-message">No samples found.</p>
-            {% endfor %}
-        </div>
-    </div>
-
-    <div class="list-section">
-        <h2>Aliquots</h2>
-        <div class="list-grid">
-            {% for aliquot in aliquots %}
-            <div class="list-item">
-                <h3>{{ aliquot.sample.name }} - {{ aliquot.quantity }}</h3>
-                <p>Type: {{ aliquot.aliquotType.name }}</p>
-                <p>Location: Box {{ aliquot.box.name }} ({{ aliquot.row }}, {{ aliquot.column }})</p>
-            </div>
-            {% empty %}
-            <p class="empty-message">No aliquots found.</p>
-            {% endfor %}
-        </div>
-    </div>
-
-    <div class="list-section">
-        <h2>Aliquot Types</h2>
-        <div class="list-grid">
-            {% for type in aliquot_types %}
-            <div class="list-item">
-                <h3>{{ type.name }}</h3>
-                <p>{{ type.description|truncatechars:100 }}</p>
-            </div>
-            {% empty %}
-            <p class="empty-message">No aliquot types found.</p>
-            {% endfor %}
-        </div>
-    </div>
-
-    <div class="list-section">
-        <h2>Aliquot Dispositions</h2>
-        <div class="list-grid">
-            {% for disposition in aliquot_dispositions %}
-            <div class="list-item">
-                <h3>{{ disposition.name }}</h3>
-                <p>Type: {{ disposition.get_dispositionType_display }}</p>
-                <p>{{ disposition.description|truncatechars:100 }}</p>
-            </div>
-            {% empty %}
-            <p class="empty-message">No dispositions found.</p>
-            {% endfor %}
-        </div>
+        {% empty %}
+            <p class="no-results">No {{ model_name|lower }} found.</p>
+        {% endfor %}
     </div>
 </div>
+
+<script>
+document.getElementById('searchInput').addEventListener('input', function(e) {
+    const searchText = e.target.value.toLowerCase();
+    const items = document.querySelectorAll('.searchable');
+    
+    items.forEach(item => {
+        const text = item.textContent.toLowerCase();
+        if (text.includes(searchText)) {
+            item.style.display = 'block';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+});
+</script>
 {% endblock %} 

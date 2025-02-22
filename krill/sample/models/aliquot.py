@@ -1,5 +1,6 @@
 from django.db import models
 from storage.models import Box
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 class AliquotType(models.Model):
     name = models.CharField(max_length=200)
@@ -22,13 +23,18 @@ class AliquotDisposition(models.Model):
 
 
 class Aliquot(models.Model):
-    sample = models.ForeignKey(to='sample.Sample',
-        on_delete=models.PROTECT)
+    parent = models.ForeignKey(to='Aliquot', on_delete=models.PROTECT, null=True, blank=True)
+    sample = models.ForeignKey(to='sample.Sample', on_delete=models.PROTECT)
     quantity = models.IntegerField(default=0)
-    box = models.ForeignKey(to='storage.Box', on_delete=models.PROTECT)
-    row = models.PositiveSmallIntegerField(default=1)
-    column = models.PositiveSmallIntegerField(default=1)
     aliquotType = models.ForeignKey(to='AliquotType', on_delete=models.PROTECT)
     disposition = models.ForeignKey(to='AliquotDisposition', on_delete=models.PROTECT)
     passage = models.CharField(max_length=200, default=0)
+    experiment = models.TextField(blank=True)
     notes = models.TextField(blank=True)
+
+class AliquotLocation(models.Model):
+    aliquot = models.ForeignKey(to='Aliquot', on_delete=models.CASCADE)
+    box = models.ForeignKey(to='storage.Box', on_delete=models.PROTECT)
+    row = models.PositiveSmallIntegerField(default=1, validators=[MinValueValidator(1), MaxValueValidator(10)])
+    column = models.PositiveSmallIntegerField(default=1, validators=[MinValueValidator(1), MaxValueValidator(10)])
+    

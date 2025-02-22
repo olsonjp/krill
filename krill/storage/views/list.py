@@ -5,13 +5,29 @@ from ..models.site import Site
 
 class StorageListView(ListView):
     template_name = 'storage/list.html'
-    context_object_name = 'sites'
-    model = Site
-
+    
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['devices'] = Device.objects.all()
-        context['shelves'] = Shelf.objects.all()
-        context['racks'] = Rack.objects.all()
-        context['boxes'] = Box.objects.all()
-        return context 
+        model_type = self.request.GET.get('type', 'site')
+        
+        if model_type == 'box':
+            context['items'] = Box.objects.select_related(
+                'rack__shelf__device__site'
+            ).all()
+            context['model_name'] = 'Boxes'
+        elif model_type == 'shelf':
+            context['items'] = Shelf.objects.select_related(
+                'device__site'
+            ).all()
+            context['model_name'] = 'Shelves'
+        elif model_type == 'device':
+            context['items'] = Device.objects.select_related('site').all()
+            context['model_name'] = 'Devices'
+        else:  # default to sites
+            context['items'] = Site.objects.all()
+            context['model_name'] = 'Sites'
+            
+        return context
+
+    def get_queryset(self):
+        return []  # We're using context['items'] instead 

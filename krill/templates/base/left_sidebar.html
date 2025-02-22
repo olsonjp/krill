@@ -10,18 +10,65 @@
                 </span>
                 <h3>Dashboard</h3>
             </a>
-            <a href="{% url 'sample:list' %}" class="{% if 'sample' in request.path %}active{% endif %}">
-                <span class="material-icons-round">
-                    science
-                </span>
-                <h3>Samples</h3>
-            </a>
-            <a href="{% url 'storage:list' %}" class="{% if 'storage' in request.path %}active{% endif %}">
-                <span class="material-icons-round">
-                    inventory_2
-                </span>
-                <h3>Storage</h3>
-            </a>
+            
+            <!-- Sample app section -->
+            <div class="sidebar-section">
+                <a href="{% url 'sample:list' %}" class="sidebar-toggle {% if 'sample' in request.path %}active{% endif %}">
+                    <span class="material-icons-round">
+                        science
+                    </span>
+                    <h3>Samples</h3>
+                    <span class="material-icons-round expand-icon">expand_more</span>
+                </a>
+                <div id="sample-section" class="sidebar-submenu {% if 'sample' in request.path %}show{% endif %}">
+                    <a href="{% url 'sample:list' %}" class="submenu-item {% if 'sample' in request.path and not request.GET.type %}active{% endif %}">
+                        <span class="material-icons-round">list</span>
+                        <h3>Samples</h3>
+                    </a>
+                    <a href="{% url 'sample:list' %}?type=aliquot" class="submenu-item {% if request.GET.type == 'aliquot' %}active{% endif %}">
+                        <span class="material-icons-round">biotech</span>
+                        <h3>Aliquots</h3>
+                    </a>
+                    <a href="{% url 'sample:list' %}?type=aliquot-type" class="submenu-item {% if request.GET.type == 'aliquot-type' %}active{% endif %}">
+                        <span class="material-icons-round">category</span>
+                        <h3>Aliquot Types</h3>
+                    </a>
+                    <a href="{% url 'sample:list' %}?type=source" class="submenu-item {% if request.GET.type == 'source' %}active{% endif %}">
+                        <span class="material-icons-round">source</span>
+                        <h3>Sources</h3>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Storage app section -->
+            <div class="sidebar-section">
+                <a href="{% url 'storage:list' %}" class="sidebar-toggle {% if 'storage' in request.path %}active{% endif %}">
+                    <span class="material-icons-round">
+                        inventory_2
+                    </span>
+                    <h3>Storage</h3>
+                    <span class="material-icons-round expand-icon">expand_more</span>
+                </a>
+                <div id="storage-section" class="sidebar-submenu {% if 'storage' in request.path %}show{% endif %}">
+                    <a href="{% url 'storage:list' %}?type=site" class="submenu-item {% if request.GET.type == 'site' %}active{% endif %}">
+                        <span class="material-icons-round">location_on</span>
+                        <h3>Sites</h3>
+                    </a>
+                    <a href="{% url 'storage:list' %}?type=device" class="submenu-item {% if request.GET.type == 'device' %}active{% endif %}">
+                        <span class="material-icons-round">devices</span>
+                        <h3>Devices</h3>
+                    </a>
+                    <a href="{% url 'storage:list' %}?type=shelf" class="submenu-item {% if request.GET.type == 'shelf' %}active{% endif %}">
+                        <span class="material-icons-round">view_module</span>
+                        <h3>Shelves</h3>
+                    </a>
+                    <a href="{% url 'storage:list' %}?type=box" class="submenu-item {% if request.GET.type == 'box' %}active{% endif %}">
+                        <span class="material-icons-round">grid_view</span>
+                        <h3>Boxes</h3>
+                    </a>
+                </div>
+            </div>
+
             <a href="{% url 'reports' %}" class="{% if 'reports' in request.path %}active{% endif %}">
                 <span class="material-icons-round">
                     description
@@ -46,3 +93,12 @@
         </div>
     </aside>
 </div>
+
+<script>
+    function toggleSection(sectionId) {
+        const section = document.getElementById(sectionId);
+        const toggle = section.previousElementSibling;
+        section.classList.toggle('show');
+        toggle.classList.toggle('active');
+    }
+</script>
