@@ -1,0 +1,19 @@
+<script>
+function toggleEdit() {
+    const viewMode = document.getElementById('viewMode');
+    const editMode = document.getElementById('editMode');
+    const editButton = document.querySelector('.edit-button');
+    
+    viewMode.classList.toggle('hidden');
+    editMode.classList.toggle('hidden');
+    editButton.classList.toggle('hidden');
+}
+
+document.querySelectorAll('.items-table tbody tr').forEach(row => {
+    row.addEventListener('click', function() {
+        const id = this.dataset.id;
+        const type = new URLSearchParams(window.location.search).get('type') || 'sample';
+        window.location.href = `detail/${type}/${id}/`;
+    });
+});
+</script>

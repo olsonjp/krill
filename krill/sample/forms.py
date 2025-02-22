@@ -1,7 +1,7 @@
 from django import forms
 from .models.sample import Sample
 from .models.aliquot import Aliquot, AliquotLocation, AliquotType, AliquotDisposition
-
+from .models.source import Source
 class SampleForm(forms.ModelForm):
     class Meta:
         model = Sample
@@ -53,9 +53,6 @@ class AliquotTypeForm(forms.ModelForm):
             'name': 'Name of this aliquot type',
             'description': 'Description of this type',
         }
-        widgets = {
-            'description': forms.Textarea(attrs={'rows': 4}),
-        }
 
 class AliquotDispositionForm(forms.ModelForm):
     class Meta:
@@ -66,6 +63,8 @@ class AliquotDispositionForm(forms.ModelForm):
             'dispositionType': 'Type of disposition',
             'description': 'Description of this disposition',
         }
-        widgets = {
-            'description': forms.Textarea(attrs={'rows': 4}),
-        } 
+
+class SourceForm(forms.ModelForm):
+    class Meta:
+        model = Source
+        fields = ['name', 'description'] 

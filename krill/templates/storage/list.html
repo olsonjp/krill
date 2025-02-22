@@ -1,5 +1,4 @@
 {% extends 'base/layout.html' %}
-{% load static %}
 
 {% block content %}
 <div class="list-container">
@@ -8,42 +7,119 @@
         <span class="material-icons-round">search</span>
         <input type="text" id="searchInput" placeholder="Search {{ model_name|lower }}...">
     </div>
-    <div class="items-list">
-        {% for item in items %}
-            <div class="item-card searchable">
-                <h3>{{ item.name }}</h3>
-                <!-- Add appropriate fields based on model type -->
+    <div class="table-container">
+        <table class="items-table">
+            <thead>
                 {% if model_name == 'Boxes' %}
-                    <p>Rack: {{ item.rack.name }}</p>
-                    <p>Shelf: {{ item.rack.shelf.name }}</p>
-                    <p>Device: {{ item.rack.shelf.device.name }}</p>
+                    <tr>
+                        <th data-sort="name">Name ↕</th>
+                        <th data-sort="rack">Rack ↕</th>
+                        <th data-sort="shelf">Shelf ↕</th>
+                        <th data-sort="device">Device ↕</th>
+                        <th data-sort="description">Description ↕</th>
+                    </tr>
                 {% elif model_name == 'Shelves' %}
-                    <p>Device: {{ item.device.name }}</p>
-                    <p>Site: {{ item.device.site.name }}</p>
+                    <tr>
+                        <th data-sort="name">Name ↕</th>
+                        <th data-sort="device">Device ↕</th>
+                        <th data-sort="site">Site ↕</th>
+                        <th data-sort="description">Description ↕</th>
+                    </tr>
                 {% elif model_name == 'Devices' %}
-                    <p>Site: {{ item.site.name }}</p>
+                    <tr>
+                        <th data-sort="name">Name ↕</th>
+                        <th data-sort="site">Site ↕</th>
+                        <th data-sort="description">Description ↕</th>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <th data-sort="name">Name ↕</th>
+                        <th data-sort="description">Description ↕</th>
+                    </tr>
                 {% endif %}
-                <p>Description: {{ item.description }}</p>
-            </div>
-        {% empty %}
-            <p class="no-results">No {{ model_name|lower }} found.</p>
-        {% endfor %}
+            </thead>
+            <tbody>
+                {% for item in items %}
+                    <tr class="searchable" data-id="{{ item.id }}">
+                        {% if model_name == 'Boxes' %}
+                            <td>{{ item.name }}</td>
+                            <td>{{ item.rack.name }}</td>
+                            <td>{{ item.rack.shelf.name }}</td>
+                            <td>{{ item.rack.shelf.device.name }}</td>
+                            <td>{{ item.description }}</td>
+                        {% elif model_name == 'Shelves' %}
+                            <td>{{ item.name }}</td>
+                            <td>{{ item.device.name }}</td>
+                            <td>{{ item.device.site.name }}</td>
+                            <td>{{ item.description }}</td>
+                        {% elif model_name == 'Devices' %}
+                            <td>{{ item.name }}</td>
+                            <td>{{ item.site.name }}</td>
+                            <td>{{ item.description }}</td>
+                        {% else %}
+                            <td>{{ item.name }}</td>
+                            <td>{{ item.description }}</td>
+                        {% endif %}
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="5" class="no-results">No {{ model_name|lower }} found.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 
 <script>
+// Search functionality
 document.getElementById('searchInput').addEventListener('input', function(e) {
     const searchText = e.target.value.toLowerCase();
-    const items = document.querySelectorAll('.searchable');
+    const rows = document.querySelectorAll('.searchable');
     
-    items.forEach(item => {
-        const text = item.textContent.toLowerCase();
-        if (text.includes(searchText)) {
-            item.style.display = 'block';
-        } else {
-            item.style.display = 'none';
-        }
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(searchText) ? '' : 'none';
+    });
+});
+
+// Sorting functionality
+document.querySelectorAll('th[data-sort]').forEach(th => {
+    th.addEventListener('click', function() {
+        const table = th.closest('table');
+        const tbody = table.querySelector('tbody');
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        const column = Array.from(th.parentNode.children).indexOf(th);
+        
+        // Toggle sort direction
+        const ascending = !th.classList.contains('sort-asc');
+        document.querySelectorAll('th').forEach(header => {
+            header.classList.remove('sort-asc', 'sort-desc');
+        });
+        th.classList.toggle('sort-asc', ascending);
+        th.classList.toggle('sort-desc', !ascending);
+        
+        // Sort rows
+        rows.sort((a, b) => {
+            const aText = a.children[column]?.textContent.toLowerCase() || '';
+            const bText = b.children[column]?.textContent.toLowerCase() || '';
+            return ascending ? 
+                aText.localeCompare(bText) : 
+                bText.localeCompare(aText);
+        });
+        
+        // Reorder rows
+        rows.forEach(row => tbody.appendChild(row));
+    });
+});
+
+// Row click functionality
+document.querySelectorAll('.searchable').forEach(row => {
+    row.addEventListener('click', function() {
+        const id = this.dataset.id;
+        const type = new URLSearchParams(window.location.search).get('type') || 'site';
+        window.location.href = `{% url 'storage:list' %}../detail/${type}/${id}/`;
     });
 });
 </script>
-{% endblock %} 
+{% endblock %}

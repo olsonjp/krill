@@ -1,0 +1,90 @@
+{% extends 'base/layout.html' %}
+
+{% block content %}
+<div class="detail-container">
+    <div class="detail-header">
+        <h1>{{ object.name }}</h1>
+        <button class="edit-button" onclick="toggleEdit()">
+            <span class="material-icons-round">edit</span>
+            Edit
+        </button>
+    </div>
+
+    <div class="detail-content" id="viewMode">
+        {% if model_type == 'aliquot' %}
+            <div class="detail-field">
+                <label>Sample:</label>
+                <span>{{ object.sample.name }}</span>
+            </div>
+            <div class="detail-field">
+                <label>Type:</label>
+                <span>{{ object.aliquotType.name }}</span>
+            </div>
+            <div class="detail-field">
+                <label>Disposition:</label>
+                <span>{{ object.disposition.name }}</span>
+            </div>
+            <div class="detail-field">
+                <label>Passage:</label>
+                <span>{{ object.passage }}</span>
+            </div>
+            <div class="detail-field">
+                <label>Experiment:</label>
+                <span>{{ object.experiment }}</span>
+            </div>
+            <div class="detail-field">
+                <label>Notes:</label>
+                <span>{{ object.notes }}</span>
+            </div>
+        {% elif model_type == 'aliquot-type' %}
+            <div class="detail-field">
+                <label>Description:</label>
+                <span>{{ object.description }}</span>
+            </div>
+        {% elif model_type == 'source' %}
+            <div class="detail-field">
+                <label>Description:</label>
+                <span>{{ object.description }}</span>
+            </div>
+        {% else %}
+            <div class="detail-field">
+                <label>Source:</label>
+                <span>{{ object.source.name }}</span>
+            </div>
+            <div class="detail-field">
+                <label>Notes:</label>
+                <span>{{ object.notes }}</span>
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="detail-form hidden" id="editMode">
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <div class="form-buttons">
+                <button type="submit" class="save-button">
+                    <span class="material-icons-round">save</span>
+                    Save
+                </button>
+                <button type="button" class="cancel-button" onclick="toggleEdit()">
+                    <span class="material-icons-round">close</span>
+                    Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function toggleEdit() {
+    const viewMode = document.getElementById('viewMode');
+    const editMode = document.getElementById('editMode');
+    const editButton = document.querySelector('.edit-button');
+    
+    viewMode.classList.toggle('hidden');
+    editMode.classList.toggle('hidden');
+    editButton.classList.toggle('hidden');
+}
+</script>
+{% endblock %}
