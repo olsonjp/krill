@@ -28,7 +28,7 @@ class Shelf(models.Model):
 
 class Rack(models.Model):
     """
-    A Rack represents a rack in a freezer or dewer in which Samples are stored.
+    A Rack represents a rack in a freezer or a cane in a dewer in which Samples are stored.
     """
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
@@ -56,5 +56,5 @@ class Box(models.Model):
     @property
     def aliquots(self):
         """Get all aliquots in this box."""
-        from sample.models.aliquot import Aliquot
-        return Aliquot.objects.filter(box=self)
+        from sample.models.aliquot import AliquotLocation
+        return AliquotLocation.objects.filter(box=self)

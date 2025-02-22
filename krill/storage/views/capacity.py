@@ -10,8 +10,8 @@ def box_capacity(request):
     """Calculate and return the capacity information for all boxes."""
     boxes = Box.objects.annotate(
         total_slots=F('rows') * F('columns'),
-        used_slots=Count('aliquot'),
-        free_slots=F('rows') * F('columns') - Count('aliquot')
+        used_slots=Count('aliquotlocation'),
+        free_slots=F('rows') * F('columns') - Count('aliquotlocation')
     ).values(
         'id',
         'name',
