@@ -1,12 +1,11 @@
 from django.urls import path
-from .views.forms import StorageFormView
-from .views.list import StorageListView  # Import your list view
-from .views.capacity import box_capacity
+from .views.list import StorageListView
+from .views.detail import StorageDetailView
 
-app_name = 'storage'  # Add namespace
+app_name = 'storage'
 
 urlpatterns = [
-    path('', StorageListView.as_view(), name='list'),  # Add the list view URL
-    path('new/<str:type>/', StorageFormView.as_view(), name='new'),
-    path('capacity/', box_capacity, name='capacity'),
-] 
+    path('list/', StorageListView.as_view(), name='list'),
+    path('detail/<str:type>/<int:pk>/', StorageDetailView.as_view(), name='detail'),
+    # ... other existing urls ...
+]
