@@ -4,7 +4,7 @@ from django.contrib import messages
 from django.urls import reverse
 from ..forms import (
     SampleForm,
-    AliquotForm, AliquotTypeForm,
+    AliquotForm, AliquotLocationForm, AliquotTypeForm,
     AliquotDispositionForm,
 )
 
@@ -13,25 +13,37 @@ class SampleFormView(View):
     success_url = 'sample:list'
     
     def get_form_class(self):
-        form_type = self.kwargs.get('type')
-        form_classes = {
+        form_types = {
             'sample': SampleForm,
             'aliquot': AliquotForm,
+            'aliquot-location': AliquotLocationForm,
             'aliquot-type': AliquotTypeForm,
             'aliquot-disposition': AliquotDispositionForm,
         }
-        return form_classes.get(form_type)
+        return form_types.get(self.kwargs.get('type'))
     
     def get_success_url(self):
         return reverse(self.success_url)
     
     def get_title(self):
-        form_type = self.kwargs.get('type').replace('-', ' ').title()
-        return f'Add New {form_type}'
+        titles = {
+            'sample': 'New Sample',
+            'aliquot': 'New Aliquot',
+            'aliquot-location': 'New Aliquot Location',
+            'aliquot-type': 'New Aliquot Type',
+            'aliquot-disposition': 'New Disposition',
+        }
+        return titles.get(self.kwargs.get('type'), 'New Item')
     
     def get_description(self):
-        form_type = self.kwargs.get('type').replace('-', ' ').title()
-        return f'Create a new {form_type.lower()} in the system'
+        descriptions = {
+            'sample': 'Create a new sample',
+            'aliquot': 'Create a new aliquot from a sample',
+            'aliquot-location': 'Assign an aliquot to a storage location',
+            'aliquot-type': 'Define a new type of aliquot',
+            'aliquot-disposition': 'Define a new disposition status',
+        }
+        return descriptions.get(self.kwargs.get('type'), '')
 
     def get(self, request, *args, **kwargs):
         form_class = self.get_form_class()
@@ -39,8 +51,9 @@ class SampleFormView(View):
             messages.error(request, 'Invalid form type')
             return redirect(self.get_success_url())
             
+        form = form_class()
         context = {
-            'form': form_class(),
+            'form': form,
             'form_title': self.get_title(),
             'form_description': self.get_description(),
         }

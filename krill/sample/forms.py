@@ -1,6 +1,6 @@
 from django import forms
 from .models.sample import Sample
-from .models.aliquot import Aliquot, AliquotType, AliquotDisposition
+from .models.aliquot import Aliquot, AliquotLocation, AliquotType, AliquotDisposition
 
 class SampleForm(forms.ModelForm):
     class Meta:
@@ -17,20 +17,32 @@ class SampleForm(forms.ModelForm):
 class AliquotForm(forms.ModelForm):
     class Meta:
         model = Aliquot
-        fields = ['sample', 'quantity', 'box', 'row', 'column', 'aliquotType', 'disposition', 'passage', 'notes']
+        fields = ['parent', 'sample', 'quantity', 'aliquotType', 'disposition', 
+                 'passage', 'experiment', 'notes']
         help_texts = {
-            'sample': 'Parent sample',
-            'quantity': 'Amount of sample in this aliquot',
-            'box': 'Storage box location',
-            'row': 'Row position in box',
-            'column': 'Column position in box',
+            'parent': 'Parent aliquot, if this is a derivative',
+            'sample': 'Sample this aliquot belongs to',
+            'quantity': 'Quantity of the aliquot',
             'aliquotType': 'Type of aliquot',
-            'disposition': 'Current status of the aliquot',
+            'disposition': 'Current disposition of the aliquot',
             'passage': 'Passage number',
-            'notes': 'Additional notes about the aliquot',
+            'experiment': 'Experiment details',
+            'notes': 'Additional notes',
         }
         widgets = {
             'notes': forms.Textarea(attrs={'rows': 4}),
+            'experiment': forms.Textarea(attrs={'rows': 4}),
+        }
+
+class AliquotLocationForm(forms.ModelForm):
+    class Meta:
+        model = AliquotLocation
+        fields = ['aliquot', 'box', 'row', 'column']
+        help_texts = {
+            'aliquot': 'Aliquot to locate',
+            'box': 'Storage box',
+            'row': 'Row position (1-10)',
+            'column': 'Column position (1-10)',
         }
 
 class AliquotTypeForm(forms.ModelForm):
@@ -38,8 +50,8 @@ class AliquotTypeForm(forms.ModelForm):
         model = AliquotType
         fields = ['name', 'description']
         help_texts = {
-            'name': 'Name of the aliquot type',
-            'description': 'Description of this type of aliquot',
+            'name': 'Name of this aliquot type',
+            'description': 'Description of this type',
         }
         widgets = {
             'description': forms.Textarea(attrs={'rows': 4}),
@@ -50,8 +62,8 @@ class AliquotDispositionForm(forms.ModelForm):
         model = AliquotDisposition
         fields = ['name', 'dispositionType', 'description']
         help_texts = {
-            'name': 'Name of the disposition',
-            'dispositionType': 'Type of disposition (Stored, Exhausted, In Use)',
+            'name': 'Name of this disposition',
+            'dispositionType': 'Type of disposition',
             'description': 'Description of this disposition',
         }
         widgets = {
