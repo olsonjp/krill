@@ -34,7 +34,7 @@ def convert_csv_to_fixtures(csv_file):
                 pk_counter['source'] += 1
             
             # Create Sample if not exists
-            sample_key = f"{row['Cell Line']}_{row['Globally Unique Sample ID']}"
+            sample_key = row['Cell Line']
             if sample_key not in samples:
                 samples[sample_key] = pk_counter['sample']
                 fixtures.append({
