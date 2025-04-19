@@ -1,0 +1,25 @@
+{% extends 'base/layout.html' %}
+
+{% block content %}
+<div class="form-container">
+    <div class="form-header">
+        <h1>Create New {{ model_name }}</h1>
+    </div>
+    <div class="form-content">
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <div class="form-buttons">
+                <button type="submit" class="save-button">
+                    <span class="material-icons-round">save</span>
+                    Create
+                </button>
+                <button type="button" class="cancel-button" onclick="window.location.href='{% url 'sample:list' %}?type={{ model_type }}'">
+                    <span class="material-icons-round">close</span>
+                    Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %} 

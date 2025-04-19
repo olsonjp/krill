@@ -2,7 +2,13 @@
 
 {% block content %}
 <div class="list-container">
-    <h1>{{ model_name }}</h1>
+    <div class="list-header">
+        <h1>{{ model_name }}</h1>
+        <button class="create-button" onclick="window.location.href='{% url 'storage:create' %}?type={{ request.GET.type|default:'site' }}'">
+            <span class="material-icons-round">add</span>
+            Create New {{ model_name|slice:":-1" }}
+        </button>
+    </div>
     <div class="search-box">
         <span class="material-icons-round">search</span>
         <input type="text" id="searchInput" placeholder="Search {{ model_name|lower }}...">

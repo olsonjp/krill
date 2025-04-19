@@ -1010,6 +1010,8 @@ main table tbody tr:last-child td{
     width: 100%;
     border-collapse: collapse;
     white-space: nowrap;
+    overflow-x: hidden;
+    table-layout: fixed;
 }
 
 .items-table thead {
@@ -1168,14 +1170,55 @@ main table tbody tr:last-child td{
 .detail-form form select,
 .detail-form form textarea {
     width: 100%;
-    padding: 0.5rem;
+    padding: 0.8rem;
     border: 1px solid var(--color-light);
-    border-radius: var(--border-radius-1);
+    border-radius: var(--border-radius-2);
     font-size: 1rem;
     color: var(--color-dark);
+    background: var(--color-white);
+    box-shadow: 0 2px 4px var(--color-light);
+    transition: all 0.3s ease;
+}
+
+.detail-form form input:focus,
+.detail-form form select:focus,
+.detail-form form textarea:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 4px 6px var(--color-light);
 }
 
 .detail-form form textarea {
     min-height: 100px;
     resize: vertical;
+}
+
+.list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.create-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--color-primary);
+    color: var(--color-white);
+    border: none;
+    border-radius: var(--border-radius-1);
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 300ms ease;
+    margin: 0.5rem 0 1rem 0;
+}
+
+.create-button:hover {
+    background: var(--color-primary-variant);
+}
+
+.create-button span {
+    font-size: 1.2rem;
 }
