@@ -33,10 +33,10 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('login/', KrillLoginView.as_view(), name='login'),
     path('logout/', LogoutView.as_view(next_page='login'), name='logout'),
-    path('', login_required(HomeView.as_view()), name='home'),
+    path('', HomeView.as_view(), name='home'),
     path('samples/', include('sample.urls')),
     path('storage/', include('storage.urls')),
-    path('reports/', login_required(ReportsView.as_view()), name='reports'),
-    path('settings/', login_required(SettingsView.as_view()), name='settings'),
+    path('reports/', ReportsView.as_view(), name='reports'),
+    path('settings/', SettingsView.as_view(), name='settings'),
     path('preferences/theme/', toggle_theme, name='toggle_theme'),
 ]

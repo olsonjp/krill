@@ -1,10 +1,13 @@
 from django.views.generic.edit import CreateView
 from django.urls import reverse_lazy
 from django.shortcuts import redirect
+from django.contrib.auth.decorators import login_required
+from django.utils.decorators import method_decorator
 from ..models.storage import Box, Rack, Shelf, Device
 from ..models.site import Site
 from ..forms import BoxForm, ShelfForm, DeviceForm, SiteForm
 
+@method_decorator(login_required, name='dispatch')
 class StorageCreateView(CreateView):
     template_name = 'storage/create.html'
     

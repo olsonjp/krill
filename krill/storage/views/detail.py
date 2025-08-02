@@ -1,10 +1,13 @@
 from django.views.generic import DetailView
 from django.shortcuts import get_object_or_404, render, redirect
 from django.urls import reverse
+from django.contrib.auth.decorators import login_required
+from django.utils.decorators import method_decorator
 from ..models.storage import Box, Rack, Shelf, Device
 from ..models.site import Site
 from ..forms import BoxForm, RackForm, ShelfForm, DeviceForm, SiteForm
 
+@method_decorator(login_required, name='dispatch')
 class StorageDetailView(DetailView):
     template_name = 'storage/detail.html'
     

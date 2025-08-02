@@ -32,6 +32,14 @@ class Aliquot(models.Model):
     experiment = models.TextField(blank=True)
     notes = models.TextField(blank=True)
 
+    deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.sample.name} - {self.aliquotType.name} - {self.quantity}"
+
 class AliquotLocation(models.Model):
     aliquot = models.ForeignKey(to='Aliquot', on_delete=models.PROTECT, null=False, blank=False)
     box = models.ForeignKey(to='storage.Box', on_delete=models.PROTECT, null=False, blank=False)

@@ -1,11 +1,14 @@
 from django.views.generic.edit import CreateView
 from django.urls import reverse_lazy
 from django.shortcuts import redirect
+from django.contrib.auth.decorators import login_required
+from django.utils.decorators import method_decorator
 from ..models.sample import Sample
 from ..models.aliquot import Aliquot, AliquotType
 from ..models.source import Source
 from ..forms import SampleForm, AliquotForm, AliquotTypeForm, SourceForm
 
+@method_decorator(login_required, name='dispatch')
 class ModelCreateView(CreateView):
     template_name = 'sample/create.html'
     
