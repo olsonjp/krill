@@ -35,6 +35,8 @@ def convert_csv_to_fixtures(csv_file):
             
             # Create Sample if not exists
             sample_key = row['Cell Line']
+            current_notes = row['Sample Notes'] or ''
+            
             if sample_key not in samples:
                 samples[sample_key] = pk_counter['sample']
                 fixtures.append({
@@ -43,10 +45,19 @@ def convert_csv_to_fixtures(csv_file):
                         'name': row['Cell Line'],
                         'experiment': row['Experiment #'] or '',
                         'source': sources[source_name],
-                        'notes': row['Sample Notes'] or ''
+                        'notes': current_notes
                     }
                 })
                 pk_counter['sample'] += 1
+            else:
+                # Sample exists, check if we need to append notes
+                existing_sample = next((fixture for fixture in fixtures if fixture['model'] == 'sample.sample' and fixture['fields']['name'] == sample_key), None)
+                if existing_sample and current_notes and current_notes not in existing_sample['fields']['notes']:
+                    existing_notes = existing_sample['fields']['notes']
+                    if existing_notes:
+                        existing_sample['fields']['notes'] = existing_notes + '\n' + current_notes
+                    else:
+                        existing_sample['fields']['notes'] = current_notes
             
             # Create Storage hierarchy
             site_name = 'Sikora Lab'
