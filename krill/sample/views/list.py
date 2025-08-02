@@ -1,9 +1,12 @@
 from django.views.generic import ListView
 from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
+from django.utils.decorators import method_decorator
 from ..models.sample import Sample
 from ..models.aliquot import Aliquot, AliquotType, AliquotLocation
 from ..models.source import Source
 
+@method_decorator(login_required, name='dispatch')
 class SampleListView(ListView):
     template_name = 'sample/list.html'
     

@@ -8,6 +8,8 @@ from django.core.cache import cache
 from django.shortcuts import redirect, render
 from django.utils.translation import gettext_lazy as _
 from django.views.generic import View
+from django.contrib.auth.decorators import login_required
+from django.utils.decorators import method_decorator
 
 __all__ = (
     'HomeView',
@@ -15,6 +17,7 @@ __all__ = (
     'SettingsView',
 )
 
+@method_decorator(login_required, name='dispatch')
 class HomeView(View):
     template_name = 'krill/home.html'
 
@@ -50,12 +53,14 @@ class HomeView(View):
         'new_release': new_release,
         })"""
 
+@method_decorator(login_required, name='dispatch')
 class ReportsView(View):
     template_name = 'krill/reports.html'
 
     def get(self, request):
         return render(request, self.template_name)
     
+@method_decorator(login_required, name='dispatch')
 class SettingsView(View):
     template_name = 'krill/settings.html'
 
