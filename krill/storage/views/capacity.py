@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required
 from ..models.storage import Box
 from ..models.site import Site
 from django.db.models import Count, F, Q
-from sample.models.aliquot import Aliquot
+from sample.models.aliquot import AliquotLocation
 
 @login_required
 def box_capacity(request):
