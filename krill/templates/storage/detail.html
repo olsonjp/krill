@@ -24,6 +24,108 @@
                 <label>Device:</label>
                 <span>{{ object.rack.shelf.device.name }}</span>
             </div>
+            <div class="detail-field">
+                <label>Dimensions:</label>
+                <span>{{ object.rows }} rows × {{ object.columns }} columns</span>
+            </div>
+            <div class="detail-field">
+                <label>Auto-Store:</label>
+                <span>{% if object.auto_store_enabled %}Enabled{% else %}Disabled{% endif %}</span>
+            </div>
+            
+            <!-- Storage Statistics -->
+            <div class="detail-section">
+                <h3><i class="material-icons-round">storage</i> Storage Statistics</h3>
+                <div class="storage-stats">
+                    <div class="stat-item">
+                        <span class="stat-number">{{ used_slots }}</span>
+                        <span class="stat-label">Used Slots</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">{{ available_slots }}</span>
+                        <span class="stat-label">Available Slots</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">{{ total_slots }}</span>
+                        <span class="stat-label">Total Slots</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">{{ storage_percentage|floatformat:1 }}%</span>
+                        <span class="stat-label">Capacity Used</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Box Storage Grid -->
+            <div class="detail-section">
+                <h3><i class="material-icons-round">grid_on</i> Storage Box</h3>
+                <div class="test-tube-box">
+                    <div class="box-container">
+                        {% for row in box_grid %}
+                        <div class="box-row">
+                            {% for slot in row %}
+                            <div class="test-tube-slot {% if slot.occupied %}occupied{% else %}empty{% endif %}"
+                                 data-row="{{ slot.row }}" data-col="{{ slot.column }}"
+                                 title="{% if slot.occupied %}{{ slot.sample.name }} - {{ slot.aliquot.aliquotType.name }}{% else %}Empty slot{% endif %}">
+                                {% if slot.occupied %}
+                                <a href="{% url 'sample:detail' type='aliquot' pk=slot.aliquot.id %}" class="test-tube-link">
+                                {% endif %}
+                                {% if slot.occupied %}
+                                <div class="test-tube">
+                                    <div class="tube-top"></div>
+                                    <div class="tube-body">
+                                        <div class="sample-label">{{ slot.sample.name|truncatechars:4 }}</div>
+                                        <div class="tube-number">#{{ slot.tube_number }}</div>
+                                    </div>
+                                </div>
+                                </a>
+                                {% else %}
+                                <div class="empty-tube">
+                                    <div class="tube-top"></div>
+                                    <div class="tube-body"></div>
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="box-legend">
+                        <div class="legend-item">
+                            <div class="legend-tube occupied"></div>
+                            <span>Occupied</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-tube empty"></div>
+                            <span>Empty</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Stored Aliquots List -->
+            {% if locations %}
+            <div class="detail-section">
+                <h3><i class="material-icons-round">list</i> Stored Aliquots</h3>
+                <div class="aliquots-list">
+                    {% for location in locations %}
+                    <div class="aliquot-item">
+                        <div class="aliquot-header">
+                            <div class="aliquot-name">
+                                <a href="{% url 'sample:detail' type='aliquot' pk=location.aliquot.id %}">{{ location.aliquot.sample.name }}</a>
+                            </div>
+                            <div class="aliquot-position">Position ({{ location.row }}, {{ location.column }}) - Tube #{{ location.tube_number }}</div>
+                        </div>
+                        <div class="aliquot-details">
+                            <span class="aliquot-type">{{ location.aliquot.aliquotType.name }}</span>
+                            <span class="aliquot-quantity">Aliquot: {{ location.aliquot.stored_tubes_count }}/{{ location.aliquot.quantity }} tubes</span>
+                            <span class="aliquot-disposition">{{ location.aliquot.disposition.name }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
         {% elif model_type == 'shelf' %}
             <div class="detail-field">
                 <label>Device:</label>
@@ -90,5 +192,39 @@ function toggleEdit() {
     editMode.classList.toggle('hidden');
     editButton.classList.toggle('hidden');
 }
+
+// Slot highlighting functionality
+function highlightSlot() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const highlightRow = urlParams.get('highlight_row');
+    const highlightCol = urlParams.get('highlight_col');
+    
+    if (highlightRow && highlightCol) {
+        // Find the specific slot and highlight it
+        const targetSlot = document.querySelector(
+            `.test-tube-slot[data-row="${highlightRow}"][data-col="${highlightCol}"]`
+        );
+        
+        if (targetSlot) {
+            // Add highlighting class
+            targetSlot.classList.add('highlighted-slot');
+            
+            // Scroll to the slot
+            targetSlot.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center'
+            });
+            
+            // Remove highlighting after 3 seconds
+            setTimeout(function() {
+                targetSlot.classList.remove('highlighted-slot');
+            }, 3000);
+        }
+    }
+}
+
+// Try to highlight immediately, then again when DOM is loaded
+highlightSlot();
+document.addEventListener('DOMContentLoaded', highlightSlot);
 </script>
 {% endblock %}

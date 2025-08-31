@@ -1,0 +1,111 @@
+{% extends 'base/layout.html' %}
+{% load static %}
+
+{% block title %}Tube Detail - {{ tube.aliquot.sample.name }} - Tube {{ tube.tube_number }}{% endblock %}
+
+{% block content %}
+<div class="detail-container">
+    <div class="detail-header">
+        <h1><i class="material-icons-round">science</i> Tube Detail</h1>
+        <div class="header-actions">
+            <a href="{% url 'sample:detail' type='aliquot' pk=tube.aliquot.id %}" class="btn btn-secondary">
+                <span class="material-icons-round">arrow_back</span>
+                Back to Aliquot
+            </a>
+        </div>
+    </div>
+
+    <div class="detail-content" id="viewMode">
+        <div class="detail-section">
+            <h3><i class="material-icons-round">info</i> Tube Information</h3>
+            <div class="detail-field">
+                <label>Sample:</label>
+                <span>{{ tube.aliquot.sample.name }}</span>
+            </div>
+            <div class="detail-field">
+                <label>Aliquot Type:</label>
+                <span>{{ tube.aliquot.aliquotType.name }}</span>
+            </div>
+            <div class="detail-field">
+                <label>Tube Number:</label>
+                <span>{{ tube.tube_number }}</span>
+            </div>
+            <div class="detail-field">
+                <label>Status:</label>
+                <span class="status-badge {{ tube.disposition.dispositionType|lower|cut:' ' }}">{{ tube.disposition.name }}</span>
+            </div>
+            <div class="detail-field">
+                <label>Created:</label>
+                <span>{{ tube.created_at|date:"M d, Y H:i" }}</span>
+            </div>
+            <div class="detail-field">
+                <label>Last Updated:</label>
+                <span>{{ tube.updated_at|date:"M d, Y H:i" }}</span>
+            </div>
+        </div>
+
+        {% if storage_location %}
+        <div class="detail-section">
+            <h3><i class="material-icons-round">location_on</i> Storage Location</h3>
+            <div class="storage-info">
+                <div class="detail-field">
+                    <label>Device:</label>
+                    <span>{{ storage_location.device.name }}</span>
+                </div>
+                <div class="detail-field">
+                    <label>Shelf:</label>
+                    <span>{{ storage_location.shelf.name }}</span>
+                </div>
+                <div class="detail-field">
+                    <label>Rack:</label>
+                    <span>{{ storage_location.rack.name }}</span>
+                </div>
+                <div class="detail-field">
+                    <label>Box:</label>
+                    <span><a href="{% url 'storage:detail' type='box' pk=storage_location.box.id %}?highlight_row={{ storage_location.row }}&highlight_col={{ storage_location.column }}" class="box-link">{{ storage_location.box.name }}</a></span>
+                </div>
+                <div class="detail-field">
+                    <label>Position:</label>
+                    <span>Row {{ storage_location.row }}, Column {{ storage_location.column }}</span>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="detail-section">
+            <h3><i class="material-icons-round">location_off</i> Storage Location</h3>
+            <div class="no-storage">
+                <p><i class="material-icons-round">warning</i> This tube is not currently stored in a specific location.</p>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="detail-section">
+            <h3><i class="material-icons-round">description</i> Aliquot Information</h3>
+            <div class="detail-field">
+                <label>Aliquot ID:</label>
+                <span><a href="{% url 'sample:detail' type='aliquot' pk=tube.aliquot.id %}">{{ tube.aliquot.id }}</a></span>
+            </div>
+            <div class="detail-field">
+                <label>Total Tubes:</label>
+                <span>{{ tube.aliquot.quantity }}</span>
+            </div>
+            <div class="detail-field">
+                <label>Passage:</label>
+                <span>{{ tube.aliquot.passage }}</span>
+            </div>
+            {% if tube.aliquot.experiment %}
+            <div class="detail-field">
+                <label>Experiment:</label>
+                <span>{{ tube.aliquot.experiment }}</span>
+            </div>
+            {% endif %}
+            {% if tube.aliquot.notes %}
+            <div class="detail-field">
+                <label>Notes:</label>
+                <span>{{ tube.aliquot.notes }}</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
