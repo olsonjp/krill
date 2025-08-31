@@ -46,9 +46,26 @@
     </div>
 
     <div class="detail-form hidden" id="editMode">
-        <form method="post">
+        <form method="post" class="detail-form">
             {% csrf_token %}
-            {{ form.as_p }}
+            
+            {% for field in form %}
+            <div class="detail-field">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}
+                <small class="help-text">{{ field.help_text }}</small>
+                {% endif %}
+                {% if field.errors %}
+                <div class="field-errors">
+                    {% for error in field.errors %}
+                    <span class="error">{{ error }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+            
             <div class="form-buttons">
                 <button type="submit" class="save-button">
                     <span class="material-icons-round">save</span>
