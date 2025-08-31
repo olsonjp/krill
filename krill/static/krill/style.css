@@ -197,7 +197,7 @@ b{
 .content-wrapper {
     display: grid;
     gap: 1.8rem;
-    grid-template-columns: 12rem auto;
+    grid-template-columns: 14rem auto;
     padding-top: 60px;
     height: calc(100vh - 60px);
     width: 96%;
@@ -207,7 +207,7 @@ b{
 aside {
     height: calc(100vh - 60px);
     margin-top: 0;
-    width: 12rem;
+    width: 14rem;
 }
 
 aside .sidebar{
@@ -217,7 +217,7 @@ aside .sidebar{
     background-color: var(--color-white);
     box-shadow: var(--box-shadow);
     border-radius: 15px;
-    height: 88vh;
+    height: 95vh;
     position: relative;
     top: 1.5rem;
     transition: all 0.3s ease;
@@ -234,7 +234,8 @@ aside .sidebar a{
     height: 3.7rem;
     gap: 1rem;
     position: relative;
-    margin-left: calc(2% + 1rem);
+    margin-left: 1rem;
+    padding-right: 1rem;
     transition: all 0.3s ease;
 }
 
@@ -243,18 +244,15 @@ aside .sidebar a span{
     transition: all 0.3s ease;
 }
 
-aside .sidebar a:last-child{
-    position: absolute;
-    bottom: 2rem;
-    width: 100%;
-}
+/* Remove the absolute positioning that was causing layout issues */
 
 aside .sidebar a.active{
     width: 100%;
     color: var(--color-primary);
     background-color: var(--color-light);
     margin-left: 0;
-    padding-left: calc(2% + 1rem);
+    padding-left: 1rem;
+    padding-right: 1rem;
 }
 
 aside .sidebar a.active::before{
@@ -280,7 +278,7 @@ aside .sidebar a:hover span{
 /* main content */
 main {
     margin-top: 1.5rem;
-    height: calc(88vh - 60px);
+    height: calc(95vh - 60px);
     background-color: var(--color-white);
     box-shadow: var(--box-shadow);
     border-radius: 15px;
@@ -820,7 +818,8 @@ main table tbody tr:last-child td{
     height: 3.7rem;
     cursor: pointer;
     position: relative;
-    padding-left: 2rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
     font-family: var(--font-family);
     text-align: left;
 }
@@ -874,7 +873,7 @@ main table tbody tr:last-child td{
     display: flex;
     align-items: center;
     gap: 1rem;
-    padding: 0.5rem 1rem;
+    padding: 0.5rem 1.5rem;
     color: var(--color-dark);
     transition: all 300ms ease;
 }
@@ -897,6 +896,8 @@ main table tbody tr:last-child td{
     margin: 0 0.5rem;
     border-radius: var(--border-radius-1);
 }
+
+
 
 /* List Container Styles */
 .list-container {
