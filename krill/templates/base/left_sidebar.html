@@ -81,6 +81,31 @@
                 </span>
                 <h3>Settings</h3>
             </a>
+            
+            <!-- User Management section -->
+            <div class="sidebar-section">
+                <a href="{% url 'person:user_list' %}" class="sidebar-toggle {% if 'users' in request.path %}active{% endif %}">
+                    <span class="material-icons-round">
+                        people
+                    </span>
+                    <h3>Users</h3>
+                    <span class="material-icons-round expand-icon">expand_more</span>
+                </a>
+                <div id="users-section" class="sidebar-submenu {% if 'users' in request.path %}show{% endif %}">
+                    <a href="{% url 'person:user_list' %}" class="submenu-item {% if 'users' in request.path and not 'audit' in request.path and not 'create' in request.path %}active{% endif %}">
+                        <span class="material-icons-round">list</span>
+                        <h3>User List</h3>
+                    </a>
+                    <a href="{% url 'person:create_user' %}" class="submenu-item {% if 'create' in request.path %}active{% endif %}">
+                        <span class="material-icons-round">person_add</span>
+                        <h3>Create User</h3>
+                    </a>
+                    <a href="{% url 'person:audit_log' %}" class="submenu-item {% if 'audit' in request.path %}active{% endif %}">
+                        <span class="material-icons-round">history</span>
+                        <h3>Audit Log</h3>
+                    </a>
+                </div>
+            </div>
             <form method="post" action="{% url 'logout' %}" class="logout-form">
                 {% csrf_token %}
                 <button type="submit" class="sidebar-logout">

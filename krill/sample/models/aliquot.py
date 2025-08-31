@@ -5,7 +5,7 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 
 class AliquotType(models.Model):
     name = models.CharField(max_length=200, unique=True, null=False, blank=False)
-    description = models.CharField(max_length=200, blank=True)
+    description = models.CharField(max_length=200, blank=True, null=True)
     def __str__(self):
         return self.name
 
@@ -17,7 +17,7 @@ class AliquotDisposition(models.Model):
     )
     name = models.CharField(max_length=200, unique=True, null=False, blank=False)
     dispositionType = models.CharField(max_length = 32, choices = TYPES, default = 'stored', null=False, blank=False)
-    description = models.CharField(max_length=200, blank=True)
+    description = models.CharField(max_length=200, blank=True, null=True)
 
     def __str__(self):
         return self.name
@@ -30,8 +30,8 @@ class Aliquot(models.Model):
     aliquotType = models.ForeignKey(to='AliquotType', on_delete=models.PROTECT, null=False, blank=False)
     disposition = models.ForeignKey(to='AliquotDisposition', on_delete=models.PROTECT, null=False, blank=False)
     passage = models.CharField(max_length=200, default=0)
-    experiment = models.TextField(blank=True)
-    notes = models.TextField(blank=True)
+    experiment = models.TextField(blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
 
     deleted = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(null=True, blank=True)

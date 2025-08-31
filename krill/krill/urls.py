@@ -39,4 +39,5 @@ urlpatterns = [
     path('reports/', ReportsView.as_view(), name='reports'),
     path('settings/', SettingsView.as_view(), name='settings'),
     path('preferences/theme/', toggle_theme, name='toggle_theme'),
+    path('users/', include('person.urls')),
 ]
