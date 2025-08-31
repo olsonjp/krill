@@ -3,135 +3,122 @@
 {% block title %}Edit Role - {{ user_role.user.username }} - Krill{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">
-                        <i class="fas fa-edit"></i>
-                        Edit Role: {{ user_role.user.username }}
-                    </h3>
-                </div>
-                <div class="card-body">
-                    <form method="post">
-                        {% csrf_token %}
-                        
-                        <div class="form-group">
-                            <label for="{{ form.role.id_for_label }}">Role</label>
-                            {{ form.role }}
-                            {% if form.role.help_text %}
-                                <small class="form-text text-muted">{{ form.role.help_text }}</small>
-                            {% endif %}
-                            {% if form.role.errors %}
-                                <div class="alert alert-danger">
-                                    {{ form.role.errors }}
-                                </div>
-                            {% endif %}
-                        </div>
-
-                        <div class="form-group">
-                            <label for="{{ form.department.id_for_label }}">Department</label>
-                            {{ form.department }}
-                            {% if form.department.help_text %}
-                                <small class="form-text text-muted">{{ form.department.help_text }}</small>
-                            {% endif %}
-                            {% if form.department.errors %}
-                                <div class="alert alert-danger">
-                                    {{ form.department.errors }}
-                                </div>
-                            {% endif %}
-                        </div>
-
-                        <div class="form-group">
-                            <label for="{{ form.lab_unit.id_for_label }}">Lab Unit</label>
-                            {{ form.lab_unit }}
-                            {% if form.lab_unit.help_text %}
-                                <small class="form-text text-muted">{{ form.lab_unit.help_text }}</small>
-                            {% endif %}
-                            {% if form.lab_unit.errors %}
-                                <div class="alert alert-danger">
-                                    {{ form.lab_unit.errors }}
-                                </div>
-                            {% endif %}
-                        </div>
-
-                        <div class="form-actions">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save"></i> Save Changes
-                            </button>
-                            <a href="{% url 'person:user_detail' user_role.user.id %}" class="btn btn-secondary">
-                                <i class="fas fa-times"></i> Cancel
-                            </a>
-                        </div>
-                    </form>
-                </div>
+<div class="form-container">
+    <div class="form-header">
+        <h1>Edit Role: {{ user_role.user.username }}</h1>
+        <p class="form-description">Update the role and organizational information for this user</p>
+    </div>
+    
+    <div class="form-content">
+        <form method="post" class="detail-form">
+            {% csrf_token %}
+            
+            <div class="detail-field">
+                <label for="{{ form.role.id_for_label }}">Role</label>
+                {{ form.role }}
+                {% if form.role.help_text %}
+                    <small class="help-text">{{ form.role.help_text }}</small>
+                {% endif %}
+                {% if form.role.errors %}
+                    <div class="field-errors">
+                        {% for error in form.role.errors %}
+                        <span class="error">{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
             </div>
 
-            <!-- Role Information Card -->
-            <div class="card mt-4">
-                <div class="card-header">
-                    <h4 class="card-title">
-                        <i class="fas fa-info-circle"></i>
-                        Role Information
-                    </h4>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h6>Lab Administrator</h6>
-                            <ul class="list-unstyled">
-                                <li>✓ Full system access</li>
-                                <li>✓ User management</li>
-                                <li>✓ System administration</li>
-                                <li>✓ Audit logs access</li>
-                            </ul>
-                        </div>
-                        <div class="col-md-6">
-                            <h6>Lab Manager</h6>
-                            <ul class="list-unstyled">
-                                <li>✓ Sample and aliquot management</li>
-                                <li>✓ Storage management</li>
-                                <li>✓ Limited user management</li>
-                                <li>✓ Reports and audit access</li>
-                            </ul>
-                        </div>
+            <div class="detail-field">
+                <label for="{{ form.department.id_for_label }}">Department</label>
+                {{ form.department }}
+                {% if form.department.help_text %}
+                    <small class="help-text">{{ form.department.help_text }}</small>
+                {% endif %}
+                {% if form.department.errors %}
+                    <div class="field-errors">
+                        {% for error in form.department.errors %}
+                        <span class="error">{{ error }}</span>
+                        {% endfor %}
                     </div>
-                    <div class="row mt-3">
-                        <div class="col-md-6">
-                            <h6>Lab Member</h6>
-                            <ul class="list-unstyled">
-                                <li>✓ Create and edit samples</li>
-                                <li>✓ Create and edit aliquots</li>
-                                <li>✓ Basic storage access</li>
-                                <li>✓ View reports</li>
-                            </ul>
-                        </div>
-                        <div class="col-md-6">
-                            <h6>Viewer</h6>
-                            <ul class="list-unstyled">
-                                <li>✓ View samples</li>
-                                <li>✓ View aliquots</li>
-                                <li>✓ View storage</li>
-                                <li>✗ No editing permissions</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
+                {% endif %}
             </div>
-        </div>
+
+            <div class="detail-field">
+                <label for="{{ form.lab_unit.id_for_label }}">Lab Unit</label>
+                {{ form.lab_unit }}
+                {% if form.lab_unit.help_text %}
+                    <small class="help-text">{{ form.lab_unit.help_text }}</small>
+                {% endif %}
+                {% if form.lab_unit.errors %}
+                    <div class="field-errors">
+                        {% for error in form.lab_unit.errors %}
+                        <span class="error">{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="form-buttons">
+                <button type="submit" class="save-button">
+                    <span class="material-icons-round">save</span>
+                    Save Changes
+                </button>
+                <button type="button" class="cancel-button" onclick="window.location.href='{% url 'person:user_detail' user_role.user.id %}'">
+                    <span class="material-icons-round">close</span>
+                    Cancel
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 
-<style>
-.form-actions {
-    margin-top: 2rem;
-    padding-top: 1rem;
-    border-top: 1px solid #dee2e6;
-}
-
-.form-actions .btn {
-    margin-right: 0.5rem;
-}
-</style>
+<!-- Role Information Section -->
+<div class="form-container">
+    <div class="form-header">
+        <h2>Role Information</h2>
+        <p class="form-description">Overview of available roles and their permissions</p>
+    </div>
+    
+    <div class="role-info-grid">
+        <div class="role-card">
+            <h3>Lab Administrator</h3>
+            <ul>
+                <li>✓ Full system access</li>
+                <li>✓ User management</li>
+                <li>✓ System administration</li>
+                <li>✓ Audit logs access</li>
+            </ul>
+        </div>
+        
+        <div class="role-card">
+            <h3>Lab Manager</h3>
+            <ul>
+                <li>✓ Sample and aliquot management</li>
+                <li>✓ Storage management</li>
+                <li>✓ Limited user management</li>
+                <li>✓ Reports and audit access</li>
+            </ul>
+        </div>
+        
+        <div class="role-card">
+            <h3>Lab Member</h3>
+            <ul>
+                <li>✓ Create and edit samples</li>
+                <li>✓ Create and edit aliquots</li>
+                <li>✓ Basic storage access</li>
+                <li>✓ View reports</li>
+            </ul>
+        </div>
+        
+        <div class="role-card">
+            <h3>Viewer</h3>
+            <ul>
+                <li>✓ View samples</li>
+                <li>✓ View aliquots</li>
+                <li>✓ View storage</li>
+                <li>✗ No editing permissions</li>
+            </ul>
+        </div>
+    </div>
+</div>
 {% endblock %}
