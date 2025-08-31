@@ -4,7 +4,30 @@ This document tracks frontend functionality that exists but lacks proper server-
 
 ## 🔴 Critical Issues (Breaking Functionality)
 
-### 1. Storage Capacity Endpoint
+### 1. Database Migration Issue - Missing `deleted` Column
+**Status**: ❌ CRITICAL - Database Error  
+**Issue**: `no such column: sample_aliquot.deleted`  
+**Impact**: Cannot create test data, potential runtime errors  
+**Root Cause**: Migration issue with Aliquot model's `deleted` field  
+
+**Fix Required**:
+```bash
+# Option 1: Provide default value for existing rows
+python manage.py makemigrations sample --empty
+# Then edit migration to add default value for deleted field
+
+# Option 2: Update model to provide default
+class Aliquot(models.Model):
+    # ... existing fields ...
+    deleted = models.BooleanField(default=False, null=True)  # Allow null temporarily
+```
+
+**Test Results**:
+- ❌ Cannot create test aliquots due to missing column
+- ❌ Migration system requires default value for existing rows
+- ❌ Blocks testing of storage capacity with sample data
+
+### 2. Storage Capacity Endpoint
 **Status**: ✅ COMPLETED & TESTED  
 **Frontend**: `dashboard.js` makes fetch request to `/storage/capacity/`  
 **Backend**: View exists in `storage/views/capacity.py` and now registered in URLs  
@@ -116,43 +139,557 @@ def dashboard_stats(request):
 - `GET /samples/find/` - Sample finder
 - `POST /reports/generate/` - Quick report generation
 
+### 7. Homepage Dashboard Statistics API
+**Status**: ❌ No implementation  
+**Frontend**: Hardcoded stats in `home.html`  
+**Current**: Static numbers (248 samples, 78% usage, 15 reports, 2 alerts)  
+**Need**: Dynamic statistics from database  
+
+**Required Endpoints**:
+- `GET /dashboard/stats/` - Overall system statistics
+
+**Implementation**:
+```python
+# Add to krill/views/
+@login_required
+def dashboard_stats(request):
+    stats = {
+        'active_samples': Sample.objects.filter(deleted=False).count(),
+        'storage_usage': calculate_storage_percentage(),
+        'recent_reports': Report.objects.filter(created_at__gte=timezone.now()-timedelta(days=7)).count(),
+        'alerts': Alert.objects.filter(resolved=False).count(),
+    }
+    return JsonResponse(stats)
+```
+
+### 8. Recent Activity Feed API
+**Status**: ❌ No implementation  
+**Frontend**: Static activity items in `home.html`  
+**Current**: Hardcoded activity examples  
+**Need**: Real-time activity tracking and API  
+
+**Required Endpoints**:
+- `GET /activity/recent/` - Recent user activities
+- `POST /activity/log/` - Log new activity
+
+**Implementation**:
+```python
+# New app: activity/
+class Activity(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    action = models.CharField(max_length=100)  # 'create', 'update', 'delete'
+    target_type = models.CharField(max_length=50)  # 'sample', 'storage', 'report'
+    target_id = models.IntegerField()
+    target_name = models.CharField(max_length=200)
+    timestamp = models.DateTimeField(auto_now_add=True)
+```
+
+### 9. Storage Management Dashboard API
+**Status**: ❌ No implementation  
+**Frontend**: Hardcoded stats in `storage/storage.html`  
+**Current**: Static numbers (4 freezers, 156/200 boxes, 1,248 samples)  
+**Need**: Dynamic storage statistics  
+
+**Required Endpoints**:
+- `GET /storage/dashboard/` - Storage overview statistics
+- `GET /storage/freezers/` - Freezer status and capacity
+
+**Implementation**:
+```python
+@login_required
+def storage_dashboard(request):
+    stats = {
+        'active_freezers': Device.objects.count(),
+        'total_boxes': Box.objects.count(),
+        'available_boxes': Box.objects.filter(aliquotlocation__isnull=True).count(),
+        'total_samples': AliquotLocation.objects.count(),
+        'freezer_status': get_freezer_status(),
+    }
+    return JsonResponse(stats)
+```
+
+### 10. Freezer Status Monitoring API
+**Status**: ❌ No implementation  
+**Frontend**: Freezer units with temperature and capacity in `storage/storage.html`  
+**Current**: Static freezer data (Freezer A-D with hardcoded temps and capacities)  
+**Need**: Real freezer monitoring system  
+
+**Required Endpoints**:
+- `GET /storage/freezers/status/` - Real-time freezer status
+- `GET /storage/freezers/<id>/contents/` - Freezer contents
+
+**Implementation**:
+```python
+class FreezerStatus(models.Model):
+    device = models.OneToOneField(Device, on_delete=models.CASCADE)
+    temperature = models.DecimalField(max_digits=5, decimal_places=2)
+    last_updated = models.DateTimeField(auto_now=True)
+    status = models.CharField(max_length=20, choices=[
+        ('operational', 'Operational'),
+        ('warning', 'Warning'),
+        ('critical', 'Critical'),
+    ])
+```
+
+### 11. Sample Search and Find API
+**Status**: ❌ No implementation  
+**Frontend**: "Find Sample" buttons in multiple templates  
+**Current**: No search functionality  
+**Need**: Comprehensive sample search system  
+
+**Required Endpoints**:
+- `GET /samples/search/?q=<query>` - Search samples by name, ID, or location
+- `GET /samples/find/` - Advanced sample finder interface
+
+### 12. Report Generation API
+**Status**: ❌ No implementation  
+**Frontend**: "Generate Report" buttons in templates  
+**Current**: No report generation functionality  
+**Need**: Automated report generation system  
+
+**Required Endpoints**:
+- `POST /reports/generate/` - Generate new report
+- `GET /reports/list/` - List available reports
+- `GET /reports/<id>/download/` - Download generated report
+
+### 13. Alert System API
+**Status**: ❌ No implementation  
+**Frontend**: Alert indicators in `home.html`  
+**Current**: Static alert count (2 New)  
+**Need**: Real-time alert system  
+
+**Required Endpoints**:
+- `GET /alerts/list/` - List active alerts
+- `POST /alerts/create/` - Create new alert
+- `POST /alerts/<id>/resolve/` - Resolve alert
+
+**Implementation**:
+```python
+class Alert(models.Model):
+    title = models.CharField(max_length=200)
+    message = models.TextField()
+    severity = models.CharField(max_length=20, choices=[
+        ('low', 'Low'),
+        ('medium', 'Medium'),
+        ('high', 'High'),
+        ('critical', 'Critical'),
+    ])
+    created_at = models.DateTimeField(auto_now_add=True)
+    resolved = models.BooleanField(default=False)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+```
+
+### 14. Issue Reporting API
+**Status**: ❌ No implementation  
+**Frontend**: "Report Issue" button in `storage/storage.html`  
+**Current**: No issue reporting functionality  
+**Need**: Issue tracking system  
+
+**Required Endpoints**:
+- `POST /issues/report/` - Report new issue
+- `GET /issues/list/` - List reported issues
+- `POST /issues/<id>/update/` - Update issue status
+
+### 15. Aliquot Management API
+**Status**: ❌ No implementation  
+**Frontend**: Missing buttons for aliquot operations in detail views  
+**Current**: Basic CRUD for aliquots exists, but missing specialized operations  
+**Need**: Advanced aliquot management functionality  
+
+**Required Endpoints**:
+- `POST /samples/<id>/create-aliquot/` - Create new aliquot from sample
+- `POST /aliquots/<id>/create-child/` - Create child aliquot (derivative)
+- `POST /aliquots/<id>/store/` - Store aliquot in specific location
+- `POST /aliquots/<id>/split/` - Split aliquot into multiple aliquots
+- `POST /aliquots/<id>/merge/` - Merge aliquots
+- `GET /aliquots/<id>/children/` - Get child aliquots
+- `GET /aliquots/<id>/history/` - Get aliquot history/lineage
+
+**Implementation**:
+```python
+# Add to sample/views/
+@login_required
+def create_aliquot_from_sample(request, sample_id):
+    """Create a new aliquot from an existing sample"""
+    sample = get_object_or_404(Sample, id=sample_id)
+    if request.method == 'POST':
+        form = AliquotForm(request.POST)
+        if form.is_valid():
+            aliquot = form.save(commit=False)
+            aliquot.sample = sample
+            aliquot.save()
+            return JsonResponse({'success': True, 'aliquot_id': aliquot.id})
+    return JsonResponse({'success': False, 'errors': form.errors})
+
+@login_required
+def create_child_aliquot(request, aliquot_id):
+    """Create a child aliquot from parent aliquot"""
+    parent = get_object_or_404(Aliquot, id=aliquot_id)
+    if request.method == 'POST':
+        form = AliquotForm(request.POST)
+        if form.is_valid():
+            child = form.save(commit=False)
+            child.parent = parent
+            child.sample = parent.sample
+            child.save()
+            return JsonResponse({'success': True, 'aliquot_id': child.id})
+    return JsonResponse({'success': False, 'errors': form.errors})
+
+@login_required
+def store_aliquot(request, aliquot_id):
+    """Store aliquot in specific storage location"""
+    aliquot = get_object_or_404(Aliquot, id=aliquot_id)
+    if request.method == 'POST':
+        form = AliquotLocationForm(request.POST)
+        if form.is_valid():
+            location = form.save(commit=False)
+            location.aliquot = aliquot
+            location.save()
+            return JsonResponse({'success': True, 'location_id': location.id})
+    return JsonResponse({'success': False, 'errors': form.errors})
+```
+
+### 16. Aliquot Management UI Components
+**Status**: ❌ No implementation  
+**Frontend**: Missing UI buttons and forms for aliquot operations  
+**Current**: Basic detail view exists, but no action buttons  
+**Need**: Interactive UI for aliquot management  
+
+**Required UI Components**:
+- "Create Aliquot" button on sample detail pages
+- "Create Child Aliquot" button on aliquot detail pages
+- "Store Aliquot" button with location selector
+- "Split Aliquot" form with quantity distribution
+- "Merge Aliquots" interface
+- Aliquot lineage/history display
+- Storage location assignment interface
+
+**Implementation**:
+```html
+<!-- Add to sample/detail.html for samples -->
+<div class="action-buttons">
+    <button class="action-btn" onclick="createAliquot({{ object.id }})">
+        <span class="material-icons-round">add_circle</span>
+        Create Aliquot
+    </button>
+    <button class="action-btn" onclick="viewAliquots({{ object.id }})">
+        <span class="material-icons-round">list</span>
+        View Aliquots
+    </button>
+</div>
+
+<!-- Add to sample/detail.html for aliquots -->
+<div class="action-buttons">
+    <button class="action-btn" onclick="createChildAliquot({{ object.id }})">
+        <span class="material-icons-round">call_split</span>
+        Create Child Aliquot
+    </button>
+    <button class="action-btn" onclick="storeAliquot({{ object.id }})">
+        <span class="material-icons-round">inventory_2</span>
+        Store Aliquot
+    </button>
+    <button class="action-btn" onclick="splitAliquot({{ object.id }})">
+        <span class="material-icons-round">content_cut</span>
+        Split Aliquot
+    </button>
+</div>
+```
+
+---
+
+## 🚀 V1 Shipping Improvements
+
+### 15. Data Entry Form Styling Improvements
+**Status**: ❌ Needs improvement  
+**Frontend**: Basic form styling exists but needs enhancement  
+**Current**: Simple forms with basic styling in `forms/model_form.html` and inline styles  
+**Need**: Modern, user-friendly form design with better UX  
+
+**Issues to Address**:
+- Inconsistent form styling across different templates
+- Basic input styling without modern design elements
+- Missing form validation visual feedback
+- No responsive design considerations
+- Limited accessibility features
+- Inconsistent button styling between create/edit forms
+
+**Required Improvements**:
+- Modern form input styling with focus states
+- Better form layout and spacing
+- Enhanced validation error display
+- Responsive form design
+- Improved accessibility (ARIA labels, keyboard navigation)
+- Consistent button styling across all forms
+- Better form field grouping and organization
+- Enhanced help text styling
+
+**Implementation**:
+```css
+/* Enhanced form styling */
+.form-container {
+    max-width: 800px;
+    margin: 0 auto;
+    background: var(--color-white);
+    padding: 2.5rem;
+    border-radius: 15px;
+    box-shadow: var(--box-shadow);
+}
+
+.form-field {
+    margin-bottom: 1.5rem;
+    position: relative;
+}
+
+.form-field label {
+    display: block;
+    font-weight: 600;
+    color: var(--color-dark);
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+}
+
+.form-field input,
+.form-field select,
+.form-field textarea {
+    width: 100%;
+    padding: 1rem;
+    border: 2px solid var(--color-light);
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    background: var(--color-white);
+}
+
+.form-field input:focus,
+.form-field select:focus,
+.form-field textarea:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(108, 155, 207, 0.1);
+}
+
+.form-field.error input,
+.form-field.error select,
+.form-field.error textarea {
+    border-color: var(--color-danger);
+}
+
+.field-errors {
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background: rgba(255, 0, 96, 0.1);
+    border-radius: 5px;
+    border-left: 3px solid var(--color-danger);
+}
+
+.help-text {
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--color-info-dark);
+    font-style: italic;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--color-light);
+}
+
+.submit-btn,
+.cancel-btn {
+    padding: 0.8rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.submit-btn {
+    background: var(--color-primary);
+    color: white;
+    border: none;
+}
+
+.submit-btn:hover {
+    background: var(--color-primary-variant);
+    transform: translateY(-1px);
+}
+
+.cancel-btn {
+    background: var(--color-light);
+    color: var(--color-dark);
+    border: 1px solid var(--color-light);
+}
+
+.cancel-btn:hover {
+    background: var(--color-white);
+    border-color: var(--color-dark);
+}
+```
+
+**Priority**: High - Critical for v1 user experience
+
 ---
 
 ## 🟢 Enhancement Opportunities
 
-### 7. Real-time Updates
+### 16. Real-time Updates
 **Status**: ❌ No implementation  
 **Frontend**: Static data that requires page refresh  
 **Need**: WebSocket or Server-Sent Events for real-time updates  
 
-### 8. Bulk Operations
+### 17. Bulk Operations
 **Status**: ❌ No implementation  
 **Frontend**: Individual item operations only  
 **Need**: Bulk delete, bulk update, bulk export  
 
-### 9. Export Functionality
+### 18. Export Functionality
 **Status**: ❌ No implementation  
 **Frontend**: No export buttons  
-**Need**: CSV, Excel, PDF export APIs  
+**Need**: CSV, Excel, PDF export APIs
+
+### 19. Aliquot Management API
+**Status**: ❌ No implementation  
+**Frontend**: Missing buttons for aliquot operations in detail views  
+**Current**: Basic CRUD for aliquots exists, but missing specialized operations  
+**Need**: Advanced aliquot management functionality  
+
+**Required Endpoints**:
+- `POST /samples/<id>/create-aliquot/` - Create new aliquot from sample
+- `POST /aliquots/<id>/create-child/` - Create child aliquot (derivative)
+- `POST /aliquots/<id>/store/` - Store aliquot in specific location
+- `POST /aliquots/<id>/split/` - Split aliquot into multiple aliquots
+- `POST /aliquots/<id>/merge/` - Merge aliquots
+- `GET /aliquots/<id>/children/` - Get child aliquots
+- `GET /aliquots/<id>/history/` - Get aliquot history/lineage
+
+**Implementation**:
+```python
+# Add to sample/views/
+@login_required
+def create_aliquot_from_sample(request, sample_id):
+    """Create a new aliquot from an existing sample"""
+    sample = get_object_or_404(Sample, id=sample_id)
+    if request.method == 'POST':
+        form = AliquotForm(request.POST)
+        if form.is_valid():
+            aliquot = form.save(commit=False)
+            aliquot.sample = sample
+            aliquot.save()
+            return JsonResponse({'success': True, 'aliquot_id': aliquot.id})
+    return JsonResponse({'success': False, 'errors': form.errors})
+
+@login_required
+def create_child_aliquot(request, aliquot_id):
+    """Create a child aliquot from parent aliquot"""
+    parent = get_object_or_404(Aliquot, id=aliquot_id)
+    if request.method == 'POST':
+        form = AliquotForm(request.POST)
+        if form.is_valid():
+            child = form.save(commit=False)
+            child.parent = parent
+            child.sample = parent.sample
+            child.save()
+            return JsonResponse({'success': True, 'aliquot_id': child.id})
+    return JsonResponse({'success': False, 'errors': form.errors})
+
+@login_required
+def store_aliquot(request, aliquot_id):
+    """Store aliquot in specific storage location"""
+    aliquot = get_object_or_404(Aliquot, id=aliquot_id)
+    if request.method == 'POST':
+        form = AliquotLocationForm(request.POST)
+        if form.is_valid():
+            location = form.save(commit=False)
+            location.aliquot = aliquot
+            location.save()
+            return JsonResponse({'success': True, 'location_id': location.id})
+    return JsonResponse({'success': False, 'errors': form.errors})
+```
+
+### 20. Aliquot Management UI Components
+**Status**: ❌ No implementation  
+**Frontend**: Missing UI buttons and forms for aliquot operations  
+**Current**: Basic detail view exists, but no action buttons  
+**Need**: Interactive UI for aliquot management  
+
+**Required UI Components**:
+- "Create Aliquot" button on sample detail pages
+- "Create Child Aliquot" button on aliquot detail pages
+- "Store Aliquot" button with location selector
+- "Split Aliquot" form with quantity distribution
+- "Merge Aliquots" interface
+- Aliquot lineage/history display
+- Storage location assignment interface
+
+**Implementation**:
+```html
+<!-- Add to sample/detail.html for samples -->
+<div class="action-buttons">
+    <button class="action-btn" onclick="createAliquot({{ object.id }})">
+        <span class="material-icons-round">add_circle</span>
+        Create Aliquot
+    </button>
+    <button class="action-btn" onclick="viewAliquots({{ object.id }})">
+        <span class="material-icons-round">list</span>
+        View Aliquots
+    </button>
+</div>
+
+<!-- Add to sample/detail.html for aliquots -->
+<div class="action-buttons">
+    <button class="action-btn" onclick="createChildAliquot({{ object.id }})">
+        <span class="material-icons-round">call_split</span>
+        Create Child Aliquot
+    </button>
+    <button class="action-btn" onclick="storeAliquot({{ object.id }})">
+        <span class="material-icons-round">inventory_2</span>
+        Store Aliquot
+    </button>
+    <button class="action-btn" onclick="splitAliquot({{ object.id }})">
+        <span class="material-icons-round">content_cut</span>
+        Split Aliquot
+    </button>
+</div>
+```  
 
 ---
 
 ## 📋 Implementation Priority
 
-1. **High Priority** (Fix breaking functionality):
+1. **Critical Priority** (Fix database errors):
+   - Database Migration Issue - Missing `deleted` Column (#1)
+
+2. **High Priority** (Fix breaking functionality):
    - ✅ Storage capacity endpoint URL registration
 
-2. **Medium Priority** (Improve user experience):
-   - Server-side search API
-   - Dashboard statistics API
-   - Activity feed API
+3. **Medium Priority** (Improve user experience):
+   - Homepage Dashboard Statistics API (#7)
+   - Storage Management Dashboard API (#9)
+   - Sample Search and Find API (#11)
+   - Alert System API (#13)
+   - Aliquot Management API (#19)
 
-3. **Low Priority** (Nice to have):
-   - Server-side sorting API
-   - Quick actions API
-   - Real-time updates
-   - Bulk operations
-   - Export functionality
+4. **Medium-Low Priority** (Enhance functionality):
+   - Recent Activity Feed API (#8)
+   - Freezer Status Monitoring API (#10)
+   - Report Generation API (#12)
+   - Issue Reporting API (#14)
+   - Aliquot Management UI Components (#20)
+   - Server-side search API (#2)
+   - Server-side sorting API (#3)
+
+5. **Low Priority** (Nice to have):
+   - Quick actions API (#6)
+   - Real-time updates (#16)
+   - Bulk operations (#17)
+   - Export functionality (#18)
 
 ---
 
