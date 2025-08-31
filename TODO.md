@@ -298,115 +298,6 @@ class Alert(models.Model):
 - `GET /issues/list/` - List reported issues
 - `POST /issues/<id>/update/` - Update issue status
 
-### 15. Aliquot Management API
-**Status**: ❌ No implementation  
-**Frontend**: Missing buttons for aliquot operations in detail views  
-**Current**: Basic CRUD for aliquots exists, but missing specialized operations  
-**Need**: Advanced aliquot management functionality  
-
-**Required Endpoints**:
-- `POST /samples/<id>/create-aliquot/` - Create new aliquot from sample
-- `POST /aliquots/<id>/create-child/` - Create child aliquot (derivative)
-- `POST /aliquots/<id>/store/` - Store aliquot in specific location
-- `POST /aliquots/<id>/split/` - Split aliquot into multiple aliquots
-- `POST /aliquots/<id>/merge/` - Merge aliquots
-- `GET /aliquots/<id>/children/` - Get child aliquots
-- `GET /aliquots/<id>/history/` - Get aliquot history/lineage
-
-**Implementation**:
-```python
-# Add to sample/views/
-@login_required
-def create_aliquot_from_sample(request, sample_id):
-    """Create a new aliquot from an existing sample"""
-    sample = get_object_or_404(Sample, id=sample_id)
-    if request.method == 'POST':
-        form = AliquotForm(request.POST)
-        if form.is_valid():
-            aliquot = form.save(commit=False)
-            aliquot.sample = sample
-            aliquot.save()
-            return JsonResponse({'success': True, 'aliquot_id': aliquot.id})
-    return JsonResponse({'success': False, 'errors': form.errors})
-
-@login_required
-def create_child_aliquot(request, aliquot_id):
-    """Create a child aliquot from parent aliquot"""
-    parent = get_object_or_404(Aliquot, id=aliquot_id)
-    if request.method == 'POST':
-        form = AliquotForm(request.POST)
-        if form.is_valid():
-            child = form.save(commit=False)
-            child.parent = parent
-            child.sample = parent.sample
-            child.save()
-            return JsonResponse({'success': True, 'aliquot_id': child.id})
-    return JsonResponse({'success': False, 'errors': form.errors})
-
-@login_required
-def store_aliquot(request, aliquot_id):
-    """Store aliquot in specific storage location"""
-    aliquot = get_object_or_404(Aliquot, id=aliquot_id)
-    if request.method == 'POST':
-        form = AliquotLocationForm(request.POST)
-        if form.is_valid():
-            location = form.save(commit=False)
-            location.aliquot = aliquot
-            location.save()
-            return JsonResponse({'success': True, 'location_id': location.id})
-    return JsonResponse({'success': False, 'errors': form.errors})
-```
-
-### 16. Aliquot Management UI Components
-**Status**: ❌ No implementation  
-**Frontend**: Missing UI buttons and forms for aliquot operations  
-**Current**: Basic detail view exists, but no action buttons  
-**Need**: Interactive UI for aliquot management  
-
-**Required UI Components**:
-- "Create Aliquot" button on sample detail pages
-- "Create Child Aliquot" button on aliquot detail pages
-- "Store Aliquot" button with location selector
-- "Split Aliquot" form with quantity distribution
-- "Merge Aliquots" interface
-- Aliquot lineage/history display
-- Storage location assignment interface
-
-**Implementation**:
-```html
-<!-- Add to sample/detail.html for samples -->
-<div class="action-buttons">
-    <button class="action-btn" onclick="createAliquot({{ object.id }})">
-        <span class="material-icons-round">add_circle</span>
-        Create Aliquot
-    </button>
-    <button class="action-btn" onclick="viewAliquots({{ object.id }})">
-        <span class="material-icons-round">list</span>
-        View Aliquots
-    </button>
-</div>
-
-<!-- Add to sample/detail.html for aliquots -->
-<div class="action-buttons">
-    <button class="action-btn" onclick="createChildAliquot({{ object.id }})">
-        <span class="material-icons-round">call_split</span>
-        Create Child Aliquot
-    </button>
-    <button class="action-btn" onclick="storeAliquot({{ object.id }})">
-        <span class="material-icons-round">inventory_2</span>
-        Store Aliquot
-    </button>
-    <button class="action-btn" onclick="splitAliquot({{ object.id }})">
-        <span class="material-icons-round">content_cut</span>
-        Split Aliquot
-    </button>
-</div>
-```
-
----
-
-## 🚀 V1 Shipping Improvements
-
 ### 15. Data Entry Form Styling Improvements
 **Status**: ❌ Needs improvement  
 **Frontend**: Basic form styling exists but needs enhancement  
@@ -541,28 +432,9 @@ def store_aliquot(request, aliquot_id):
 }
 ```
 
-**Priority**: High - Critical for v1 user experience
+**Priority**: High - Critical for user experience
 
----
-
-## 🟢 Enhancement Opportunities
-
-### 16. Real-time Updates
-**Status**: ❌ No implementation  
-**Frontend**: Static data that requires page refresh  
-**Need**: WebSocket or Server-Sent Events for real-time updates  
-
-### 17. Bulk Operations
-**Status**: ❌ No implementation  
-**Frontend**: Individual item operations only  
-**Need**: Bulk delete, bulk update, bulk export  
-
-### 18. Export Functionality
-**Status**: ❌ No implementation  
-**Frontend**: No export buttons  
-**Need**: CSV, Excel, PDF export APIs
-
-### 19. Aliquot Management API
+### 16. Aliquot Management API
 **Status**: ❌ No implementation  
 **Frontend**: Missing buttons for aliquot operations in detail views  
 **Current**: Basic CRUD for aliquots exists, but missing specialized operations  
@@ -621,7 +493,131 @@ def store_aliquot(request, aliquot_id):
     return JsonResponse({'success': False, 'errors': form.errors})
 ```
 
-### 20. Aliquot Management UI Components
+### 17. Aliquot Management UI Components
+**Status**: ❌ No implementation  
+**Frontend**: Missing UI buttons and forms for aliquot operations  
+**Current**: Basic detail view exists, but no action buttons  
+**Need**: Interactive UI for aliquot management  
+
+**Required UI Components**:
+- "Create Aliquot" button on sample detail pages
+- "Create Child Aliquot" button on aliquot detail pages
+- "Store Aliquot" button with location selector
+- "Split Aliquot" form with quantity distribution
+- "Merge Aliquots" interface
+- Aliquot lineage/history display
+- Storage location assignment interface
+
+**Implementation**:
+```html
+<!-- Add to sample/detail.html for samples -->
+<div class="action-buttons">
+    <button class="action-btn" onclick="createAliquot({{ object.id }})">
+        <span class="material-icons-round">add_circle</span>
+        Create Aliquot
+    </button>
+    <button class="action-btn" onclick="viewAliquots({{ object.id }})">
+        <span class="material-icons-round">list</span>
+        View Aliquots
+    </button>
+</div>
+
+<!-- Add to sample/detail.html for aliquots -->
+<div class="action-buttons">
+    <button class="action-btn" onclick="createChildAliquot({{ object.id }})">
+        <span class="material-icons-round">call_split</span>
+        Create Child Aliquot
+    </button>
+    <button class="action-btn" onclick="storeAliquot({{ object.id }})">
+        <span class="material-icons-round">inventory_2</span>
+        Store Aliquot
+    </button>
+    <button class="action-btn" onclick="splitAliquot({{ object.id }})">
+        <span class="material-icons-round">content_cut</span>
+        Split Aliquot
+    </button>
+</div>
+```
+
+
+
+## 🟢 Enhancement Opportunities
+
+### 18. Real-time Updates
+**Status**: ❌ No implementation  
+**Frontend**: Static data that requires page refresh  
+**Need**: WebSocket or Server-Sent Events for real-time updates  
+
+### 19. Bulk Operations
+**Status**: ❌ No implementation  
+**Frontend**: Individual item operations only  
+**Need**: Bulk delete, bulk update, bulk export  
+
+### 20. Export Functionality
+**Status**: ❌ No implementation  
+**Frontend**: No export buttons  
+**Need**: CSV, Excel, PDF export APIs
+
+### 21. Aliquot Management API
+**Status**: ❌ No implementation  
+**Frontend**: Missing buttons for aliquot operations in detail views  
+**Current**: Basic CRUD for aliquots exists, but missing specialized operations  
+**Need**: Advanced aliquot management functionality  
+
+**Required Endpoints**:
+- `POST /samples/<id>/create-aliquot/` - Create new aliquot from sample
+- `POST /aliquots/<id>/create-child/` - Create child aliquot (derivative)
+- `POST /aliquots/<id>/store/` - Store aliquot in specific location
+- `POST /aliquots/<id>/split/` - Split aliquot into multiple aliquots
+- `POST /aliquots/<id>/merge/` - Merge aliquots
+- `GET /aliquots/<id>/children/` - Get child aliquots
+- `GET /aliquots/<id>/history/` - Get aliquot history/lineage
+
+**Implementation**:
+```python
+# Add to sample/views/
+@login_required
+def create_aliquot_from_sample(request, sample_id):
+    """Create a new aliquot from an existing sample"""
+    sample = get_object_or_404(Sample, id=sample_id)
+    if request.method == 'POST':
+        form = AliquotForm(request.POST)
+        if form.is_valid():
+            aliquot = form.save(commit=False)
+            aliquot.sample = sample
+            aliquot.save()
+            return JsonResponse({'success': True, 'aliquot_id': aliquot.id})
+    return JsonResponse({'success': False, 'errors': form.errors})
+
+@login_required
+def create_child_aliquot(request, aliquot_id):
+    """Create a child aliquot from parent aliquot"""
+    parent = get_object_or_404(Aliquot, id=aliquot_id)
+    if request.method == 'POST':
+        form = AliquotForm(request.POST)
+        if form.is_valid():
+            child = form.save(commit=False)
+            child.parent = parent
+            child.sample = parent.sample
+            child.save()
+            return JsonResponse({'success': True, 'aliquot_id': child.id})
+    return JsonResponse({'success': False, 'errors': form.errors})
+
+@login_required
+def store_aliquot(request, aliquot_id):
+    """Store aliquot in specific storage location"""
+    aliquot = get_object_or_404(Aliquot, id=aliquot_id)
+    if request.method == 'POST':
+        form = AliquotLocationForm(request.POST)
+        if form.is_valid():
+            location = form.save(commit=False)
+            location.aliquot = aliquot
+            location.save()
+            return JsonResponse({'success': True, 'location_id': location.id})
+    return JsonResponse({'success': False, 'errors': form.errors})
+```
+
+### 22. Aliquot Management UI Components
 **Status**: ❌ No implementation  
 **Frontend**: Missing UI buttons and forms for aliquot operations  
 **Current**: Basic detail view exists, but no action buttons  
@@ -667,37 +663,134 @@ def store_aliquot(request, aliquot_id):
 </div>
 ```  
 
+### 23. User Permissions and Role Management
+**Status**: ❌ No implementation  
+**Current**: Basic Django authentication with `@login_required` decorators  
+**Need**: Comprehensive role-based access control system  
+
+**Issues to Address**:
+- No role-based permissions (all users have same access)
+- No granular permissions for different operations
+- No user groups or organizational structure
+- No audit trail for user actions
+- No permission-based UI hiding/showing
+
+**Required Features**:
+- Role-based access control (Admin, Manager, Researcher, Viewer)
+- Granular permissions for CRUD operations
+- User groups and organizational units
+- Permission-based UI components
+- Audit logging for user actions
+- User management interface
+
+**Implementation**:
+```python
+# Add to person/models.py
+class UserRole(models.Model):
+    ROLE_CHOICES = [
+        ('admin', 'Administrator'),
+        ('manager', 'Manager'),
+        ('researcher', 'Researcher'),
+        ('viewer', 'Viewer'),
+    ]
+    
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='viewer')
+    department = models.CharField(max_length=100, blank=True)
+    permissions = models.JSONField(default=dict)
+    
+    def has_permission(self, permission):
+        return permission in self.permissions.get('granted', [])
+
+class UserAuditLog(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    action = models.CharField(max_length=100)
+    target_type = models.CharField(max_length=50)
+    target_id = models.IntegerField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+    ip_address = models.GenericIPAddressField()
+    user_agent = models.TextField()
+```
+
+**Permission Decorators**:
+```python
+# Add to person/decorators.py
+from functools import wraps
+from django.http import HttpResponseForbidden
+
+def require_permission(permission):
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapper(request, *args, **kwargs):
+            if not request.user.userrole.has_permission(permission):
+                return HttpResponseForbidden("Insufficient permissions")
+            return view_func(request, *args, **kwargs)
+        return wrapper
+    return decorator
+
+# Usage in views
+@login_required
+@require_permission('sample.create')
+def create_sample(request):
+    # Only users with 'sample.create' permission can access
+    pass
+```
+
+**Required Endpoints**:
+- `GET /users/roles/` - List user roles and permissions
+- `POST /users/roles/` - Assign role to user
+- `GET /users/audit-log/` - View user audit log
+- `POST /users/permissions/` - Update user permissions
+
+**UI Components**:
+- User management interface in admin
+- Role assignment forms
+- Permission-based button visibility
+- Audit log viewer
+- User profile with role information
+
+**Priority**: High - Critical for security and access control
+
 ---
 
 ## 📋 Implementation Priority
 
 1. **Critical Priority** (Fix database errors):
-   - Database Migration Issue - Missing `deleted` Column (#1)
+   - ✅ Database Migration Issue - Missing `deleted` Column (#1) - **COMPLETED**
 
 2. **High Priority** (Fix breaking functionality):
-   - ✅ Storage capacity endpoint URL registration
+   - ✅ Storage capacity endpoint URL registration - **COMPLETED**
 
 3. **Medium Priority** (Improve user experience):
+   - User Permissions and Role Management (#23)
+   - Data Entry Form Styling Improvements (#15)
    - Homepage Dashboard Statistics API (#7)
    - Storage Management Dashboard API (#9)
    - Sample Search and Find API (#11)
    - Alert System API (#13)
-   - Aliquot Management API (#19)
+   - Aliquot Management API (#21)
 
 4. **Medium-Low Priority** (Enhance functionality):
    - Recent Activity Feed API (#8)
    - Freezer Status Monitoring API (#10)
    - Report Generation API (#12)
    - Issue Reporting API (#14)
-   - Aliquot Management UI Components (#20)
+   - Aliquot Management UI Components (#22)
    - Server-side search API (#2)
    - Server-side sorting API (#3)
 
 5. **Low Priority** (Nice to have):
    - Quick actions API (#6)
-   - Real-time updates (#16)
-   - Bulk operations (#17)
-   - Export functionality (#18)
+   - Real-time updates (#18)
+   - Bulk operations (#19)
+   - Export functionality (#20)
+
+**Next Recommended Items:**
+- **User Permissions and Role Management (#23)** - Critical for security and access control
+- **Data Entry Form Styling Improvements (#15)** - High impact for user experience
+- **Homepage Dashboard Statistics API (#7)** - High impact for user experience
+- **Sample Search and Find API (#11)** - Essential functionality for sample management
+- **Alert System API (#13)** - Important for system monitoring
 
 ---
 
