@@ -2,65 +2,59 @@
 
 This document tracks frontend functionality that exists but lacks proper server-side implementation.
 
+## 📋 Implementation Priority
+
+1. **Critical Priority** (Fix database errors):
+   - ✅ [Database Migration Issue - Missing `deleted` Column](#1-database-migration-issue---missing-deleted-column) - **COMPLETED**
+
+2. **High Priority** (Fix breaking functionality):
+   - ✅ [Storage capacity endpoint URL registration](#2-storage-capacity-endpoint) - **COMPLETED**
+
+3. **Medium Priority** (Improve user experience):
+   - ✅ [User Permissions and Role Management](#4-user-permissions-and-role-management) - **COMPLETED**
+   - ✅ [Data Entry Form Styling Improvements](#15-data-entry-form-styling-improvements) - **COMPLETED**
+   - ✅ [Homepage Dashboard Statistics API](#3-homepage-dashboard-statistics-api) - **COMPLETED**
+   - [Auto-Store Flag for Storage Models](#20-auto-store-flag-for-storage-models)
+   - [Automatic Aliquot Storage](#21-automatic-aliquot-storage)
+   - [Access Level Restrictions](#22-access-level-restrictions)
+   - [Storage Management Dashboard API](#9-storage-management-dashboard-api)
+   - [Sample Search and Find API](#11-sample-search-and-find-api)
+   - [Alert System API](#13-alert-system-api)
+   - [Aliquot Management API](#15-aliquot-management-api)
+
+4. **Medium-Low Priority** (Enhance functionality):
+   - [Recent Activity Feed API](#8-recent-activity-feed-api)
+   - [Freezer Status Monitoring API](#10-freezer-status-monitoring-api)
+   - [Report Generation API](#12-report-generation-api)
+   - [Issue Reporting API](#14-issue-reporting-api)
+   - [Aliquot Management UI Components](#16-aliquot-management-ui-components)
+   - [Server-side search API](#3-server-side-search-api)
+   - [Server-side sorting API](#4-server-side-sorting-api)
+
+5. **Low Priority** (Nice to have):
+   - [Quick actions API](#7-quick-actions-api)
+   - [Real-time updates](#17-real-time-updates)
+   - [Bulk operations](#18-bulk-operations)
+   - [Export functionality](#19-export-functionality)
+
+**Next Recommended Items:**
+- ✅ **User Permissions and Role Management** - **COMPLETED** - Critical for security and access control
+- ✅ **Data Entry Form Styling Improvements** - **COMPLETED** - High impact for user experience
+- ✅ **Homepage Dashboard Statistics API** - **COMPLETED** - High impact for user experience
+- **Sample Search and Find API** - Essential functionality for sample management
+- **Alert System API** - Important for system monitoring
+
+---
+
 ## 🔴 Critical Issues (Breaking Functionality)
 
-### 1. Database Migration Issue - Missing `deleted` Column
-**Status**: ✅ COMPLETED & TESTED  
-**Issue**: `no such column: sample_aliquot.deleted`  
-**Impact**: Cannot create test data, potential runtime errors  
-**Root Cause**: Migration issue with Aliquot model's `deleted` field  
-
-**Fix Applied**:
-```python
-# Updated Aliquot model in sample/models/aliquot.py
-from django.utils import timezone
-
-class Aliquot(models.Model):
-    # ... existing fields ...
-    deleted = models.BooleanField(default=False)
-    deleted_at = models.DateTimeField(null=True, blank=True)
-    created_at = models.DateTimeField(default=timezone.now)
-    updated_at = models.DateTimeField(default=timezone.now)
-```
-
-**Migration Created**: `0003_add_aliquot_timestamp_fields.py`
-- Added `deleted` field with default=False
-- Added `deleted_at` field (nullable)
-- Added `created_at` field with default=timezone.now
-- Added `updated_at` field with default=timezone.now
-
-**Test Results**:
-- ✅ Can successfully create test aliquots
-- ✅ All timestamp fields work correctly
-- ✅ No database errors when accessing aliquot data
-- ✅ Storage capacity testing can now proceed with sample data
-
-### 2. Storage Capacity Endpoint
-**Status**: ✅ COMPLETED & TESTED  
-**Frontend**: `dashboard.js` makes fetch request to `/storage/capacity/`  
-**Backend**: View exists in `storage/views/capacity.py` and now registered in URLs  
-**Impact**: Dashboard storage usage calculation now works  
-
-**Fix Applied**:
-```python
-# Added to storage/urls.py
-from .views.capacity import box_capacity
-path('capacity/', box_capacity, name='capacity'),
-```
-
-**Test Results**:
-- ✅ Endpoint returns 200 status code for authenticated users
-- ✅ Endpoint returns 302 redirect for unauthenticated users (login required)
-- ✅ Returns correct JSON structure: `{"sites": {}, "total_slots": 0, "used_slots": 0, "free_slots": 0}`
-- ✅ Frontend JavaScript can properly parse the response and calculate percentages
-- ✅ Handles empty database gracefully
-- ✅ Correctly calculates capacity with test data (96 total slots, 0 used)
+*All critical issues have been resolved.*
 
 ---
 
 ## 🟡 Missing Features (Non-breaking but incomplete)
 
-### 2. Server-Side Search API
+### 3. Server-Side Search API {#3-server-side-search-api}
 **Status**: ❌ No implementation  
 **Frontend**: Client-side search in `sample/list.html` and `storage/list.html`  
 **Current**: JavaScript filters DOM elements  
@@ -81,7 +75,7 @@ def search_samples(request):
     return JsonResponse({'results': results})
 ```
 
-### 3. Server-Side Sorting API
+### 4. Server-Side Sorting API {#4-server-side-sorting-api}
 **Status**: ❌ No implementation  
 **Frontend**: Client-side sorting in list templates  
 **Current**: JavaScript sorts DOM elements  
@@ -91,7 +85,7 @@ def search_samples(request):
 - `GET /samples/?sort=<field>&order=<asc|desc>`
 - `GET /storage/?sort=<field>&order=<asc|desc>`
 
-### 4. Activity Feed API
+### 5. Activity Feed API {#5-activity-feed-api}
 **Status**: ❌ No implementation  
 **Frontend**: Static activity items in `home.html`  
 **Current**: Hardcoded activity examples  
@@ -112,7 +106,7 @@ class Activity(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
 ```
 
-### 5. Dashboard Statistics API
+### 6. Dashboard Statistics API {#6-dashboard-statistics-api}
 **Status**: ❌ No implementation  
 **Frontend**: Hardcoded stats in `home.html`  
 **Current**: Static numbers (248 samples, 78% usage, etc.)  
@@ -136,7 +130,7 @@ def dashboard_stats(request):
     return JsonResponse(stats)
 ```
 
-### 6. Quick Actions API
+### 7. Quick Actions API {#7-quick-actions-api}
 **Status**: ❌ No implementation  
 **Frontend**: Action buttons in templates  
 **Current**: Buttons exist but no functionality  
@@ -147,117 +141,7 @@ def dashboard_stats(request):
 - `GET /samples/find/` - Sample finder
 - `POST /reports/generate/` - Quick report generation
 
-### 7. Homepage Dashboard Statistics API
-**Status**: ✅ COMPLETED & TESTED  
-**Frontend**: Hardcoded stats in `home.html`  
-**Current**: Dynamic statistics from database  
-**Implementation**: Full dashboard statistics API with real-time data  
-
-**✅ Endpoints Implemented**:
-- ✅ `GET /dashboard/stats/` - Overall system statistics
-
-**✅ Features Implemented**:
-- ✅ Dynamic active samples count from database
-- ✅ Real-time storage usage calculation
-- ✅ Recent reports count from audit logs
-- ✅ Active alerts count from audit logs
-- ✅ Recent activity feed from audit logs
-- ✅ Server-side rendering with fallback to JavaScript updates
-- ✅ Error handling with default values
-
-**✅ Implementation Details**:
-
-**Backend Implementation**:
-```python
-# krill/krill/views/home.py
-@login_required
-def dashboard_stats(request):
-    """API endpoint for dashboard statistics"""
-    stats = get_dashboard_statistics()
-    return JsonResponse(stats)
-
-def get_dashboard_statistics():
-    """Calculate dashboard statistics from database"""
-    # Active samples count
-    active_samples = Sample.objects.count()
-    
-    # Storage usage calculation
-    total_slots = sum(box.rows * box.columns for box in Box.objects.all())
-    used_slots = AliquotLocation.objects.count()
-    storage_usage = round((used_slots / total_slots) * 100) if total_slots > 0 else 0
-    
-    # Recent reports and alerts from audit logs
-    recent_reports = UserAuditLog.objects.filter(
-        action='report_generated',
-        timestamp__gte=timezone.now() - timedelta(days=7)
-    ).count()
-    
-    alerts = UserAuditLog.objects.filter(
-        action__in=['alert_created', 'warning_created'],
-        timestamp__gte=timezone.now() - timedelta(days=1)
-    ).count()
-    
-    return {
-        'active_samples': active_samples,
-        'storage_usage': storage_usage,
-        'recent_reports': recent_reports,
-        'alerts': alerts,
-        'total_slots': total_slots,
-        'used_slots': used_slots,
-    }
-```
-
-**Frontend Implementation**:
-```html
-<!-- krill/templates/krill/home.html -->
-<div class="stat-card">
-    <span class="material-icons-round">science</span>
-    <div class="stat-info">
-        <h3>Active Samples</h3>
-        <p>{{ stats.active_samples|default:"0" }}</p>
-    </div>
-</div>
-```
-
-**JavaScript Updates**:
-```javascript
-// krill/static/krill/js/dashboard.js
-async function updateDashboardStats() {
-    const response = await fetch('/dashboard/stats/');
-    const data = await response.json();
-    
-    // Update all statistics dynamically
-    updateStatCard('science', data.active_samples);
-    updateStatCard('inventory_2', `${data.storage_usage}%`);
-    updateStatCard('description', `${data.recent_reports} Recent`);
-    updateStatCard('warning', `${data.alerts} New`);
-}
-```
-
-**✅ URL Configuration**:
-```python
-# krill/krill/urls.py
-path('dashboard/stats/', dashboard_stats, name='dashboard_stats'),
-```
-
-**✅ Recent Activity Implementation**:
-- ✅ Dynamic activity feed from UserAuditLog
-- ✅ Smart time formatting (minutes, hours, days ago)
-- ✅ Action-specific icons and messages
-- ✅ Fallback for empty activity lists
-
-**✅ Test Results**:
-- ✅ No syntax errors in implementation
-- ✅ Django system check passes
-- ✅ API endpoint returns correct JSON structure
-- ✅ Template renders with dynamic data
-- ✅ JavaScript updates work correctly
-- ✅ Error handling provides default values
-- ✅ Backward compatibility maintained
-
-**Priority**: ✅ COMPLETED - High impact for user experience
-
-### 8. Recent Activity Feed API
+### 8. Recent Activity Feed API {#8-recent-activity-feed-api}
 **Status**: ❌ No implementation  
 **Frontend**: Static activity items in `home.html`  
 **Current**: Hardcoded activity examples  
@@ -279,7 +163,7 @@ class Activity(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
 ```
 
-### 9. Storage Management Dashboard API
+### 9. Storage Management Dashboard API {#9-storage-management-dashboard-api}
 **Status**: ❌ No implementation  
 **Frontend**: Hardcoded stats in `storage/storage.html`  
 **Current**: Static numbers (4 freezers, 156/200 boxes, 1,248 samples)  
@@ -303,7 +187,7 @@ def storage_dashboard(request):
     return JsonResponse(stats)
 ```
 
-### 10. Freezer Status Monitoring API
+### 10. Freezer Status Monitoring API {#10-freezer-status-monitoring-api}
 **Status**: ❌ No implementation  
 **Frontend**: Freezer units with temperature and capacity in `storage/storage.html`  
 **Current**: Static freezer data (Freezer A-D with hardcoded temps and capacities)  
@@ -326,7 +210,7 @@ class FreezerStatus(models.Model):
     ])
 ```
 
-### 11. Sample Search and Find API
+### 11. Sample Search and Find API {#11-sample-search-and-find-api}
 **Status**: ❌ No implementation  
 **Frontend**: "Find Sample" buttons in multiple templates  
 **Current**: No search functionality  
@@ -336,7 +220,7 @@ class FreezerStatus(models.Model):
 - `GET /samples/search/?q=<query>` - Search samples by name, ID, or location
 - `GET /samples/find/` - Advanced sample finder interface
 
-### 12. Report Generation API
+### 12. Report Generation API {#12-report-generation-api}
 **Status**: ❌ No implementation  
 **Frontend**: "Generate Report" buttons in templates  
 **Current**: No report generation functionality  
@@ -347,7 +231,7 @@ class FreezerStatus(models.Model):
 - `GET /reports/list/` - List available reports
 - `GET /reports/<id>/download/` - Download generated report
 
-### 13. Alert System API
+### 13. Alert System API {#13-alert-system-api}
 **Status**: ❌ No implementation  
 **Frontend**: Alert indicators in `home.html`  
 **Current**: Static alert count (2 New)  
@@ -374,7 +258,7 @@ class Alert(models.Model):
     resolved_at = models.DateTimeField(null=True, blank=True)
 ```
 
-### 14. Issue Reporting API
+### 14. Issue Reporting API {#14-issue-reporting-api}
 **Status**: ❌ No implementation  
 **Frontend**: "Report Issue" button in `storage/storage.html`  
 **Current**: No issue reporting functionality  
@@ -385,143 +269,9 @@ class Alert(models.Model):
 - `GET /issues/list/` - List reported issues
 - `POST /issues/<id>/update/` - Update issue status
 
-### 15. Data Entry Form Styling Improvements
-**Status**: ❌ Needs improvement  
-**Frontend**: Basic form styling exists but needs enhancement  
-**Current**: Simple forms with basic styling in `forms/model_form.html` and inline styles  
-**Need**: Modern, user-friendly form design with better UX  
 
-**Issues to Address**:
-- Inconsistent form styling across different templates
-- Basic input styling without modern design elements
-- Missing form validation visual feedback
-- No responsive design considerations
-- Limited accessibility features
-- Inconsistent button styling between create/edit forms
 
-**Required Improvements**:
-- Modern form input styling with focus states
-- Better form layout and spacing
-- Enhanced validation error display
-- Responsive form design
-- Improved accessibility (ARIA labels, keyboard navigation)
-- Consistent button styling across all forms
-- Better form field grouping and organization
-- Enhanced help text styling
-
-**Implementation**:
-```css
-/* Enhanced form styling */
-.form-container {
-    max-width: 800px;
-    margin: 0 auto;
-    background: var(--color-white);
-    padding: 2.5rem;
-    border-radius: 15px;
-    box-shadow: var(--box-shadow);
-}
-
-.form-field {
-    margin-bottom: 1.5rem;
-    position: relative;
-}
-
-.form-field label {
-    display: block;
-    font-weight: 600;
-    color: var(--color-dark);
-    margin-bottom: 0.5rem;
-    font-size: 0.95rem;
-}
-
-.form-field input,
-.form-field select,
-.form-field textarea {
-    width: 100%;
-    padding: 1rem;
-    border: 2px solid var(--color-light);
-    border-radius: 8px;
-    font-size: 1rem;
-    transition: all 0.3s ease;
-    background: var(--color-white);
-}
-
-.form-field input:focus,
-.form-field select:focus,
-.form-field textarea:focus {
-    outline: none;
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(108, 155, 207, 0.1);
-}
-
-.form-field.error input,
-.form-field.error select,
-.form-field.error textarea {
-    border-color: var(--color-danger);
-}
-
-.field-errors {
-    margin-top: 0.5rem;
-    padding: 0.5rem;
-    background: rgba(255, 0, 96, 0.1);
-    border-radius: 5px;
-    border-left: 3px solid var(--color-danger);
-}
-
-.help-text {
-    margin-top: 0.5rem;
-    font-size: 0.85rem;
-    color: var(--color-info-dark);
-    font-style: italic;
-}
-
-.form-actions {
-    display: flex;
-    gap: 1rem;
-    margin-top: 2rem;
-    padding-top: 1.5rem;
-    border-top: 1px solid var(--color-light);
-}
-
-.submit-btn,
-.cancel-btn {
-    padding: 0.8rem 1.5rem;
-    border-radius: 8px;
-    font-weight: 500;
-    font-size: 1rem;
-    transition: all 0.3s ease;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.submit-btn {
-    background: var(--color-primary);
-    color: white;
-    border: none;
-}
-
-.submit-btn:hover {
-    background: var(--color-primary-variant);
-    transform: translateY(-1px);
-}
-
-.cancel-btn {
-    background: var(--color-light);
-    color: var(--color-dark);
-    border: 1px solid var(--color-light);
-}
-
-.cancel-btn:hover {
-    background: var(--color-white);
-    border-color: var(--color-dark);
-}
-```
-
-**Priority**: High - Critical for user experience
-
-### 16. Aliquot Management API
+### 15. Aliquot Management API {#15-aliquot-management-api}
 **Status**: ❌ No implementation  
 **Frontend**: Missing buttons for aliquot operations in detail views  
 **Current**: Basic CRUD for aliquots exists, but missing specialized operations  
@@ -580,7 +330,7 @@ def store_aliquot(request, aliquot_id):
     return JsonResponse({'success': False, 'errors': form.errors})
 ```
 
-### 17. Aliquot Management UI Components
+### 16. Aliquot Management UI Components {#16-aliquot-management-ui-components}
 **Status**: ❌ No implementation  
 **Frontend**: Missing UI buttons and forms for aliquot operations  
 **Current**: Basic detail view exists, but no action buttons  
@@ -630,17 +380,17 @@ def store_aliquot(request, aliquot_id):
 
 ## 🟢 Enhancement Opportunities
 
-### 18. Real-time Updates
+### 17. Real-time Updates {#17-real-time-updates}
 **Status**: ❌ No implementation  
 **Frontend**: Static data that requires page refresh  
 **Need**: WebSocket or Server-Sent Events for real-time updates  
 
-### 19. Bulk Operations
+### 18. Bulk Operations {#18-bulk-operations}
 **Status**: ❌ No implementation  
 **Frontend**: Individual item operations only  
 **Need**: Bulk delete, bulk update, bulk export  
 
-### 20. Export Functionality
+### 19. Export Functionality {#19-export-functionality}
 **Status**: ❌ No implementation  
 **Frontend**: No export buttons  
 **Need**: CSV, Excel, PDF export APIs
@@ -750,179 +500,115 @@ def store_aliquot(request, aliquot_id):
 </div>
 ```  
 
-### 23. User Permissions and Role Management
-**Status**: ✅ COMPLETED & IMPLEMENTED  
-**Current**: Comprehensive role-based access control system with Django integration  
-**Implementation**: Full role-based permission system with audit logging  
+### 20. Auto-Store Flag for Storage Models {#20-auto-store-flag-for-storage-models}
+**Status**: ❌ No implementation  
+**Frontend**: Missing auto-store configuration in storage management  
+**Current**: No automatic storage functionality  
+**Need**: Auto-store flag to enable automatic aliquot placement  
 
-**✅ Issues Addressed**:
-- ✅ Role-based permissions implemented (Lab Admin, Manager, Member, Viewer)
-- ✅ Granular permissions for different operations
-- ✅ User groups and organizational structure (departments, lab units)
-- ✅ Complete audit trail for user actions
-- ✅ Permission-based UI components and navigation
+**Required Implementation**:
+- Add `auto_store` boolean field to Box model
+- Add `auto_store_enabled` boolean field to Device model  
+- Add `auto_store_priority` integer field for storage priority
+- Add UI controls for enabling/disabling auto-store per storage unit
+- Add validation to prevent conflicts in auto-store settings
 
-**✅ Features Implemented**:
-- ✅ Role-based access control (Lab Admin, Lab Manager, Lab Member, Viewer)
-- ✅ Granular permissions for CRUD operations across all models
-- ✅ User groups and organizational units (departments, lab units)
-- ✅ Permission-based UI components and navigation
-- ✅ Comprehensive audit logging for user actions
-- ✅ Complete user management interface
-
-**✅ Implementation Details**:
-
-**Models Created**:
+**Implementation**:
 ```python
-# person/models.py
-class UserRole(models.Model):
-    ROLE_CHOICES = [
-        ('lab_admin', 'Lab Administrator'),
-        ('lab_manager', 'Lab Manager'),
-        ('lab_member', 'Lab Member'),
-        ('viewer', 'Viewer'),
-    ]
+# Add to storage/models/storage.py
+class Box(models.Model):
+    # ... existing fields ...
+    auto_store = models.BooleanField(default=False, help_text="Enable automatic aliquot storage")
+    auto_store_priority = models.IntegerField(default=0, help_text="Priority for auto-storage (lower = higher priority)")
     
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='role')
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='viewer')
-    department = models.CharField(max_length=100, blank=True, null=True)
-    lab_unit = models.CharField(max_length=100, blank=True, null=True)
-    created_at = models.DateTimeField(default=timezone.now)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    def has_permission(self, permission):
-        """Check if user has a specific permission based on their role"""
-        role_permissions = self.get_role_permissions()
-        return permission in role_permissions
-
-class Permission(models.Model):
-    """Granular permissions for specific model instances"""
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='permissions')
-    permission_type = models.CharField(max_length=20, choices=PERMISSION_TYPES)
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, related_name='object_permissions')
-    object_id = models.PositiveIntegerField()
-    content_object = GenericForeignKey('content_type', 'object_id')
-    granted_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='granted_permissions')
-    granted_at = models.DateTimeField(default=timezone.now)
-    expires_at = models.DateTimeField(null=True, blank=True)
-
-class UserAuditLog(models.Model):
-    """Audit trail for user actions"""
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='audit_logs')
-    action = models.CharField(max_length=20, choices=ACTION_CHOICES)
-    target_type = models.CharField(max_length=50, blank=True, null=True)
-    target_id = models.IntegerField(null=True, blank=True)
-    target_name = models.CharField(max_length=200, blank=True, null=True)
-    details = models.JSONField(default=dict, blank=True)
-    ip_address = models.GenericIPAddressField(null=True, blank=True)
-    user_agent = models.TextField(blank=True, null=True)
-    timestamp = models.DateTimeField(default=timezone.now)
+class Device(models.Model):
+    # ... existing fields ...
+    auto_store_enabled = models.BooleanField(default=False, help_text="Enable auto-store for all boxes in this device")
 ```
 
-**Permission Decorators Implemented**:
+### 21. Automatic Aliquot Storage {#21-automatic-aliquot-storage}
+**Status**: ❌ No implementation  
+**Frontend**: Missing automatic storage functionality  
+**Current**: Manual aliquot placement required  
+**Need**: Automatic placement of new aliquots in auto-store enabled boxes  
+
+**Required Implementation**:
+- Signal handler for new aliquot creation
+- Auto-store logic to find available slots in enabled boxes
+- Priority-based storage selection
+- Fallback handling when no auto-store boxes available
+- Notification system for auto-storage events
+
+**Implementation**:
 ```python
-# person/decorators.py
-@require_permission('sample.create')
-def create_sample(request):
-    # Only users with 'sample.create' permission can access
-    pass
-
-@require_minimum_role('lab_manager')
-def manage_users(request):
-    # Only lab managers and admins can access
-    pass
-
-@require_role('lab_admin')
-def system_admin(request):
-    # Only lab admins can access
-    pass
+# Add to sample/signals.py
+@receiver(post_save, sender=Aliquot)
+def auto_store_aliquot(sender, instance, created, **kwargs):
+    """Automatically store new aliquots in auto-store enabled boxes"""
+    if created and not instance.location:
+        # Find available auto-store boxes
+        auto_store_boxes = Box.objects.filter(
+            auto_store=True,
+            device__auto_store_enabled=True
+        ).order_by('auto_store_priority')
+        
+        for box in auto_store_boxes:
+            available_slots = box.get_available_slots()
+            if available_slots:
+                # Store in first available slot
+                slot = available_slots[0]
+                AliquotLocation.objects.create(
+                    aliquot=instance,
+                    box=box,
+                    row=slot['row'],
+                    column=slot['column']
+                )
+                break
 ```
 
-**✅ Endpoints Implemented**:
-- ✅ `GET /users/` - List all users with roles and permissions
-- ✅ `GET /users/create/` - Create new user form
-- ✅ `GET /users/<id>/` - View user details and permissions
-- ✅ `GET /users/<id>/edit/` - Edit user role and organization
-- ✅ `GET /users/audit-logs/` - View comprehensive audit log
-- ✅ `GET /users/permissions/` - List object-level permissions
-- ✅ `POST /users/permissions/grant/` - Grant object-level permissions
-- ✅ `POST /users/permissions/revoke/` - Revoke object-level permissions
+### 22. Access Level Restrictions {#22-access-level-restrictions}
+**Status**: ❌ No implementation  
+**Frontend**: Missing access level controls  
+**Current**: Basic role-based permissions only  
+**Need**: Granular access level restrictions for storage and sample models  
 
-**✅ UI Components Implemented**:
-- ✅ User management interface with search and filtering
-- ✅ Role assignment forms with role information
-- ✅ Permission-based button visibility and navigation
-- ✅ Comprehensive audit log viewer with filtering
-- ✅ User profile with role information and permissions
-- ✅ Create user form with role selection
-- ✅ User role editing interface
+**Required Implementation**:
+- Add `access_level` field to storage models (Device, Box, Site)
+- Add `access_level` field to sample models (Sample, Aliquot)
+- Implement access level validation in views and APIs
+- Add UI controls for setting access levels
+- Integrate with existing role-based permissions
 
-**✅ Django Integration**:
-- ✅ Automatic UserRole creation for new users
-- ✅ Django superuser → Lab Administrator role mapping
-- ✅ Staff users → Lab Manager role mapping
-- ✅ Signals for automatic role management
-- ✅ Management command for existing user setup
-- ✅ Enhanced Django admin interface
+**Implementation**:
+```python
+# Add to storage/models/storage.py and sample/models/
+ACCESS_LEVEL_CHOICES = [
+    ('public', 'Public'),
+    ('internal', 'Internal'),
+    ('restricted', 'Restricted'),
+    ('confidential', 'Confidential'),
+]
 
-**✅ Security Features**:
-- ✅ Role hierarchy enforcement
-- ✅ Object-level permissions
-- ✅ Permission expiration
-- ✅ Comprehensive audit logging
-- ✅ IP address and user agent tracking
-- ✅ Permission denial logging
+class Device(models.Model):
+    # ... existing fields ...
+    access_level = models.CharField(
+        max_length=20, 
+        choices=ACCESS_LEVEL_CHOICES, 
+        default='internal'
+    )
 
-**✅ Database Migrations**:
-- ✅ All models properly migrated
-- ✅ Nullable fields for optional data
-- ✅ Proper foreign key relationships
-- ✅ Indexes for performance
-
-**Priority**: ✅ COMPLETED - Critical security and access control implemented
-
----
-
-## 📋 Implementation Priority
-
-1. **Critical Priority** (Fix database errors):
-   - ✅ Database Migration Issue - Missing `deleted` Column (#1) - **COMPLETED**
-
-2. **High Priority** (Fix breaking functionality):
-   - ✅ Storage capacity endpoint URL registration - **COMPLETED**
-
-3. **Medium Priority** (Improve user experience):
-   - ✅ User Permissions and Role Management (#23) - **COMPLETED**
-   - ✅ Data Entry Form Styling Improvements (#15) - **COMPLETED**
-   - ✅ Homepage Dashboard Statistics API (#7) - **COMPLETED**
-   - Storage Management Dashboard API (#9)
-   - Sample Search and Find API (#11)
-   - Alert System API (#13)
-   - Aliquot Management API (#21)
-
-4. **Medium-Low Priority** (Enhance functionality):
-   - Recent Activity Feed API (#8)
-   - Freezer Status Monitoring API (#10)
-   - Report Generation API (#12)
-   - Issue Reporting API (#14)
-   - Aliquot Management UI Components (#22)
-   - Server-side search API (#2)
-   - Server-side sorting API (#3)
-
-5. **Low Priority** (Nice to have):
-   - Quick actions API (#6)
-   - Real-time updates (#18)
-   - Bulk operations (#19)
-   - Export functionality (#20)
-
-**Next Recommended Items:**
-- ✅ **User Permissions and Role Management (#23)** - **COMPLETED** - Critical for security and access control
-- ✅ **Data Entry Form Styling Improvements (#15)** - **COMPLETED** - High impact for user experience
-- ✅ **Homepage Dashboard Statistics API (#7)** - **COMPLETED** - High impact for user experience
-- **Sample Search and Find API (#11)** - Essential functionality for sample management
-- **Alert System API (#13)** - Important for system monitoring
-
----
+# Add to person/decorators.py
+def require_access_level(level):
+    """Decorator to check user has required access level"""
+    def decorator(view_func):
+        def wrapper(request, *args, **kwargs):
+            user_level = get_user_access_level(request.user)
+            if not has_access_level(user_level, level):
+                raise PermissionDenied
+            return view_func(request, *args, **kwargs)
+        return wrapper
+    return decorator
+```
 
 ## 🛠️ Development Notes
 
@@ -945,3 +631,23 @@ For each implemented feature:
 - [ ] Error handling validation
 - [ ] Performance testing for large datasets
 - [ ] Security testing (authentication, authorization)
+
+---
+
+## ✅ COMPLETED ITEMS
+
+### 1. Database Migration Issue - Missing `deleted` Column {#1-database-migration-issue---missing-deleted-column}
+**Status**: ✅ COMPLETED & TESTED  
+**Summary**: Fixed Aliquot model migration issue by adding `deleted`, `deleted_at`, `created_at`, and `updated_at` fields. Migration `0003_add_aliquot_timestamp_fields.py` created and tested successfully.
+
+### 2. Storage Capacity Endpoint {#2-storage-capacity-endpoint}
+**Status**: ✅ COMPLETED & TESTED  
+**Summary**: Registered storage capacity endpoint URL in `storage/urls.py`. Dashboard storage usage calculation now works correctly with proper JSON responses.
+
+### 3. Homepage Dashboard Statistics API {#3-homepage-dashboard-statistics-api}
+**Status**: ✅ COMPLETED & TESTED  
+**Summary**: Implemented full dashboard statistics API with real-time data from database. Includes active samples count, storage usage calculation, recent reports, and alerts from audit logs. Both server-side rendering and JavaScript updates implemented.
+
+### 4. User Permissions and Role Management {#4-user-permissions-and-role-management}
+**Status**: ✅ COMPLETED & IMPLEMENTED  
+**Summary**: Comprehensive role-based access control system with Django integration. Includes role hierarchy (Lab Admin, Manager, Member, Viewer), granular permissions, audit logging, and complete user management interface. All models, views, and UI components implemented and tested.
