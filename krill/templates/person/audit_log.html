@@ -1,0 +1,208 @@
+{% extends 'base/layout.html' %}
+
+{% block title %}Audit Log - Krill{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-history"></i>
+                        Audit Log
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <!-- Filter Form -->
+                    <form method="get" class="mb-4">
+                        <div class="row">
+                            <div class="col-md-2">
+                                {{ form.user }}
+                            </div>
+                            <div class="col-md-2">
+                                {{ form.action }}
+                            </div>
+                            <div class="col-md-2">
+                                {{ form.target_type }}
+                            </div>
+                            <div class="col-md-2">
+                                {{ form.date_from }}
+                            </div>
+                            <div class="col-md-2">
+                                {{ form.date_to }}
+                            </div>
+                            <div class="col-md-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search"></i> Filter
+                                </button>
+                                <a href="{% url 'person:audit_log' %}" class="btn btn-secondary">
+                                    <i class="fas fa-times"></i> Clear
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+
+                    <!-- Audit Log Table -->
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>User</th>
+                                    <th>Action</th>
+                                    <th>Target</th>
+                                    <th>IP Address</th>
+                                    <th>Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for log in page_obj %}
+                                <tr>
+                                    <td>
+                                        <small>{{ log.timestamp|date:"M d, Y H:i:s" }}</small>
+                                    </td>
+                                    <td>
+                                        <strong>{{ log.user.username }}</strong>
+                                    </td>
+                                    <td>
+                                        {% if log.action == 'login' %}
+                                            <span class="badge badge-success">{{ log.get_action_display }}</span>
+                                        {% elif log.action == 'logout' %}
+                                            <span class="badge badge-secondary">{{ log.get_action_display }}</span>
+                                        {% elif log.action == 'create' %}
+                                            <span class="badge badge-primary">{{ log.get_action_display }}</span>
+                                        {% elif log.action == 'update' %}
+                                            <span class="badge badge-warning">{{ log.get_action_display }}</span>
+                                        {% elif log.action == 'delete' %}
+                                            <span class="badge badge-danger">{{ log.get_action_display }}</span>
+                                        {% elif log.action == 'view' %}
+                                            <span class="badge badge-info">{{ log.get_action_display }}</span>
+                                        {% else %}
+                                            <span class="badge badge-dark">{{ log.get_action_display }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if log.target_type %}
+                                            {{ log.target_type|title }}
+                                            {% if log.target_name %}
+                                                "{{ log.target_name }}"
+                                            {% endif %}
+                                            {% if log.target_id %}
+                                                (ID: {{ log.target_id }})
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small>{{ log.ip_address|default:"-" }}</small>
+                                    </td>
+                                    <td>
+                                        {% if log.details %}
+                                            <button type="button" class="btn btn-sm btn-outline-info" 
+                                                    data-toggle="modal" data-target="#detailsModal{{ log.id }}">
+                                                <i class="fas fa-eye"></i> Details
+                                            </button>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted">
+                                        No audit logs found.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    {% if page_obj.has_other_pages %}
+                    <nav aria-label="Audit log pagination">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1{% if request.GET.user %}&user={{ request.GET.user }}{% endif %}{% if request.GET.action %}&action={{ request.GET.action }}{% endif %}{% if request.GET.target_type %}&target_type={{ request.GET.target_type }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}">
+                                        <i class="fas fa-angle-double-left"></i>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.user %}&user={{ request.GET.user }}{% endif %}{% if request.GET.action %}&action={{ request.GET.action }}{% endif %}{% if request.GET.target_type %}&target_type={{ request.GET.target_type }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}">
+                                        <i class="fas fa-angle-left"></i>
+                                    </a>
+                                </li>
+                            {% endif %}
+
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ num }}</span>
+                                    </li>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ num }}{% if request.GET.user %}&user={{ request.GET.user }}{% endif %}{% if request.GET.action %}&action={{ request.GET.action }}{% endif %}{% if request.GET.target_type %}&target_type={{ request.GET.target_type }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}">{{ num }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.user %}&user={{ request.GET.user }}{% endif %}{% if request.GET.action %}&action={{ request.GET.action }}{% endif %}{% if request.GET.target_type %}&target_type={{ request.GET.target_type }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}">
+                                        <i class="fas fa-angle-right"></i>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.user %}&user={{ request.GET.user }}{% endif %}{% if request.GET.action %}&action={{ request.GET.action }}{% endif %}{% if request.GET.target_type %}&target_type={{ request.GET.target_type }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}">
+                                        <i class="fas fa-angle-double-right"></i>
+                                    </a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+
+                    <!-- Summary -->
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            Showing {{ page_obj.start_index }} to {{ page_obj.end_index }} of {{ total_logs }} logs
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Details Modals -->
+{% for log in page_obj %}
+    {% if log.details %}
+    <div class="modal fade" id="detailsModal{{ log.id }}" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Log Details</h5>
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <dl class="row">
+                        {% for key, value in log.details.items %}
+                        <dt class="col-sm-4">{{ key|title }}</dt>
+                        <dd class="col-sm-8">{{ value }}</dd>
+                        {% endfor %}
+                    </dl>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+{% endfor %}
+{% endblock %}

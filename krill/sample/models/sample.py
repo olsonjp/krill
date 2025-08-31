@@ -3,9 +3,9 @@ from storage.models import Box
 
 class Sample(models.Model):
     name = models.CharField(max_length=200)
-    experiment = models.TextField(blank=True)
+    experiment = models.TextField(blank=True, null=True)
     source = models.ForeignKey(to='Source', on_delete=models.PROTECT)
-    notes = models.TextField(blank=True)
+    notes = models.TextField(blank=True, null=True)
 
     def __str__(self):
         return self.name
