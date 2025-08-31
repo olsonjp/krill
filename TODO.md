@@ -148,27 +148,114 @@ def dashboard_stats(request):
 - `POST /reports/generate/` - Quick report generation
 
 ### 7. Homepage Dashboard Statistics API
-**Status**: ❌ No implementation  
+**Status**: ✅ COMPLETED & TESTED  
 **Frontend**: Hardcoded stats in `home.html`  
-**Current**: Static numbers (248 samples, 78% usage, 15 reports, 2 alerts)  
-**Need**: Dynamic statistics from database  
+**Current**: Dynamic statistics from database  
+**Implementation**: Full dashboard statistics API with real-time data  
 
-**Required Endpoints**:
-- `GET /dashboard/stats/` - Overall system statistics
+**✅ Endpoints Implemented**:
+- ✅ `GET /dashboard/stats/` - Overall system statistics
 
-**Implementation**:
+**✅ Features Implemented**:
+- ✅ Dynamic active samples count from database
+- ✅ Real-time storage usage calculation
+- ✅ Recent reports count from audit logs
+- ✅ Active alerts count from audit logs
+- ✅ Recent activity feed from audit logs
+- ✅ Server-side rendering with fallback to JavaScript updates
+- ✅ Error handling with default values
+
+**✅ Implementation Details**:
+
+**Backend Implementation**:
 ```python
-# Add to krill/views/
+# krill/krill/views/home.py
 @login_required
 def dashboard_stats(request):
-    stats = {
-        'active_samples': Sample.objects.filter(deleted=False).count(),
-        'storage_usage': calculate_storage_percentage(),
-        'recent_reports': Report.objects.filter(created_at__gte=timezone.now()-timedelta(days=7)).count(),
-        'alerts': Alert.objects.filter(resolved=False).count(),
-    }
+    """API endpoint for dashboard statistics"""
+    stats = get_dashboard_statistics()
     return JsonResponse(stats)
+
+def get_dashboard_statistics():
+    """Calculate dashboard statistics from database"""
+    # Active samples count
+    active_samples = Sample.objects.count()
+    
+    # Storage usage calculation
+    total_slots = sum(box.rows * box.columns for box in Box.objects.all())
+    used_slots = AliquotLocation.objects.count()
+    storage_usage = round((used_slots / total_slots) * 100) if total_slots > 0 else 0
+    
+    # Recent reports and alerts from audit logs
+    recent_reports = UserAuditLog.objects.filter(
+        action='report_generated',
+        timestamp__gte=timezone.now() - timedelta(days=7)
+    ).count()
+    
+    alerts = UserAuditLog.objects.filter(
+        action__in=['alert_created', 'warning_created'],
+        timestamp__gte=timezone.now() - timedelta(days=1)
+    ).count()
+    
+    return {
+        'active_samples': active_samples,
+        'storage_usage': storage_usage,
+        'recent_reports': recent_reports,
+        'alerts': alerts,
+        'total_slots': total_slots,
+        'used_slots': used_slots,
+    }
 ```
+
+**Frontend Implementation**:
+```html
+<!-- krill/templates/krill/home.html -->
+<div class="stat-card">
+    <span class="material-icons-round">science</span>
+    <div class="stat-info">
+        <h3>Active Samples</h3>
+        <p>{{ stats.active_samples|default:"0" }}</p>
+    </div>
+</div>
+```
+
+**JavaScript Updates**:
+```javascript
+// krill/static/krill/js/dashboard.js
+async function updateDashboardStats() {
+    const response = await fetch('/dashboard/stats/');
+    const data = await response.json();
+    
+    // Update all statistics dynamically
+    updateStatCard('science', data.active_samples);
+    updateStatCard('inventory_2', `${data.storage_usage}%`);
+    updateStatCard('description', `${data.recent_reports} Recent`);
+    updateStatCard('warning', `${data.alerts} New`);
+}
+```
+
+**✅ URL Configuration**:
+```python
+# krill/krill/urls.py
+path('dashboard/stats/', dashboard_stats, name='dashboard_stats'),
+```
+
+**✅ Recent Activity Implementation**:
+- ✅ Dynamic activity feed from UserAuditLog
+- ✅ Smart time formatting (minutes, hours, days ago)
+- ✅ Action-specific icons and messages
+- ✅ Fallback for empty activity lists
+
+**✅ Test Results**:
+- ✅ No syntax errors in implementation
+- ✅ Django system check passes
+- ✅ API endpoint returns correct JSON structure
+- ✅ Template renders with dynamic data
+- ✅ JavaScript updates work correctly
+- ✅ Error handling provides default values
+- ✅ Backward compatibility maintained
+
+**Priority**: ✅ COMPLETED - High impact for user experience
 
 ### 8. Recent Activity Feed API
 **Status**: ❌ No implementation  
@@ -807,7 +894,7 @@ def system_admin(request):
 3. **Medium Priority** (Improve user experience):
    - ✅ User Permissions and Role Management (#23) - **COMPLETED**
    - ✅ Data Entry Form Styling Improvements (#15) - **COMPLETED**
-   - Homepage Dashboard Statistics API (#7)
+   - ✅ Homepage Dashboard Statistics API (#7) - **COMPLETED**
    - Storage Management Dashboard API (#9)
    - Sample Search and Find API (#11)
    - Alert System API (#13)
@@ -831,7 +918,7 @@ def system_admin(request):
 **Next Recommended Items:**
 - ✅ **User Permissions and Role Management (#23)** - **COMPLETED** - Critical for security and access control
 - ✅ **Data Entry Form Styling Improvements (#15)** - **COMPLETED** - High impact for user experience
-- **Homepage Dashboard Statistics API (#7)** - High impact for user experience
+- ✅ **Homepage Dashboard Statistics API (#7)** - **COMPLETED** - High impact for user experience
 - **Sample Search and Find API (#11)** - Essential functionality for sample management
 - **Alert System API (#13)** - Important for system monitoring
 
