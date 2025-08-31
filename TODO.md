@@ -664,92 +664,135 @@ def store_aliquot(request, aliquot_id):
 ```  
 
 ### 23. User Permissions and Role Management
-**Status**: ❌ No implementation  
-**Current**: Basic Django authentication with `@login_required` decorators  
-**Need**: Comprehensive role-based access control system  
+**Status**: ✅ COMPLETED & IMPLEMENTED  
+**Current**: Comprehensive role-based access control system with Django integration  
+**Implementation**: Full role-based permission system with audit logging  
 
-**Issues to Address**:
-- No role-based permissions (all users have same access)
-- No granular permissions for different operations
-- No user groups or organizational structure
-- No audit trail for user actions
-- No permission-based UI hiding/showing
+**✅ Issues Addressed**:
+- ✅ Role-based permissions implemented (Lab Admin, Manager, Member, Viewer)
+- ✅ Granular permissions for different operations
+- ✅ User groups and organizational structure (departments, lab units)
+- ✅ Complete audit trail for user actions
+- ✅ Permission-based UI components and navigation
 
-**Required Features**:
-- Role-based access control (Admin, Manager, Researcher, Viewer)
-- Granular permissions for CRUD operations
-- User groups and organizational units
-- Permission-based UI components
-- Audit logging for user actions
-- User management interface
+**✅ Features Implemented**:
+- ✅ Role-based access control (Lab Admin, Lab Manager, Lab Member, Viewer)
+- ✅ Granular permissions for CRUD operations across all models
+- ✅ User groups and organizational units (departments, lab units)
+- ✅ Permission-based UI components and navigation
+- ✅ Comprehensive audit logging for user actions
+- ✅ Complete user management interface
 
-**Implementation**:
+**✅ Implementation Details**:
+
+**Models Created**:
 ```python
-# Add to person/models.py
+# person/models.py
 class UserRole(models.Model):
     ROLE_CHOICES = [
-        ('admin', 'Administrator'),
-        ('manager', 'Manager'),
-        ('researcher', 'Researcher'),
+        ('lab_admin', 'Lab Administrator'),
+        ('lab_manager', 'Lab Manager'),
+        ('lab_member', 'Lab Member'),
         ('viewer', 'Viewer'),
     ]
     
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='role')
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='viewer')
-    department = models.CharField(max_length=100, blank=True)
-    permissions = models.JSONField(default=dict)
+    department = models.CharField(max_length=100, blank=True, null=True)
+    lab_unit = models.CharField(max_length=100, blank=True, null=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
     
     def has_permission(self, permission):
-        return permission in self.permissions.get('granted', [])
+        """Check if user has a specific permission based on their role"""
+        role_permissions = self.get_role_permissions()
+        return permission in role_permissions
+
+class Permission(models.Model):
+    """Granular permissions for specific model instances"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='permissions')
+    permission_type = models.CharField(max_length=20, choices=PERMISSION_TYPES)
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, related_name='object_permissions')
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey('content_type', 'object_id')
+    granted_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='granted_permissions')
+    granted_at = models.DateTimeField(default=timezone.now)
+    expires_at = models.DateTimeField(null=True, blank=True)
 
 class UserAuditLog(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    action = models.CharField(max_length=100)
-    target_type = models.CharField(max_length=50)
-    target_id = models.IntegerField()
-    timestamp = models.DateTimeField(auto_now_add=True)
-    ip_address = models.GenericIPAddressField()
-    user_agent = models.TextField()
+    """Audit trail for user actions"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='audit_logs')
+    action = models.CharField(max_length=20, choices=ACTION_CHOICES)
+    target_type = models.CharField(max_length=50, blank=True, null=True)
+    target_id = models.IntegerField(null=True, blank=True)
+    target_name = models.CharField(max_length=200, blank=True, null=True)
+    details = models.JSONField(default=dict, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True, null=True)
+    timestamp = models.DateTimeField(default=timezone.now)
 ```
 
-**Permission Decorators**:
+**Permission Decorators Implemented**:
 ```python
-# Add to person/decorators.py
-from functools import wraps
-from django.http import HttpResponseForbidden
-
-def require_permission(permission):
-    def decorator(view_func):
-        @wraps(view_func)
-        def wrapper(request, *args, **kwargs):
-            if not request.user.userrole.has_permission(permission):
-                return HttpResponseForbidden("Insufficient permissions")
-            return view_func(request, *args, **kwargs)
-        return wrapper
-    return decorator
-
-# Usage in views
-@login_required
+# person/decorators.py
 @require_permission('sample.create')
 def create_sample(request):
     # Only users with 'sample.create' permission can access
     pass
+
+@require_minimum_role('lab_manager')
+def manage_users(request):
+    # Only lab managers and admins can access
+    pass
+
+@require_role('lab_admin')
+def system_admin(request):
+    # Only lab admins can access
+    pass
 ```
 
-**Required Endpoints**:
-- `GET /users/roles/` - List user roles and permissions
-- `POST /users/roles/` - Assign role to user
-- `GET /users/audit-log/` - View user audit log
-- `POST /users/permissions/` - Update user permissions
+**✅ Endpoints Implemented**:
+- ✅ `GET /users/` - List all users with roles and permissions
+- ✅ `GET /users/create/` - Create new user form
+- ✅ `GET /users/<id>/` - View user details and permissions
+- ✅ `GET /users/<id>/edit/` - Edit user role and organization
+- ✅ `GET /users/audit-logs/` - View comprehensive audit log
+- ✅ `GET /users/permissions/` - List object-level permissions
+- ✅ `POST /users/permissions/grant/` - Grant object-level permissions
+- ✅ `POST /users/permissions/revoke/` - Revoke object-level permissions
 
-**UI Components**:
-- User management interface in admin
-- Role assignment forms
-- Permission-based button visibility
-- Audit log viewer
-- User profile with role information
+**✅ UI Components Implemented**:
+- ✅ User management interface with search and filtering
+- ✅ Role assignment forms with role information
+- ✅ Permission-based button visibility and navigation
+- ✅ Comprehensive audit log viewer with filtering
+- ✅ User profile with role information and permissions
+- ✅ Create user form with role selection
+- ✅ User role editing interface
 
-**Priority**: High - Critical for security and access control
+**✅ Django Integration**:
+- ✅ Automatic UserRole creation for new users
+- ✅ Django superuser → Lab Administrator role mapping
+- ✅ Staff users → Lab Manager role mapping
+- ✅ Signals for automatic role management
+- ✅ Management command for existing user setup
+- ✅ Enhanced Django admin interface
+
+**✅ Security Features**:
+- ✅ Role hierarchy enforcement
+- ✅ Object-level permissions
+- ✅ Permission expiration
+- ✅ Comprehensive audit logging
+- ✅ IP address and user agent tracking
+- ✅ Permission denial logging
+
+**✅ Database Migrations**:
+- ✅ All models properly migrated
+- ✅ Nullable fields for optional data
+- ✅ Proper foreign key relationships
+- ✅ Indexes for performance
+
+**Priority**: ✅ COMPLETED - Critical security and access control implemented
 
 ---
 
@@ -762,7 +805,7 @@ def create_sample(request):
    - ✅ Storage capacity endpoint URL registration - **COMPLETED**
 
 3. **Medium Priority** (Improve user experience):
-   - User Permissions and Role Management (#23)
+   - ✅ User Permissions and Role Management (#23) - **COMPLETED**
    - Data Entry Form Styling Improvements (#15)
    - Homepage Dashboard Statistics API (#7)
    - Storage Management Dashboard API (#9)
@@ -786,7 +829,7 @@ def create_sample(request):
    - Export functionality (#20)
 
 **Next Recommended Items:**
-- **User Permissions and Role Management (#23)** - Critical for security and access control
+- ✅ **User Permissions and Role Management (#23)** - **COMPLETED** - Critical for security and access control
 - **Data Entry Form Styling Improvements (#15)** - High impact for user experience
 - **Homepage Dashboard Statistics API (#7)** - High impact for user experience
 - **Sample Search and Find API (#11)** - Essential functionality for sample management
