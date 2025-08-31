@@ -14,9 +14,10 @@ This document tracks frontend functionality that exists but lacks proper server-
    - ✅ [User Permissions and Role Management](#4-user-permissions-and-role-management) - **COMPLETED**
    - ✅ [Data Entry Form Styling Improvements](#15-data-entry-form-styling-improvements) - **COMPLETED**
    - ✅ [Homepage Dashboard Statistics API](#3-homepage-dashboard-statistics-api) - **COMPLETED**
-   - [Auto-Store Flag for Storage Models](#20-auto-store-flag-for-storage-models)
-   - [Automatic Aliquot Storage](#21-automatic-aliquot-storage)
-   - [Access Level Restrictions](#22-access-level-restrictions)
+     - ✅ [Auto-Store Flag for Storage Models](#20-auto-store-flag-for-storage-models) - **COMPLETED**
+    - ✅ [Automatic Aliquot Storage](#21-automatic-aliquot-storage) - **COMPLETED**
+  - ✅ [Storage Location Display](#23-storage-location-display) - **COMPLETED**
+  - [Access Level Restrictions](#22-access-level-restrictions)
    - [Storage Management Dashboard API](#9-storage-management-dashboard-api)
    - [Sample Search and Find API](#11-sample-search-and-find-api)
    - [Alert System API](#13-alert-system-api)
@@ -651,3 +652,15 @@ For each implemented feature:
 ### 4. User Permissions and Role Management {#4-user-permissions-and-role-management}
 **Status**: ✅ COMPLETED & IMPLEMENTED  
 **Summary**: Comprehensive role-based access control system with Django integration. Includes role hierarchy (Lab Admin, Manager, Member, Viewer), granular permissions, audit logging, and complete user management interface. All models, views, and UI components implemented and tested.
+
+### 20. Auto-Store Flag for Storage Models {#20-auto-store-flag-for-storage-models}
+**Status**: ✅ COMPLETED & IMPLEMENTED  
+**Summary**: Implemented simple auto-store functionality where boxes inherit auto-store settings from their parent devices. Added `auto_store_enabled` field to Device model only. Boxes automatically inherit auto-store capability from their parent devices through a simple property. Created Django signal to automatically store new aliquots in available slots within enabled boxes.
+
+### 21. Automatic Aliquot Storage {#21-automatic-aliquot-storage}
+**Status**: ✅ COMPLETED & IMPLEMENTED  
+**Summary**: Implemented automatic storage of aliquots when they are created. Added Django signal handler that automatically places new aliquots in available slots within auto-store enabled boxes. Features simple inheritance from device settings, available slot detection, and automatic placement. Integrated with existing aliquot creation workflow.
+
+### 23. Storage Location Display {#23-storage-location-display}
+**Status**: ✅ COMPLETED & IMPLEMENTED  
+**Summary**: Enhanced aliquot and box detail views to show storage location information. Added storage location display to aliquot detail pages showing device, shelf, rack, box, and position. Created realistic test tube box storage view with visual representation of individual test tubes in a box, showing occupied vs. empty slots with sample labels and tube numbers. Updated models to store each test tube individually with tube numbering, supporting aliquots with multiple tubes. Added storage statistics, list of stored aliquots with tube counts, and responsive CSS styling for a compact, realistic storage display. Implemented disposition-based storage logic where only aliquots with "Stored" disposition are stored in physical locations, with automatic removal when disposition changes to "In Use" or "Exhausted". Added individual tube tracking with AliquotTube model where each test tube has its own disposition status (Stored/In Use/Exhausted) and can be managed independently. Fixed box view compatibility and added individual tube detail pages with navigation between aliquots and individual tubes for lab member access.

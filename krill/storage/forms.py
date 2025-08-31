@@ -17,11 +17,12 @@ class SiteForm(forms.ModelForm):
 class DeviceForm(forms.ModelForm):
     class Meta:
         model = Device
-        fields = ['name', 'description', 'site']
+        fields = ['name', 'description', 'site', 'auto_store_enabled']
         help_texts = {
             'name': 'Name of this device',
             'description': 'Description of this device',
             'site': 'Site where this device is located',
+            'auto_store_enabled': 'Enable auto-store for all boxes in this device',
         }
         widgets = {
             'description': forms.Textarea(attrs={'rows': 4}),
