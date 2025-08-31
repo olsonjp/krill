@@ -5,9 +5,10 @@ from .models.source import Source
 class SampleForm(forms.ModelForm):
     class Meta:
         model = Sample
-        fields = ['name', 'notes']
+        fields = ['name', 'source', 'notes']
         help_texts = {
             'name': 'Unique identifier for the sample',
+            'source': 'Source of the sample',
             'notes': 'Additional information about the sample',
         }
         widgets = {
