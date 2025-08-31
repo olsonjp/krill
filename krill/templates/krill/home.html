@@ -15,28 +15,28 @@
             <span class="material-icons-round">science</span>
             <div class="stat-info">
                 <h3>Active Samples</h3>
-                <p>248</p>
+                <p>{{ stats.active_samples|default:"0" }}</p>
             </div>
         </div>
         <div class="stat-card">
             <span class="material-icons-round">inventory_2</span>
             <div class="stat-info">
                 <h3>Storage Usage</h3>
-                <p>78%</p>
+                <p>{{ stats.storage_usage|default:"0" }}%</p>
             </div>
         </div>
         <div class="stat-card">
             <span class="material-icons-round">description</span>
             <div class="stat-info">
                 <h3>Reports</h3>
-                <p>15 Recent</p>
+                <p>{{ stats.recent_reports|default:"0" }} Recent</p>
             </div>
         </div>
         <div class="stat-card">
             <span class="material-icons-round">warning</span>
             <div class="stat-info">
                 <h3>Alerts</h3>
-                <p>2 New</p>
+                <p>{{ stats.alerts|default:"0" }} New</p>
             </div>
         </div>
     </div>
@@ -48,27 +48,35 @@
             <button class="view-all">View All</button>
         </div>
         <div class="activity-list">
-            <div class="activity-item">
-                <span class="material-icons-round">add_circle</span>
-                <div class="activity-info">
-                    <p>New sample added: <strong>SAMPLE-001</strong></p>
-                    <small>2 minutes ago</small>
+            {% if recent_activity %}
+                {% for activity in recent_activity %}
+                <div class="activity-item">
+                    <span class="material-icons-round">
+                        {% if activity.action_type == 'sample_created' or activity.action_type == 'aliquot_created' %}
+                            add_circle
+                        {% elif activity.action_type == 'sample_updated' or activity.action_type == 'aliquot_updated' %}
+                            edit
+                        {% elif activity.action_type == 'sample_deleted' %}
+                            delete
+                        {% else %}
+                            info
+                        {% endif %}
+                    </span>
+                    <div class="activity-info">
+                        <p>{{ activity.message }}</p>
+                        <small>{{ activity.time_ago }}</small>
+                    </div>
                 </div>
-            </div>
-            <div class="activity-item">
-                <span class="material-icons-round">edit</span>
-                <div class="activity-info">
-                    <p>Sample updated: <strong>SAMPLE-042</strong></p>
-                    <small>1 hour ago</small>
+                {% endfor %}
+            {% else %}
+                <div class="activity-item">
+                    <span class="material-icons-round">info</span>
+                    <div class="activity-info">
+                        <p>No recent activity</p>
+                        <small>System initialized</small>
+                    </div>
                 </div>
-            </div>
-            <div class="activity-item">
-                <span class="material-icons-round">delete</span>
-                <div class="activity-info">
-                    <p>Sample archived: <strong>SAMPLE-023</strong></p>
-                    <small>3 hours ago</small>
-                </div>
-            </div>
+            {% endif %}
         </div>
     </div>
 

@@ -24,7 +24,7 @@ from django.views.static import serve
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LogoutView
 from .views.auth import KrillLoginView
-from .views.home import HomeView, SettingsView, ReportsView
+from .views.home import HomeView, SettingsView, ReportsView, dashboard_stats
 from person.views import toggle_theme  
 
 admin.site.site_header = "Krill Admin"
@@ -34,6 +34,7 @@ urlpatterns = [
     path('login/', KrillLoginView.as_view(), name='login'),
     path('logout/', LogoutView.as_view(next_page='login'), name='logout'),
     path('', HomeView.as_view(), name='home'),
+    path('dashboard/stats/', dashboard_stats, name='dashboard_stats'),
     path('samples/', include('sample.urls')),
     path('storage/', include('storage.urls')),
     path('reports/', ReportsView.as_view(), name='reports'),
