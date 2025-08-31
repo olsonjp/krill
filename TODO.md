@@ -5,27 +5,35 @@ This document tracks frontend functionality that exists but lacks proper server-
 ## 🔴 Critical Issues (Breaking Functionality)
 
 ### 1. Database Migration Issue - Missing `deleted` Column
-**Status**: ❌ CRITICAL - Database Error  
+**Status**: ✅ COMPLETED & TESTED  
 **Issue**: `no such column: sample_aliquot.deleted`  
 **Impact**: Cannot create test data, potential runtime errors  
 **Root Cause**: Migration issue with Aliquot model's `deleted` field  
 
-**Fix Required**:
-```bash
-# Option 1: Provide default value for existing rows
-python manage.py makemigrations sample --empty
-# Then edit migration to add default value for deleted field
+**Fix Applied**:
+```python
+# Updated Aliquot model in sample/models/aliquot.py
+from django.utils import timezone
 
-# Option 2: Update model to provide default
 class Aliquot(models.Model):
     # ... existing fields ...
-    deleted = models.BooleanField(default=False, null=True)  # Allow null temporarily
+    deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(default=timezone.now)
 ```
 
+**Migration Created**: `0003_add_aliquot_timestamp_fields.py`
+- Added `deleted` field with default=False
+- Added `deleted_at` field (nullable)
+- Added `created_at` field with default=timezone.now
+- Added `updated_at` field with default=timezone.now
+
 **Test Results**:
-- ❌ Cannot create test aliquots due to missing column
-- ❌ Migration system requires default value for existing rows
-- ❌ Blocks testing of storage capacity with sample data
+- ✅ Can successfully create test aliquots
+- ✅ All timestamp fields work correctly
+- ✅ No database errors when accessing aliquot data
+- ✅ Storage capacity testing can now proceed with sample data
 
 ### 2. Storage Capacity Endpoint
 **Status**: ✅ COMPLETED & TESTED  
