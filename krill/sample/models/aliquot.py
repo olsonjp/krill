@@ -26,7 +26,7 @@ class AliquotDisposition(models.Model):
 class Aliquot(models.Model):
     parent = models.ForeignKey(to='Aliquot', on_delete=models.PROTECT, null=True, blank=True)
     sample = models.ForeignKey(to='sample.Sample', on_delete=models.PROTECT, null=False, blank=False)
-    quantity = models.IntegerField(default=0, null=False, blank=False)
+    quantity = models.IntegerField(default=0, null=False, blank=False, help_text="Number of test tubes in this aliquot")
     aliquotType = models.ForeignKey(to='AliquotType', on_delete=models.PROTECT, null=False, blank=False)
     disposition = models.ForeignKey(to='AliquotDisposition', on_delete=models.PROTECT, null=False, blank=False)
     passage = models.CharField(max_length=200, default=0)
@@ -39,11 +39,64 @@ class Aliquot(models.Model):
     updated_at = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
-        return f"{self.sample.name} - {self.aliquotType.name} - {self.quantity}"
+        return f"{self.sample.name} - {self.aliquotType.name} - {self.quantity} tubes"
+
+    @property
+    def stored_tubes_count(self):
+        """Get the number of test tubes currently stored for this aliquot."""
+        if self.disposition.dispositionType == 'stored':
+            return self.aliquotlocation_set.count()
+        else:
+            return 0
+    
+    @property
+    def unstored_tubes_count(self):
+        """Get the number of test tubes not yet stored for this aliquot."""
+        if self.disposition.dispositionType == 'stored':
+            return self.quantity - self.stored_tubes_count
+        else:
+            return self.quantity  # All tubes are considered unstored if not in "Stored" disposition
 
 class AliquotLocation(models.Model):
     aliquot = models.ForeignKey(to='Aliquot', on_delete=models.PROTECT, null=False, blank=False)
     box = models.ForeignKey(to='storage.Box', on_delete=models.PROTECT, null=False, blank=False)
     row = models.PositiveSmallIntegerField(default=1, validators=[MinValueValidator(1), MaxValueValidator(10)], null=False, blank=False)
     column = models.PositiveSmallIntegerField(default=1, validators=[MinValueValidator(1), MaxValueValidator(10)], null=False, blank=False)
+    tube_number = models.PositiveSmallIntegerField(default=1, help_text="Tube number within this aliquot (1, 2, 3, etc.)")
+    
+    class Meta:
+        unique_together = [
+            ['aliquot', 'tube_number'],
+            ['box', 'row', 'column']
+        ]
+    
+    def __str__(self):
+        return f"{self.aliquot.sample.name} - Tube {self.tube_number} at ({self.row}, {self.column})"
+
+class AliquotTube(models.Model):
+    """
+    Represents an individual test tube within an aliquot.
+    Each tube has its own disposition status and optional storage location.
+    """
+    aliquot = models.ForeignKey(to='Aliquot', on_delete=models.PROTECT, null=False, blank=False)
+    tube_number = models.PositiveSmallIntegerField(help_text="Tube number within this aliquot (1, 2, 3, etc.)")
+    disposition = models.ForeignKey(to='AliquotDisposition', on_delete=models.PROTECT, null=False, blank=False)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(default=timezone.now)
+    
+    class Meta:
+        unique_together = ['aliquot', 'tube_number']
+    
+    def __str__(self):
+        return f"{self.aliquot.sample.name} - Tube {self.tube_number} ({self.disposition.name})"
+    
+    @property
+    def storage_location(self):
+        """Get the storage location for this tube if it's stored."""
+        if self.disposition.dispositionType == 'stored':
+            try:
+                return self.aliquotlocation_set.first()
+            except:
+                return None
+        return None
     

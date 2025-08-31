@@ -1,6 +1,6 @@
 from django import forms
 from .models.sample import Sample
-from .models.aliquot import Aliquot, AliquotLocation, AliquotType, AliquotDisposition
+from .models.aliquot import Aliquot, AliquotLocation, AliquotType, AliquotDisposition, AliquotTube
 from .models.source import Source
 class SampleForm(forms.ModelForm):
     class Meta:
@@ -38,12 +38,13 @@ class AliquotForm(forms.ModelForm):
 class AliquotLocationForm(forms.ModelForm):
     class Meta:
         model = AliquotLocation
-        fields = ['aliquot', 'box', 'row', 'column']
+        fields = ['aliquot', 'box', 'row', 'column', 'tube_number']
         help_texts = {
             'aliquot': 'Aliquot to locate',
             'box': 'Storage box',
             'row': 'Row position (1-10)',
             'column': 'Column position (1-10)',
+            'tube_number': 'Tube number within the aliquot',
         }
 
 class AliquotTypeForm(forms.ModelForm):
