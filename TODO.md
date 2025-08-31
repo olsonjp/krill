@@ -806,7 +806,7 @@ def system_admin(request):
 
 3. **Medium Priority** (Improve user experience):
    - ✅ User Permissions and Role Management (#23) - **COMPLETED**
-   - Data Entry Form Styling Improvements (#15)
+   - ✅ Data Entry Form Styling Improvements (#15) - **COMPLETED**
    - Homepage Dashboard Statistics API (#7)
    - Storage Management Dashboard API (#9)
    - Sample Search and Find API (#11)
@@ -830,7 +830,7 @@ def system_admin(request):
 
 **Next Recommended Items:**
 - ✅ **User Permissions and Role Management (#23)** - **COMPLETED** - Critical for security and access control
-- **Data Entry Form Styling Improvements (#15)** - High impact for user experience
+- ✅ **Data Entry Form Styling Improvements (#15)** - **COMPLETED** - High impact for user experience
 - **Homepage Dashboard Statistics API (#7)** - High impact for user experience
 - **Sample Search and Find API (#11)** - Essential functionality for sample management
 - **Alert System API (#13)** - Important for system monitoring
