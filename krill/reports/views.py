@@ -335,62 +335,7 @@ def create_alert(request):
 
 
 
-# Sample Search and Find API
-@login_required
-def search_samples(request):
-    """Search samples by various criteria"""
-    query = request.GET.get('q', '')
-    sample_type = request.GET.get('type', '')
-    disposition = request.GET.get('disposition', '')
-    
-    samples = Sample.objects.all()
-    
-    if query:
-        samples = samples.filter(
-            Q(name__icontains=query) |
-            Q(experiment__icontains=query)
-        )
-    
-    if sample_type:
-        samples = samples.filter(experiment__icontains=sample_type)
-    
-    if disposition:
-        # Note: disposition is a computed property on Aliquot, not Sample
-        # This would need to be implemented differently
-        pass
-    
-    # Pagination
-    paginator = Paginator(samples, 20)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-    
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        # AJAX request - return JSON
-        sample_data = []
-        for sample in page_obj:
-            sample_data.append({
-                'id': sample.id,
-                'name': sample.name,
-                'experiment': sample.experiment,
-                'created_at': sample.created_at.isoformat() if hasattr(sample, 'created_at') else None,
-            })
-        
-        return JsonResponse({
-            'samples': sample_data,
-            'total_count': samples.count(),
-            'has_next': page_obj.has_next(),
-            'has_previous': page_obj.has_previous(),
-        })
-    
-    # Regular request - return HTML
-    context = {
-        'samples': page_obj,
-        'query': query,
-        'sample_type': sample_type,
-        'disposition': disposition,
-        'total_count': samples.count(),
-    }
-    return render(request, 'reports/sample_search.html', context)
+
 
 
 # Storage Management Dashboard API

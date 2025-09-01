@@ -5,7 +5,7 @@
 <div class="sample-search-container">
     <div class="search-header">
         <h1>Sample Search</h1>
-        <p>Find samples by name, type, disposition, or other criteria</p>
+        <p>Find samples and aliquots by name, type, disposition, or other criteria</p>
     </div>
 
     <!-- Search Form -->
@@ -51,7 +51,7 @@
         <div class="results-header">
             <h2>Search Results</h2>
             <div class="results-info">
-                <span class="result-count">{{ total_count }} samples found</span>
+                <span class="result-count">{{ total_count }} items found</span>
                 {% if samples.has_other_pages %}
                     <span class="page-info">Page {{ samples.number }} of {{ samples.paginator.num_pages }}</span>
                 {% endif %}
@@ -64,16 +64,12 @@
                 <div class="sample-card">
                     <div class="sample-header">
                         <h3>{{ sample.name }}</h3>
-                        <span class="sample-type">{{ sample.sample_type|default:"Unknown Type" }}</span>
+                        <span class="sample-type">{{ sample.experiment|default:"Sample" }}</span>
                     </div>
                     <div class="sample-meta">
-                        <p><strong>Disposition:</strong> 
-                            <span class="disposition-badge disposition-{{ sample.disposition }}">
-                                {{ sample.get_disposition_display|default:"Unknown" }}
-                            </span>
-                        </p>
-                        {% if sample.description %}
-                            <p><strong>Description:</strong> {{ sample.description|truncatechars:100 }}</p>
+                        <p><strong>Experiment:</strong> {{ sample.experiment|default:"Not specified" }}</p>
+                        {% if sample.notes %}
+                            <p><strong>Notes:</strong> {{ sample.notes|truncatechars:100 }}</p>
                         {% endif %}
                         <p><strong>Created:</strong> {{ sample.created_at|date:"M d, Y"|default:"Unknown" }}</p>
                         {% if sample.access_level %}
@@ -138,11 +134,11 @@
             </button>
             <button class="btn btn-outline" onclick="createSample()">
                 <span class="material-icons-round">add_circle</span>
-                Create Sample
+                Create Aliquot
             </button>
-            <button class="btn btn-outline" onclick="bulkOperations()">
-                <span class="material-icons-round">settings</span>
-                Bulk Operations
+            <button class="btn btn-outline" onclick="browseAllSamples()">
+                <span class="material-icons-round">list</span>
+                Browse All
             </button>
         </div>
     </div>
@@ -175,15 +171,15 @@ function clearSearch() {
 }
 
 function viewSample(sampleId) {
-    window.location.href = `/samples/${sampleId}/`;
+    window.location.href = `/samples/detail/sample/${sampleId}/`;
 }
 
 function viewAliquots(sampleId) {
-    window.location.href = `/samples/${sampleId}/aliquots/`;
+    window.location.href = `/samples/list/?type=aliquot&sample=${sampleId}`;
 }
 
 function browseAllSamples() {
-    window.location.href = '/samples/';
+    window.location.href = '/samples/list/';
 }
 
 function exportResults() {
@@ -198,16 +194,11 @@ function exportResults() {
         format: 'csv'
     });
     
-    window.location.href = `/reports/samples/search/?${params.toString()}`;
+    window.location.href = `/samples/search/?${params.toString()}`;
 }
 
 function createSample() {
-    window.location.href = '/samples/create/';
-}
-
-function bulkOperations() {
-    // TODO: Implement bulk operations modal
-    alert('Bulk operations coming soon!');
+    window.location.href = '/samples/create/?type=aliquot';
 }
 
 // Auto-search on input change (with debouncing)
@@ -243,18 +234,18 @@ document.addEventListener('DOMContentLoaded', setupAutoSearch);
 
 .search-header h1 {
     margin: 0 0 10px 0;
-    color: #333;
+    color: var(--color-dark);
 }
 
 .search-header p {
-    color: #666;
+    color: var(--color-dark-variant);
     font-size: 1.1rem;
 }
 
 .search-form-container {
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    background: var(--color-white);
+    border-radius: var(--border-radius-1);
+    box-shadow: var(--box-shadow);
     padding: 25px;
     margin-bottom: 30px;
 }
@@ -270,22 +261,24 @@ document.addEventListener('DOMContentLoaded', setupAutoSearch);
     display: block;
     margin-bottom: 8px;
     font-weight: 500;
-    color: #333;
+    color: var(--color-dark);
 }
 
 .form-control {
     width: 100%;
     padding: 12px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
+    border: 1px solid var(--color-light);
+    border-radius: var(--border-radius-1);
     font-size: 0.9rem;
     transition: all 0.3s ease;
+    background: var(--color-white);
+    color: var(--color-dark);
 }
 
 .form-control:focus {
     outline: none;
-    border-color: #007bff;
-    box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(108, 155, 207, 0.1);
 }
 
 .form-actions {
@@ -297,7 +290,7 @@ document.addEventListener('DOMContentLoaded', setupAutoSearch);
 .btn {
     padding: 12px 24px;
     border: none;
-    border-radius: 6px;
+    border-radius: var(--border-radius-1);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -309,47 +302,47 @@ document.addEventListener('DOMContentLoaded', setupAutoSearch);
 }
 
 .btn-primary {
-    background: #007bff;
-    color: white;
+    background: var(--color-primary);
+    color: var(--color-white);
 }
 
 .btn-primary:hover {
-    background: #0056b3;
+    background: var(--color-dark);
     transform: translateY(-1px);
 }
 
 .btn-secondary {
-    background: #6c757d;
-    color: white;
+    background: var(--color-info-dark);
+    color: var(--color-white);
 }
 
 .btn-secondary:hover {
-    background: #545b62;
+    background: var(--color-dark-variant);
     transform: translateY(-1px);
 }
 
 .btn-outline {
     background: transparent;
-    color: #007bff;
-    border: 2px solid #007bff;
+    color: var(--color-primary);
+    border: 2px solid var(--color-primary);
 }
 
 .btn-outline:hover {
-    background: #007bff;
-    color: white;
+    background: var(--color-primary);
+    color: var(--color-white);
 }
 
 .search-results {
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    background: var(--color-white);
+    border-radius: var(--border-radius-1);
+    box-shadow: var(--box-shadow);
     overflow: hidden;
     margin-bottom: 30px;
 }
 
 .results-header {
     padding: 20px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--color-light);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -357,13 +350,13 @@ document.addEventListener('DOMContentLoaded', setupAutoSearch);
 
 .results-header h2 {
     margin: 0;
-    color: #333;
+    color: var(--color-dark);
 }
 
 .results-info {
     display: flex;
     gap: 20px;
-    color: #666;
+    color: var(--color-dark-variant);
     font-size: 0.9rem;
 }
 
@@ -375,14 +368,15 @@ document.addEventListener('DOMContentLoaded', setupAutoSearch);
 }
 
 .sample-card {
-    border: 1px solid #eee;
-    border-radius: 8px;
+    border: 1px solid var(--color-light);
+    border-radius: var(--border-radius-1);
     padding: 20px;
     transition: all 0.3s ease;
+    background: var(--color-white);
 }
 
 .sample-card:hover {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    box-shadow: var(--box-shadow);
     transform: translateY(-2px);
 }
 
@@ -396,12 +390,12 @@ document.addEventListener('DOMContentLoaded', setupAutoSearch);
 .sample-header h3 {
     margin: 0;
     font-size: 1.1rem;
-    color: #333;
+    color: var(--color-dark);
 }
 
 .sample-type {
-    background: #e9ecef;
-    color: #495057;
+    background: var(--color-light);
+    color: var(--color-dark-variant);
     padding: 4px 8px;
     border-radius: 12px;
     font-size: 0.8rem;
@@ -415,20 +409,8 @@ document.addEventListener('DOMContentLoaded', setupAutoSearch);
 .sample-meta p {
     margin: 8px 0;
     font-size: 0.9rem;
-    color: #666;
+    color: var(--color-dark-variant);
 }
-
-.disposition-badge {
-    padding: 4px 8px;
-    border-radius: 12px;
-    font-size: 0.8rem;
-    font-weight: 500;
-}
-
-.disposition-stored { background: #d4edda; color: #155724; }
-.disposition-in_use { background: #cce5ff; color: #004085; }
-.disposition-exhausted { background: #f8d7da; color: #721c24; }
-.disposition-disposed { background: #e2e3e5; color: #383d41; }
 
 .access-level-badge {
     padding: 4px 8px;
@@ -437,9 +419,9 @@ document.addEventListener('DOMContentLoaded', setupAutoSearch);
     font-weight: 500;
 }
 
-.access-admins_only { background: #f8d7da; color: #721c24; }
-.access-admins_managers { background: #fff3cd; color: #856404; }
-.access-all_members { background: #d4edda; color: #155724; }
+.access-admins_only { background: rgba(255, 0, 96, 0.2); color: var(--color-danger); }
+.access-admins_managers { background: rgba(247, 208, 96, 0.2); color: var(--color-warning); }
+.access-all_members { background: rgba(27, 156, 133, 0.2); color: var(--color-success); }
 
 .sample-actions {
     display: flex;
@@ -449,12 +431,12 @@ document.addEventListener('DOMContentLoaded', setupAutoSearch);
 .no-results {
     text-align: center;
     padding: 60px 20px;
-    color: #666;
+    color: var(--color-dark-variant);
 }
 
 .no-results .material-icons-round {
     font-size: 4rem;
-    color: #ddd;
+    color: var(--color-light);
     margin-bottom: 20px;
 }
 
@@ -464,39 +446,39 @@ document.addEventListener('DOMContentLoaded', setupAutoSearch);
     align-items: center;
     gap: 15px;
     padding: 20px;
-    border-top: 1px solid #eee;
+    border-top: 1px solid var(--color-light);
 }
 
 .page-link {
     padding: 8px 16px;
     text-decoration: none;
-    color: #007bff;
-    border: 1px solid #007bff;
-    border-radius: 6px;
+    color: var(--color-primary);
+    border: 1px solid var(--color-primary);
+    border-radius: var(--border-radius-1);
     transition: all 0.3s ease;
 }
 
 .page-link:hover {
-    background: #007bff;
-    color: white;
+    background: var(--color-primary);
+    color: var(--color-white);
 }
 
 .current-page {
-    color: #666;
+    color: var(--color-dark-variant);
     font-weight: 500;
 }
 
 .quick-actions {
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    background: var(--color-white);
+    border-radius: var(--border-radius-1);
+    box-shadow: var(--box-shadow);
     padding: 25px;
     text-align: center;
 }
 
 .quick-actions h3 {
     margin: 0 0 20px 0;
-    color: #333;
+    color: var(--color-dark);
 }
 
 .action-buttons {

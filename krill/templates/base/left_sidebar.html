@@ -12,7 +12,7 @@
             </a>
             <!-- Sample app section -->
             <div class="sidebar-section">
-                <a href="{% url 'sample:list' %}" class="sidebar-toggle {% if 'sample' in request.path %}active{% endif %}">
+                <a href="{% url 'sample:sample_list' %}" class="sidebar-toggle {% if 'sample' in request.path %}active{% endif %}">
                     <span class="material-icons-round">
                         science
                     </span>
@@ -20,19 +20,19 @@
                     <span class="material-icons-round expand-icon">expand_more</span>
                 </a>
                 <div id="sample-section" class="sidebar-submenu {% if 'sample' in request.path %}show{% endif %}">
-                    <a href="{% url 'sample:list' %}" class="submenu-item {% if 'sample' in request.path and not request.GET.type and not 'detail/aliquot/' in request.path and not 'detail/aliquot-type/' in request.path and not 'detail/source/' in request.path %}active{% endif %}">
+                    <a href="{% url 'sample:sample_list' %}" class="submenu-item {% if 'sample' in request.path and not request.GET.type and not 'detail/aliquot/' in request.path and not 'detail/aliquot-type/' in request.path and not 'detail/source/' in request.path %}active{% endif %}">
                         <span class="material-icons-round">list</span>
                         <h3>Samples</h3>
                     </a>
-                    <a href="{% url 'sample:list' %}?type=aliquot" class="submenu-item {% if request.GET.type == 'aliquot' or 'detail/aliquot/' in request.path %}active{% endif %}">
+                    <a href="{% url 'sample:sample_list' %}?type=aliquot" class="submenu-item {% if request.GET.type == 'aliquot' or 'detail/aliquot/' in request.path %}active{% endif %}">
                         <span class="material-icons-round">biotech</span>
                         <h3>Aliquots</h3>
                     </a>
-                    <a href="{% url 'sample:list' %}?type=aliquot-type" class="submenu-item {% if request.GET.type == 'aliquot-type' or 'detail/aliquot-type/' in request.path %}active{% endif %}">
+                    <a href="{% url 'sample:sample_list' %}?type=aliquot-type" class="submenu-item {% if request.GET.type == 'aliquot-type' or 'detail/aliquot-type/' in request.path %}active{% endif %}">
                         <span class="material-icons-round">category</span>
                         <h3>Aliquot Types</h3>
                     </a>
-                    <a href="{% url 'sample:list' %}?type=source" class="submenu-item {% if request.GET.type == 'source' or 'detail/source/' in request.path %}active{% endif %}">
+                    <a href="{% url 'sample:sample_list' %}?type=source" class="submenu-item {% if request.GET.type == 'source' or 'detail/source/' in request.path %}active{% endif %}">
                         <span class="material-icons-round">source</span>
                         <h3>Sources</h3>
                     </a>
@@ -41,7 +41,7 @@
 
             <!-- Storage app section -->
             <div class="sidebar-section">
-                <a href="{% url 'storage:list' %}" class="sidebar-toggle {% if 'storage' in request.path %}active{% endif %}">
+                <a href="{% url 'storage:storage_list' %}" class="sidebar-toggle {% if 'storage' in request.path %}active{% endif %}">
                     <span class="material-icons-round">
                         inventory_2
                     </span>
@@ -49,19 +49,19 @@
                     <span class="material-icons-round expand-icon">expand_more</span>
                 </a>
                 <div id="storage-section" class="sidebar-submenu {% if 'storage' in request.path %}show{% endif %}">
-                    <a href="{% url 'storage:list' %}?type=site" class="submenu-item {% if request.GET.type == 'site' %}active{% endif %}">
+                    <a href="{% url 'storage:storage_list' %}?type=site" class="submenu-item {% if request.GET.type == 'site' %}active{% endif %}">
                         <span class="material-icons-round">location_on</span>
                         <h3>Sites</h3>
                     </a>
-                    <a href="{% url 'storage:list' %}?type=device" class="submenu-item {% if request.GET.type == 'device' %}active{% endif %}">
+                    <a href="{% url 'storage:storage_list' %}?type=device" class="submenu-item {% if request.GET.type == 'device' %}active{% endif %}">
                         <span class="material-icons-round">devices</span>
                         <h3>Devices</h3>
                     </a>
-                    <a href="{% url 'storage:list' %}?type=shelf" class="submenu-item {% if request.GET.type == 'shelf' %}active{% endif %}">
+                    <a href="{% url 'storage:storage_list' %}?type=shelf" class="submenu-item {% if request.GET.type == 'shelf' %}active{% endif %}">
                         <span class="material-icons-round">view_module</span>
                         <h3>Shelves</h3>
                     </a>
-                    <a href="{% url 'storage:list' %}?type=box" class="submenu-item {% if request.GET.type == 'box' %}active{% endif %}">
+                    <a href="{% url 'storage:storage_list' %}?type=box" class="submenu-item {% if request.GET.type == 'box' %}active{% endif %}">
                         <span class="material-icons-round">grid_view</span>
                         <h3>Boxes</h3>
                     </a>
