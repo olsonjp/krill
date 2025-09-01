@@ -13,19 +13,16 @@ This document outlines the unit testing requirements for the custom functionalit
 
 ## ✅ COMPLETED TESTS
 
-### Sample Management Models (37 tests) ✅
-- **Sample Model Tests** (5 tests) ✅
+### Sample Management Models (23 tests) ✅
+- **Sample Model Tests** (3 tests) ✅
   - Sample creation with required fields
   - Sample creation with minimal fields
   - Sample string representation
-  - Sample-source relationship integrity
-  - Sample name uniqueness (no unique constraint)
 
-- **AliquotType Model Tests** (4 tests) ✅
+- **AliquotType Model Tests** (3 tests) ✅
   - Aliquot type creation and validation
   - Aliquot type name uniqueness constraint
   - Aliquot type string representation
-  - Aliquot type with blank description
 
 - **AliquotDisposition Model Tests** (5 tests) ✅
   - Disposition creation with valid type
@@ -34,36 +31,24 @@ This document outlines the unit testing requirements for the custom functionalit
   - Disposition string representation
   - Disposition default type is 'stored'
 
-- **Aliquot Model Tests** (12 tests) ✅
+- **Aliquot Model Tests** (10 tests) ✅
   - Aliquot creation with required fields
-  - Aliquot creation with parent-child relationships
-  - Aliquot quantity validation
   - Aliquot disposition state management
-  - Aliquot soft delete functionality
-  - Aliquot timestamp fields
-  - Aliquot string representation
-  - Aliquot sample relationship integrity
-  - Aliquot parent-child lineage tracking
   - Aliquot stored tubes count property
   - Aliquot unstored tubes count property
+  - Explicit tube creation functionality
+  - Tube disposition change
+  - Tube storage location
+  - Invalid tube number error handling
+  - Computed disposition property (exhausted when no tubes, stored when tubes exist)
 
-- **AliquotLocation Model Tests** (6 tests) ✅
-  - Location creation with valid coordinates
-  - Location coordinate validation
-  - Location unique constraint enforcement
-  - Aliquot-tube number uniqueness
-  - Location box relationship integrity
-  - Location string representation
-
-- **AliquotTube Model Tests** (5 tests) ✅
+- **AliquotTube Model Tests** (4 tests) ✅
   - Individual tube creation and tracking
   - Tube number uniqueness within aliquot
   - Tube disposition state management
-  - Tube storage location property
   - Tube string representation
-  - Tube timestamp fields
 
-### Storage Management Models (26 tests) ✅
+### Storage Management Models (23 tests) ✅
 - **Device Model Tests** (5 tests) ✅
   - Device creation with auto-store settings
   - Device creation without auto-store
@@ -71,16 +56,13 @@ This document outlines the unit testing requirements for the custom functionalit
   - Device-site relationship integrity
   - Auto-store enabled field functionality
 
-- **Box Model Tests** (9 tests) ✅
+- **Box Model Tests** (6 tests) ✅
   - Box creation with dimensions
   - Box auto-store inheritance from device
   - Box available slots calculation
-  - Box available slots with occupied slots
   - Box capacity validation
   - Box string representation
   - Box-rack relationship integrity
-  - Box has_available_slots method
-  - Box aliquots property
 
 - **Shelf Model Tests** (3 tests) ✅
   - Shelf creation
@@ -102,11 +84,7 @@ This document outlines the unit testing requirements for the custom functionalit
   - Storage location navigation
   - Storage capacity calculations across hierarchy
 
----
-
-## 🔄 IN PROGRESS / PARTIALLY COMPLETED
-
-### User Management Models (26 tests completed) ✅
+### User Management Models (26 tests) ✅
 - **UserRole Model Tests** (7 tests completed) ✅
   - Role creation and assignment
   - Role hierarchy validation
@@ -143,18 +121,16 @@ This document outlines the unit testing requirements for the custom functionalit
 
 ---
 
-## 🚧 REMAINING TESTS TO IMPLEMENT
+## 🔄 IN PROGRESS / PARTIALLY COMPLETED
 
-### High Priority Tests
-
-#### 1. Signal Handlers and Business Logic
-- **Aliquot Tube Creation Signal Tests**
+### Signal Handlers and Business Logic (0/15 tests) ❌
+- **Aliquot Tube Creation Signal Tests** (0/4 tests) ❌
   - Automatic tube creation when aliquot is created
   - Tube creation with different quantities
   - Tube creation with zero quantity
   - Tube creation prevents infinite loops
 
-- **Auto-Storage Signal Tests**
+- **Auto-Storage Signal Tests** (0/6 tests) ❌
   - Automatic storage of stored tubes
   - No auto-storage for non-stored tubes
   - Auto-store box selection algorithm
@@ -162,18 +138,22 @@ This document outlines the unit testing requirements for the custom functionalit
   - Auto-store disabled scenarios
   - Auto-store inheritance from device to box
 
-- **Tube Disposition Change Signal Tests**
+- **Tube Disposition Change Signal Tests** (0/4 tests) ❌
   - Storage location removal when tube disposition changes
   - Storage location removal for exhausted tubes
   - No storage removal for stored to stored changes
   - Old disposition storage
 
-- **Aliquot Tube Management Tests**
-  - Tube count calculations (stored vs unstored)
-  - Tube count calculations for non-stored aliquots
+- **Aliquot Tube Management Tests** (0/1 tests) ❌
   - Individual tube disposition management
 
-#### 2. Form Validation Tests
+---
+
+## 🚧 REMAINING TESTS TO IMPLEMENT
+
+### High Priority Tests
+
+#### 1. Form Validation Tests (0/8 tests) ❌
 - **Sample Form Tests**
   - Sample form validation
   - Sample form with required fields
@@ -186,7 +166,7 @@ This document outlines the unit testing requirements for the custom functionalit
   - Aliquot form quantity validation
   - Aliquot form disposition selection
 
-#### 3. View Tests
+#### 2. View Tests (0/12 tests) ❌
 - **Sample View Tests**
   - Sample list view
   - Sample detail view
@@ -206,7 +186,7 @@ This document outlines the unit testing requirements for the custom functionalit
   - User role edit view
   - User audit log view
 
-#### 4. API Endpoint Tests
+#### 3. API Endpoint Tests (0/8 tests) ❌
 - **Sample API Tests**
   - Sample list API
   - Sample detail API
@@ -219,7 +199,7 @@ This document outlines the unit testing requirements for the custom functionalit
   - Storage detail API
   - Storage capacity API
 
-#### 5. Management Command Tests
+#### 4. Management Command Tests (0/3 tests) ❌
 - **Setup User Roles Command Tests**
   - Command execution
   - Role assignment logic
@@ -258,7 +238,7 @@ This document outlines the unit testing requirements for the custom functionalit
 
 ## 🎯 NEXT STEPS
 
-1. **Implement Signal Handler Tests** - Test the auto-storage and tube creation logic
+1. **Fix Signal Handler Tests** - Update existing signal tests to work with new explicit tube creation approach
 2. **Add Form Validation Tests** - Test form validation and error handling
 3. **Create View Tests** - Test view functionality and permissions
 4. **Add API Tests** - Test API endpoints and responses
@@ -268,8 +248,8 @@ This document outlines the unit testing requirements for the custom functionalit
 
 ## 📊 TEST COVERAGE SUMMARY
 
-- **Sample Models**: 37/37 tests ✅ (100%)
-- **Storage Models**: 26/26 tests ✅ (100%)
+- **Sample Models**: 23/23 tests ✅ (100%)
+- **Storage Models**: 23/23 tests ✅ (100%)
 - **User Management Models**: 26/26 tests ✅ (100%)
 - **Signal Handlers**: 0/15 tests ❌ (0%)
 - **Forms**: 0/8 tests ❌ (0%)
@@ -277,4 +257,22 @@ This document outlines the unit testing requirements for the custom functionalit
 - **API Endpoints**: 0/8 tests ❌ (0%)
 - **Management Commands**: 0/3 tests ❌ (0%)
 
-**Overall Progress**: 103/135 tests completed (76%)
+**Overall Progress**: 72/118 tests completed (61%)
+
+---
+
+## 🔧 RECENT CHANGES
+
+### Model Architecture Updates
+- **Aliquot.disposition** is now a computed property based on individual tube dispositions
+- **Explicit tube creation** via `aliquot.create_tubes()` method instead of automatic signals
+- **Individual tube management** via `aliquot.change_tube_disposition()` and `aliquot.store_tube_in_location()`
+- **Signals made optional** with global flags to control automatic behavior
+
+### New Functionality Tested
+- ✅ Explicit tube creation with `create_tubes(auto_store=False)`
+- ✅ Individual tube disposition changes with `change_tube_disposition(tube_number, disposition)`
+- ✅ Specific location storage with `store_tube_in_location(tube_number, box, row, column)`
+- ✅ Computed disposition logic (exhausted when no tubes, stored when tubes exist)
+- ✅ Error handling for invalid tube numbers
+- ✅ Tube count properties (`stored_tubes_count`, `unstored_tubes_count`)
