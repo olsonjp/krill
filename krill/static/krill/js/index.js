@@ -6,7 +6,30 @@ menuBtn?.addEventListener('click', () => {
     sideMenu.style.display = 'block';
 });
 
+// Initialize dark mode state on page load
+function initializeDarkMode() {
+    if (darkMode) {
+        // Check if body already has dark mode class (set by Django template)
+        const isDarkMode = document.body.classList.contains('dark-mode-variables');
+        
+        // Update the toggle state to match current theme
+        const lightIcon = darkMode.querySelector('span:nth-child(1)');
+        const darkIcon = darkMode.querySelector('span:nth-child(2)');
+        
+        if (isDarkMode) {
+            lightIcon.classList.remove('active');
+            darkIcon.classList.add('active');
+        } else {
+            lightIcon.classList.add('active');
+            darkIcon.classList.remove('active');
+        }
+    }
+}
+
 if (darkMode) {
+    // Initialize dark mode state
+    initializeDarkMode();
+    
     darkMode.addEventListener('click', async () => {
         try {
             const response = await fetch('/preferences/theme/', {

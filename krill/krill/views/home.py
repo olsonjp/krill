@@ -19,7 +19,7 @@ from django.db.models import Count, Q
 from sample.models.sample import Sample
 from sample.models.aliquot import Aliquot, AliquotLocation
 from storage.models.storage import Device, Box
-from person.models import UserAuditLog
+from person.models import UserAuditLog, UserPreference
 
 __all__ = (
     'HomeView',
@@ -184,4 +184,13 @@ class SettingsView(View):
     template_name = 'krill/settings.html'
 
     def get(self, request):
-        return render(request, self.template_name)
+        # Get or create user preference for dark mode
+        user_preference, created = UserPreference.objects.get_or_create(
+            user=request.user,
+            defaults={'dark_mode': False}
+        )
+        
+        context = {
+            'user_preference': user_preference
+        }
+        return render(request, self.template_name, context)
