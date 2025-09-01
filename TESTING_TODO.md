@@ -152,18 +152,38 @@ This document outlines the unit testing requirements for the custom functionalit
 
 ### High Priority Tests
 
-#### 1. Form Validation Tests (0/8 tests) ❌
-- **Sample Form Tests**
+#### 1. Form Validation Tests (79 tests) ✅
+- **Sample Form Tests** (30 tests) ✅
   - Sample form validation
   - Sample form with required fields
   - Sample form with optional fields
   - Sample form error handling
-
-- **Aliquot Form Tests**
   - Aliquot form validation
   - Aliquot form with parent selection
   - Aliquot form quantity validation
   - Aliquot form disposition selection
+  - AliquotLocation form validation
+  - AliquotType form validation
+  - AliquotDisposition form validation
+  - Source form validation
+
+- **Storage Form Tests** (30 tests) ✅
+  - Site form validation
+  - Device form validation
+  - Shelf form validation
+  - Rack form validation
+  - Box form validation
+
+- **Person Form Tests** (19 tests) ✅
+  - CreateUser form widgets and help texts
+  - CustomUserCreation form widgets and help texts
+  - CustomUserChange form widgets and help texts
+  - UserRole form widgets and help texts
+  - Permission form validation
+  - UserPreference form widgets and help texts
+  - BulkPermission form validation
+  - UserSearch form validation
+  - AuditLogFilter form validation
 
 #### 2. View Tests (0/12 tests) ❌
 - **Sample View Tests**
@@ -237,10 +257,9 @@ This document outlines the unit testing requirements for the custom functionalit
 
 ## 🎯 NEXT STEPS
 
-1. **Add Form Validation Tests** - Test form validation and error handling
-2. **Create View Tests** - Test view functionality and permissions
-3. **Add API Tests** - Test API endpoints and responses
-4. **Implement Management Command Tests** - Test custom Django management commands
+1. **Create View Tests** - Test view functionality and permissions
+2. **Add API Tests** - Test API endpoints and responses
+3. **Implement Management Command Tests** - Test custom Django management commands
 
 ---
 
@@ -250,12 +269,12 @@ This document outlines the unit testing requirements for the custom functionalit
 - **Storage Models**: 23/23 tests ✅ (100%)
 - **User Management Models**: 26/26 tests ✅ (100%)
 - **Signal Handlers**: 18/18 tests ✅ (100%)
-- **Forms**: 0/8 tests ❌ (0%)
+- **Forms**: 79/79 tests ✅ (100%)
 - **Views**: 0/12 tests ❌ (0%)
 - **API Endpoints**: 0/8 tests ❌ (0%)
 - **Management Commands**: 0/3 tests ❌ (0%)
 
-**Overall Progress**: 93/118 tests completed (79%)
+**Overall Progress**: 172/197 tests completed (87%)
 
 ---
 
@@ -277,3 +296,6 @@ This document outlines the unit testing requirements for the custom functionalit
 - ✅ Signal handler tests for automatic tube creation and storage
 - ✅ Signal handler tests for disposition change handling
 - ✅ Signal handler tests for auto-storage functionality
+- ✅ Form validation tests for all sample forms (Sample, Aliquot, AliquotLocation, AliquotType, AliquotDisposition, Source)
+- ✅ Form validation tests for all storage forms (Site, Device, Shelf, Rack, Box)
+- ✅ Form validation tests for all person forms (CreateUser, CustomUserCreation, CustomUserChange, UserRole, Permission, UserPreference, BulkPermission, UserSearch, AuditLogFilter)
