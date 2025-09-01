@@ -167,31 +167,48 @@ def convert_csv_to_fixtures(csv_file):
                     'sample': samples[sample_key],
                     'quantity': int(float(row['Current Amount'] or 0)),
                     'aliquotType': aliquot_types[aliquot_type],
-                    'disposition': dispositions[disposition],
                     'passage': row['Aliquot/SubA Passage#'] or '0',
                     'experiment': row['Experiment #'] or '',
                     'notes': row['Aliquot Notes'] or ''
                 }
             })
             pk_counter['aliquot'] += 1
-            # Create AliquotLocation if box exists
-            if box_key in storage['boxes'] and row['Position 3'] and row['Position 4']:
-                fixtures.append({
-                    'model': 'sample.aliquotlocation',
-                    'pk': pk_counter['location'],
-                    'fields': {
-                        'aliquot': aliquot_pk,
-                        'box': storage['boxes'][box_key],
-                        'row': int(row['Position 3']),
-                        'column': int(row['Position 4'])
-                    }
-                })
-                pk_counter['location'] += 1
+            # Create AliquotTube for this aliquot
+            quantity = int(float(row['Current Amount'] or 0))
+            if quantity > 0:
+                for tube_num in range(1, quantity + 1):
+                    # Create tube
+                    tube_pk = pk_counter['tube']
+                    fixtures.append({
+                        'model': 'sample.aliquottube',
+                        'pk': tube_pk,
+                        'fields': {
+                            'aliquot': aliquot_pk,
+                            'tube_number': tube_num,
+                            'disposition': dispositions[disposition]
+                        }
+                    })
+                    pk_counter['tube'] += 1
+                    
+                    # Create AliquotLocation if box exists and this is the first tube
+                    if tube_num == 1 and box_key in storage['boxes'] and row['Position 3'] and row['Position 4']:
+                        fixtures.append({
+                            'model': 'sample.aliquotlocation',
+                            'pk': pk_counter['location'],
+                            'fields': {
+                                'aliquot': aliquot_pk,
+                                'tube_number': tube_num,
+                                'box': storage['boxes'][box_key],
+                                'row': int(row['Position 3']),
+                                'column': int(row['Position 4'])
+                            }
+                        })
+                        pk_counter['location'] += 1
     # Write fixtures to file
-    with open('sample_fixtures.json', 'w') as f:
+    with open('../fixtures/sample_fixtures.json', 'w') as f:
         json.dump(fixtures, f, indent=2)
 
 # Usage
 # Note: This script now uses the anonymized test data by default
 # The original sensitive data should not be used for testing
-convert_csv_to_fixtures('anonymized_test_data.csv') 
+convert_csv_to_fixtures('../data/anonymized_test_data.csv') 
