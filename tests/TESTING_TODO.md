@@ -146,6 +146,17 @@ This document outlines the unit testing requirements for the custom functionalit
   - Tube count calculations for non-stored aliquots
   - Simple disposition change without signal interference
 
+### Access Level and Security Tests (8 tests) ✅
+- **Access Level Restriction Tests** (8/8 tests) ✅
+  - Admin access to all samples and aliquots
+  - Manager access restrictions (cannot access admin-only)
+  - Member access restrictions (cannot access admin/manager)
+  - Viewer access restrictions (cannot access any restricted)
+  - Aliquot access level restrictions
+  - Access level info API functionality
+  - User role access level methods
+  - Object access validation methods
+
 ---
 
 ## 🚧 REMAINING TESTS TO IMPLEMENT
@@ -314,16 +325,26 @@ This document outlines the unit testing requirements for the custom functionalit
 - **Storage Models**: 23/23 tests ✅ (100%)
 - **User Management Models**: 26/26 tests ✅ (100%)
 - **Signal Handlers**: 18/18 tests ✅ (100%)
+- **Access Level & Security**: 8/8 tests ✅ (100%)
 - **Forms**: 79/79 tests ✅ (100%)
 - **Views**: 69/69 tests ✅ (100%)
 - **API Endpoints**: 37/37 tests ✅ (100%)
 - **Management Commands**: 0/3 tests ❌ (0%)
 
-**Overall Progress**: 278/303 tests completed (92%)
+**Overall Progress**: 286/303 tests completed (94%)
 
 ---
 
 ## 🔧 RECENT CHANGES
+
+### Access Level Restrictions Implementation
+- **Added access level fields** to all sample and storage models with three tiers: 'admins_only', 'admins_managers', 'all_members'
+- **Implemented access level validation** in UserRole model with `has_access_level()` and `can_access_object()` methods
+- **Enhanced forms** to include access level configuration fields
+- **Updated templates** with visual access level badges and proper styling
+- **Added access level decorators** for view-level access control
+- **Created demo views** to demonstrate access level functionality
+- **Implemented comprehensive testing** with 8 test cases covering all access level scenarios
 
 ### Model Architecture Updates
 - **Aliquot.disposition** is now a computed property based on individual tube dispositions
@@ -350,3 +371,4 @@ This document outlines the unit testing requirements for the custom functionalit
 - ✅ API tests for all existing API endpoints (Dashboard Stats, Theme Toggle, User Permissions, Grant/Revoke Object Permissions, Storage Capacity)
 - ✅ API error handling tests (400, 403, 404, 405 errors)
 - ✅ API performance tests (response time validation)
+- ✅ Access level restriction tests for all user roles and access levels
