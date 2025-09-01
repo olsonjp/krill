@@ -20,19 +20,19 @@
                     <span class="material-icons-round expand-icon">expand_more</span>
                 </a>
                 <div id="sample-section" class="sidebar-submenu {% if 'sample' in request.path %}show{% endif %}">
-                    <a href="{% url 'sample:list' %}" class="submenu-item {% if 'sample' in request.path and not request.GET.type %}active{% endif %}">
+                    <a href="{% url 'sample:list' %}" class="submenu-item {% if 'sample' in request.path and not request.GET.type and not 'detail/aliquot/' in request.path and not 'detail/aliquot-type/' in request.path and not 'detail/source/' in request.path %}active{% endif %}">
                         <span class="material-icons-round">list</span>
                         <h3>Samples</h3>
                     </a>
-                    <a href="{% url 'sample:list' %}?type=aliquot" class="submenu-item {% if request.GET.type == 'aliquot' %}active{% endif %}">
+                    <a href="{% url 'sample:list' %}?type=aliquot" class="submenu-item {% if request.GET.type == 'aliquot' or 'detail/aliquot/' in request.path %}active{% endif %}">
                         <span class="material-icons-round">biotech</span>
                         <h3>Aliquots</h3>
                     </a>
-                    <a href="{% url 'sample:list' %}?type=aliquot-type" class="submenu-item {% if request.GET.type == 'aliquot-type' %}active{% endif %}">
+                    <a href="{% url 'sample:list' %}?type=aliquot-type" class="submenu-item {% if request.GET.type == 'aliquot-type' or 'detail/aliquot-type/' in request.path %}active{% endif %}">
                         <span class="material-icons-round">category</span>
                         <h3>Aliquot Types</h3>
                     </a>
-                    <a href="{% url 'sample:list' %}?type=source" class="submenu-item {% if request.GET.type == 'source' %}active{% endif %}">
+                    <a href="{% url 'sample:list' %}?type=source" class="submenu-item {% if request.GET.type == 'source' or 'detail/source/' in request.path %}active{% endif %}">
                         <span class="material-icons-round">source</span>
                         <h3>Sources</h3>
                     </a>
