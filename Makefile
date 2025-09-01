@@ -25,6 +25,11 @@ help:
 	@echo "  test-local    - Run tests locally"
 	@echo "  test-docker   - Run tests in Docker container"
 	@echo "  security-check - Run security validation"
+	@echo "  test-data     - Run anonymized data tests"
+	@echo "  test-data-gen - Generate anonymized test data"
+	@echo "  test-data-fixtures - Generate Django fixtures from test data"
+	@echo "  test-data-all - Generate all test data and fixtures"
+	@echo "  create-test-superuser - Create test superuser (admin/admin)"
 	@echo ""
 	@echo "Docker Commands:"
 	@echo "  build-dev     - Build development image"
@@ -38,8 +43,11 @@ help:
 	@echo "Data Management:"
 	@echo "  flush         - Flush database"
 	@echo "  loaddata      - Load sample data"
+	@echo "  load-testdata - Load anonymized test data"
 	@echo "  setup         - Setup development environment"
+	@echo "  setup-test    - Setup test environment with anonymized data"
 	@echo "  reset         - Reset development environment"
+	@echo "  reset-test    - Reset test environment with anonymized data"
 	@echo ""
 	@echo "Utility Commands:"
 	@echo "  clean         - Remove all krill images"
@@ -118,6 +126,44 @@ security-check:
 	@echo "Running security validation..."
 	cd krill && python run_security_check.py
 
+# Anonymized Data Commands
+test-data:
+	@echo "Running anonymized data tests..."
+	python tests/run_tests.py
+
+test-data-gen:
+	@echo "Generating anonymized test data..."
+	@if [ ! -f "ln2_cane4_export.csv" ]; then \
+		echo "Error: Original data file 'ln2_cane4_export.csv' not found in project root."; \
+		echo "Please ensure the original data file is present before generating anonymized data."; \
+		echo "The anonymized data will not be regenerated."; \
+		exit 1; \
+	fi
+	cd tests/scripts && python anonymize_csv.py
+
+test-data-fixtures:
+	@echo "Generating Django fixtures from anonymized data..."
+	cd tests/scripts && python convert_csv.py
+
+create-test-superuser:
+	@echo "Creating test superuser..."
+	cd tests/scripts && python create_test_superuser.py
+
+test-data-all:
+	@echo "Generating all test data and fixtures..."
+	@if [ ! -f "ln2_cane4_export.csv" ]; then \
+		echo "Error: Original data file 'ln2_cane4_export.csv' not found in project root."; \
+		echo "Please ensure the original data file is present before generating anonymized data."; \
+		exit 1; \
+	fi
+	@echo "Step 1: Generating anonymized data..."
+	cd tests/scripts && python anonymize_csv.py
+	@echo "Step 2: Generating Django fixtures..."
+	cd tests/scripts && python convert_csv.py
+	@echo "Step 3: Running verification tests..."
+	python tests/run_tests.py
+	@echo "All test data generation complete!"
+
 # Docker Commands
 test:
 	@echo "Building and running tests..."
@@ -157,6 +203,10 @@ loaddata:
 	@echo "Loading sample data..."
 	cd krill && python manage.py loaddata sample_fixtures.json
 
+load-testdata:
+	@echo "Loading anonymized test data..."
+	cd krill && python manage.py loaddata ../tests/fixtures/sample_fixtures.json
+
 dbshell:
 	@echo "Opening database shell..."
 	cd krill && python manage.py dbshell
@@ -175,8 +225,22 @@ setup:
 	cd krill && python manage.py migrate
 	@echo "Development setup complete!"
 
+setup-test:
+	@echo "Setting up test environment with anonymized data..."
+	cd krill && python manage.py migrate
+	cd krill && python manage.py loaddata ../tests/fixtures/sample_fixtures.json
+	cd tests/scripts && python create_test_superuser.py
+	@echo "Test environment setup complete!"
+
 reset:
 	@echo "Resetting development environment..."
 	cd krill && python manage.py flush --noinput
 	cd krill && python manage.py loaddata sample_fixtures.json
 	@echo "Development environment reset complete!"
+
+reset-test:
+	@echo "Resetting test environment with anonymized data..."
+	cd krill && python manage.py flush --noinput
+	cd krill && python manage.py loaddata ../tests/fixtures/sample_fixtures.json
+	cd tests/scripts && python create_test_superuser.py
+	@echo "Test environment reset complete!"
