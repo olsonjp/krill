@@ -7,6 +7,9 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 from django.utils import timezone
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 from .models import UserPreference, UserRole, Permission, UserAuditLog
 from .forms import (
     UserRoleForm, PermissionForm, UserPreferenceForm, 
@@ -388,14 +391,31 @@ def grant_object_permission_api(request):
         except ContentType.DoesNotExist:
             return JsonResponse({'error': 'Invalid model name'}, status=400)
         
+        # Get the user object
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return JsonResponse({'error': 'User not found'}, status=404)
+        
+        # Parse expiration date if provided
+        parsed_expires_at = None
+        if expires_at:
+            try:
+                from django.utils.dateparse import parse_datetime
+                parsed_expires_at = parse_datetime(expires_at)
+                if not parsed_expires_at:
+                    return JsonResponse({'error': 'Invalid expiration date format'}, status=400)
+            except (ValueError, TypeError):
+                return JsonResponse({'error': 'Invalid expiration date format'}, status=400)
+        
         # Grant the permission
         permission = grant_object_permission(
-            user_id=user_id,
+            user=user,
             model_class=model_class,
             object_id=object_id,
             permission_type=permission_type,
             granted_by=request.user,
-            expires_at=expires_at
+            expires_at=parsed_expires_at
         )
         
         return JsonResponse({
@@ -431,9 +451,15 @@ def revoke_object_permission_api(request):
         except ContentType.DoesNotExist:
             return JsonResponse({'error': 'Invalid model name'}, status=400)
         
+        # Get the user object
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return JsonResponse({'error': 'User not found'}, status=404)
+        
         # Revoke the permission
         success = revoke_object_permission(
-            user_id=user_id,
+            user=user,
             model_class=model_class,
             object_id=object_id,
             permission_type=permission_type,

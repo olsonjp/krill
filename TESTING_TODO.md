@@ -210,18 +210,59 @@ This document outlines the unit testing requirements for the custom functionalit
   - StorageView tests
   - DashboardStats view tests
 
-#### 3. API Endpoint Tests (0/8 tests) ❌
-- **Sample API Tests**
-  - Sample list API
-  - Sample detail API
-  - Sample create API
-  - Sample update API
-  - Sample delete API
+#### 3. API Endpoint Tests (37/37 tests) ✅
+- **Dashboard Stats API Tests** (3 tests) ✅
+  - Dashboard stats authentication
+  - Dashboard stats data accuracy
+  - Dashboard stats performance
 
-- **Storage API Tests**
-  - Storage list API
-  - Storage detail API
-  - Storage capacity API
+- **Theme Toggle API Tests** (4 tests) ✅
+  - Theme toggle authentication
+  - Theme toggle method validation
+  - Theme toggle preference creation
+  - Theme toggle preference toggling
+
+- **User Permissions API Tests** (6 tests) ✅
+  - User permissions authentication
+  - User permissions role requirements
+  - User permissions lab manager access
+  - User permissions lab admin access
+  - User permissions nonexistent user
+  - User permissions role data
+
+- **Grant Object Permission API Tests** (6 tests) ✅
+  - Grant permission authentication
+  - Grant permission role requirements
+  - Grant permission method validation
+  - Grant permission missing parameters
+  - Grant permission invalid model
+  - Grant permission success
+  - Grant permission with expiration
+
+- **Revoke Object Permission API Tests** (6 tests) ✅
+  - Revoke permission authentication
+  - Revoke permission role requirements
+  - Revoke permission method validation
+  - Revoke permission missing parameters
+  - Revoke permission invalid model
+  - Revoke permission nonexistent permission
+  - Revoke permission success
+
+- **Storage Capacity API Tests** (4 tests) ✅
+  - Storage capacity authentication
+  - Storage capacity data accuracy
+  - Storage capacity with stored tubes
+  - Storage capacity performance
+
+- **API Error Handling Tests** (4 tests) ✅
+  - API 400 error handling
+  - API 403 error handling
+  - API 404 error handling
+  - API 405 error handling
+
+- **API Performance Tests** (2 tests) ✅
+  - Dashboard stats performance
+  - Storage capacity performance
 
 #### 4. Management Command Tests (0/3 tests) ❌
 - **Setup User Roles Command Tests**
@@ -275,10 +316,10 @@ This document outlines the unit testing requirements for the custom functionalit
 - **Signal Handlers**: 18/18 tests ✅ (100%)
 - **Forms**: 79/79 tests ✅ (100%)
 - **Views**: 69/69 tests ✅ (100%)
-- **API Endpoints**: 0/8 tests ❌ (0%)
+- **API Endpoints**: 37/37 tests ✅ (100%)
 - **Management Commands**: 0/3 tests ❌ (0%)
 
-**Overall Progress**: 241/266 tests completed (91%)
+**Overall Progress**: 278/303 tests completed (92%)
 
 ---
 
@@ -306,3 +347,6 @@ This document outlines the unit testing requirements for the custom functionalit
 - ✅ View tests for all person views (ToggleTheme, CreateUser, UserList, UserDetail, UserRoleEdit, PermissionList, GrantPermission, BulkGrantPermission, AuditLog, UserPermissionsApi, GrantObjectPermissionApi, RevokeObjectPermissionApi)
 - ✅ View tests for all sample views (SampleListView, ModelCreateView)
 - ✅ View tests for all storage views (StorageListView, HomeView, StorageView, DashboardStats)
+- ✅ API tests for all existing API endpoints (Dashboard Stats, Theme Toggle, User Permissions, Grant/Revoke Object Permissions, Storage Capacity)
+- ✅ API error handling tests (400, 403, 404, 405 errors)
+- ✅ API performance tests (response time validation)
