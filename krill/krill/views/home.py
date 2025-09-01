@@ -159,6 +159,7 @@ def get_recent_activity():
                 'time_ago': time_ago,
                 'action_type': activity.action,
                 'user': activity.user.username if activity.user else 'System',
+                'target_id': activity.target_id,
             })
         return activities
     except Exception as e:

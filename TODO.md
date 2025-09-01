@@ -88,6 +88,59 @@ def search_samples(request):
 - `GET /samples/?sort=<field>&order=<asc|desc>`
 - `GET /storage/?sort=<field>&order=<asc|desc>`
 
+### 4.1. List View Pagination {#4-1-list-view-pagination}
+**Status**: ❌ No implementation  
+**Frontend**: All items displayed on single page in list templates  
+**Current**: No pagination - all items loaded at once  
+**Need**: Server-side pagination for better performance  
+
+**Required Implementation**:
+- Add pagination to `SampleListView` in `sample/views/list.py`
+- Add pagination to `StorageListView` in `storage/views/list.py`
+- Update templates to show pagination controls
+- Add page size configuration (e.g., 20 items per page)
+
+**Implementation**:
+```python
+# Update sample/views/list.py
+from django.core.paginator import Paginator
+
+class SampleListView(ListView):
+    paginate_by = 20  # Items per page
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # ... existing code ...
+        
+        # Add pagination
+        paginator = Paginator(context['items'], self.paginate_by)
+        page_number = self.request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
+        context['page_obj'] = page_obj
+        context['items'] = page_obj
+        return context
+```
+
+**Template Updates**:
+```html
+<!-- Add to sample/list.html and storage/list.html -->
+{% if page_obj.has_other_pages %}
+<div class="pagination">
+    {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode }}" class="page-link">&laquo; Previous</a>
+    {% endif %}
+    
+    <span class="current-page">
+        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+    </span>
+    
+    {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode }}" class="page-link">Next &raquo;</a>
+    {% endif %}
+</div>
+{% endif %}
+```
+
 ### 5. Activity Feed API {#5-activity-feed-api}
 **Status**: ❌ No implementation  
 **Frontend**: Static activity items in `home.html`  

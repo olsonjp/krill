@@ -1,11 +1,15 @@
 // Dashboard statistics update
 async function updateDashboardStats() {
+    // Show loading state
+    showLoadingState();
+    
     try {
         const response = await fetch('/dashboard/stats/');
         if (!response.ok) {
-            throw new Error('Network response was not ok');
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
+        
         // Update Active Samples
         const sampleCard = Array.from(document.querySelectorAll('.stat-card')).find(card => 
             card.querySelector('.material-icons-round').textContent.trim() === 'science'
@@ -14,8 +18,10 @@ async function updateDashboardStats() {
             const sampleElement = sampleCard.querySelector('.stat-info p');
             if (sampleElement) {
                 sampleElement.textContent = data.active_samples || 0;
+                sampleElement.classList.remove('loading');
             }
         }
+        
         // Update Storage Usage
         const storageCard = Array.from(document.querySelectorAll('.stat-card')).find(card => 
             card.querySelector('.material-icons-round').textContent.trim() === 'inventory_2'
@@ -24,8 +30,10 @@ async function updateDashboardStats() {
             const percentageElement = storageCard.querySelector('.stat-info p');
             if (percentageElement) {
                 percentageElement.textContent = `${data.storage_usage || 0}%`;
+                percentageElement.classList.remove('loading');
             }
         }
+        
         // Update Reports
         const reportCard = Array.from(document.querySelectorAll('.stat-card')).find(card => 
             card.querySelector('.material-icons-round').textContent.trim() === 'description'
@@ -34,8 +42,10 @@ async function updateDashboardStats() {
             const reportElement = reportCard.querySelector('.stat-info p');
             if (reportElement) {
                 reportElement.textContent = `${data.recent_reports || 0} Recent`;
+                reportElement.classList.remove('loading');
             }
         }
+        
         // Update Alerts
         const alertCard = Array.from(document.querySelectorAll('.stat-card')).find(card => 
             card.querySelector('.material-icons-round').textContent.trim() === 'warning'
@@ -44,11 +54,98 @@ async function updateDashboardStats() {
             const alertElement = alertCard.querySelector('.stat-info p');
             if (alertElement) {
                 alertElement.textContent = `${data.alerts || 0} New`;
+                alertElement.classList.remove('loading');
             }
         }
+        
+        // Hide loading state
+        hideLoadingState();
+        
     } catch (error) {
         console.error('Error fetching dashboard stats:', error);
+        showErrorState();
     }
+}
+
+// Show loading state
+function showLoadingState() {
+    const statCards = document.querySelectorAll('.stat-card .stat-info p');
+    statCards.forEach(element => {
+        element.classList.add('loading');
+        element.textContent = 'Loading...';
+    });
+}
+
+// Hide loading state
+function hideLoadingState() {
+    const loadingElements = document.querySelectorAll('.loading');
+    loadingElements.forEach(element => {
+        element.classList.remove('loading');
+    });
+}
+
+// Show error state
+function showErrorState() {
+    const statCards = document.querySelectorAll('.stat-card .stat-info p');
+    statCards.forEach(element => {
+        element.classList.add('error');
+        element.textContent = 'Error';
+    });
+    
+    // Show error notification
+    showNotification('Failed to load dashboard statistics. Please refresh the page.', 'error');
+}
+
+// Show notification
+function showNotification(message, type = 'info') {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.textContent = message;
+    
+    // Add styles
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 20px;
+        border-radius: 4px;
+        color: white;
+        font-weight: 500;
+        z-index: 1000;
+        opacity: 0;
+        transform: translateX(100%);
+        transition: all 0.3s ease;
+    `;
+    
+    // Set background color based on type
+    if (type === 'error') {
+        notification.style.backgroundColor = '#dc3545';
+    } else if (type === 'success') {
+        notification.style.backgroundColor = '#28a745';
+    } else {
+        notification.style.backgroundColor = '#007bff';
+    }
+    
+    // Add to page
+    document.body.appendChild(notification);
+    
+    // Animate in
+    setTimeout(() => {
+        notification.style.opacity = '1';
+        notification.style.transform = 'translateX(0)';
+    }, 100);
+    
+    // Remove after 5 seconds
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        notification.style.transform = 'translateX(100%)';
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
+    }, 5000);
 }
 
 // Storage usage calculation (keeping for backward compatibility)

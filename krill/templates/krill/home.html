@@ -11,46 +11,46 @@
 
     <!-- Quick Stats -->
     <div class="stats-container">
-        <div class="stat-card">
+        <a href="{% url 'sample:sample_list' %}" class="stat-card clickable">
             <span class="material-icons-round">science</span>
             <div class="stat-info">
                 <h3>Active Samples</h3>
                 <p>{{ stats.active_samples|default:"0" }}</p>
             </div>
-        </div>
-        <div class="stat-card">
+        </a>
+        <a href="{% url 'storage:storage_list' %}" class="stat-card clickable">
             <span class="material-icons-round">inventory_2</span>
             <div class="stat-info">
                 <h3>Storage Usage</h3>
                 <p>{{ stats.storage_usage|default:"0" }}%</p>
             </div>
-        </div>
-        <div class="stat-card">
+        </a>
+        <a href="{% url 'reports:reports_dashboard' %}" class="stat-card clickable">
             <span class="material-icons-round">description</span>
             <div class="stat-info">
                 <h3>Reports</h3>
                 <p>{{ stats.recent_reports|default:"0" }} Recent</p>
             </div>
-        </div>
-        <div class="stat-card">
+        </a>
+        <a href="{% url 'reports:alert_list' %}" class="stat-card clickable">
             <span class="material-icons-round">warning</span>
             <div class="stat-info">
                 <h3>Alerts</h3>
                 <p>{{ stats.alerts|default:"0" }} New</p>
             </div>
-        </div>
+        </a>
     </div>
 
     <!-- Recent Activity -->
     <div class="recent-activity">
         <div class="section-header">
             <h2>Recent Activity</h2>
-            <button class="view-all">View All</button>
+            <a href="{% url 'sample:sample_list' %}" class="view-all">View All</a>
         </div>
         <div class="activity-list">
             {% if recent_activity %}
                 {% for activity in recent_activity %}
-                <div class="activity-item">
+                <div class="activity-item clickable" onclick="navigateToActivity('{{ activity.action_type }}', '{{ activity.target_id|default:"" }}')">
                     <span class="material-icons-round">
                         {% if activity.action_type == 'sample_created' or activity.action_type == 'aliquot_created' %}
                             add_circle
@@ -84,22 +84,22 @@
     <div class="quick-actions">
         <h2>Quick Actions</h2>
         <div class="action-grid">
-            <button class="action-btn">
+            <a href="{% url 'sample:sample_create' %}?type=aliquot" class="action-btn">
                 <span class="material-icons-round">add_circle</span>
-                New Sample
-            </button>
-            <button class="action-btn">
+                New Aliquot
+            </a>
+            <a href="{% url 'sample:sample_search' %}" class="action-btn">
                 <span class="material-icons-round">search</span>
-                Find Sample
-            </button>
-            <button class="action-btn">
+                Find Aliquot
+            </a>
+            <a href="{% url 'reports:reports_dashboard' %}" class="action-btn">
                 <span class="material-icons-round">summarize</span>
                 Generate Report
-            </button>
-            <button class="action-btn">
+            </a>
+            <a href="{% url 'settings' %}" class="action-btn">
                 <span class="material-icons-round">settings</span>
                 Settings
-            </button>
+            </a>
         </div>
     </div>
 </div>
@@ -110,6 +110,79 @@
 <style>
     .storage-card .progress svg circle {
         stroke-dashoffset: calc(227 - (227 * var(--percentage)) / 100);
+    }
+    
+    /* Clickable card styles */
+    .stat-card.clickable {
+        text-decoration: none;
+        color: inherit;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    
+    .stat-card.clickable:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .action-btn {
+        text-decoration: none;
+        color: inherit;
+        transition: all 0.2s ease;
+    }
+    
+    .action-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .activity-item.clickable {
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .activity-item.clickable:hover {
+        background-color: rgba(0, 0, 0, 0.05);
+        transform: translateX(4px);
+    }
+    
+    .view-all {
+        text-decoration: none;
+        color: #007bff;
+        font-weight: 500;
+        transition: color 0.2s ease;
+    }
+    
+    .view-all:hover {
+        color: #0056b3;
+    }
+    
+    /* Loading and error states */
+    .loading {
+        opacity: 0.6;
+        animation: pulse 1.5s ease-in-out infinite;
+    }
+    
+    .error {
+        color: #dc3545;
+        font-weight: 500;
+    }
+    
+    @keyframes pulse {
+        0% { opacity: 0.6; }
+        50% { opacity: 1; }
+        100% { opacity: 0.6; }
+    }
+    
+    /* Enhanced hover effects */
+    .stat-card.clickable:hover .material-icons-round {
+        transform: scale(1.1);
+        transition: transform 0.2s ease;
+    }
+    
+    .action-btn:hover .material-icons-round {
+        transform: scale(1.1);
+        transition: transform 0.2s ease;
     }
 </style>
 
@@ -136,6 +209,30 @@
             childList: true,
             subtree: true
         });
+    }
+
+    // Navigate to activity-related pages
+    function navigateToActivity(actionType, targetId) {
+        if (!actionType || actionType === 'system_init') {
+            return; // Don't navigate for system activities
+        }
+        
+        if (actionType.includes('sample')) {
+            if (targetId) {
+                window.location.href = `/samples/${targetId}/`;
+            } else {
+                window.location.href = '{% url "sample:sample_list" %}';
+            }
+        } else if (actionType.includes('aliquot')) {
+            if (targetId) {
+                window.location.href = `/samples/aliquots/${targetId}/`;
+            } else {
+                window.location.href = '{% url "sample:sample_list" %}';
+            }
+        } else {
+            // Default to sample list for other activities
+            window.location.href = '{% url "sample:sample_list" %}';
+        }
     }
 </script>
 {% endblock %}
