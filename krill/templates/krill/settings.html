@@ -22,21 +22,6 @@
                     <label>Display Name</label>
                     <input type="text" value="{{ user.first_name|default:user.username }}" />
                 </div>
-                <div class="setting-item">
-                    <label>Email Notifications</label>
-                    <div class="toggle-switch">
-                        <input type="checkbox" id="email-notifications">
-                        <label for="email-notifications"></label>
-                    </div>
-                </div>
-                <div class="setting-item">
-                    <label>Language</label>
-                    <select>
-                        <option value="English">English</option>
-                        <option value="Spanish">Spanish</option>
-                        <option value="French">French</option>
-                    </select>
-                </div>
             </div>
         </div>
 
@@ -52,74 +37,6 @@
                     <div class="toggle-switch">
                         <input type="checkbox" id="dark-mode" {% if user_preference.dark_mode %}checked{% endif %}>
                         <label for="dark-mode"></label>
-                    </div>
-                </div>
-                <div class="setting-item">
-                    <label>Auto-save Interval</label>
-                    <select>
-                        <option value="1 minute">1 minute</option>
-                        <option value="5 minutes">5 minutes</option>
-                        <option value="15 minutes">15 minutes</option>
-                        <option value="30 minutes">30 minutes</option>
-                    </select>
-                </div>
-                <div class="setting-item">
-                    <label>Data Retention Period</label>
-                    <select>
-                        <option value="30 days">30 days</option>
-                        <option value="60 days">60 days</option>
-                        <option value="90 days">90 days</option>
-                        <option value="180 days">180 days</option>
-                    </select>
-                </div>
-            </div>
-        </div>
-
-        <!-- Storage Settings -->
-        <div class="settings-section">
-            <h2>
-                <span class="material-icons-round">storage</span>
-                Storage Settings
-            </h2>
-            <div class="settings-content">
-                <div class="setting-item">
-                    <label>Default Storage Location</label>
-                    <select>
-                        <option value="Freezer A">Freezer A</option>
-                        <option value="Freezer B">Freezer B</option>
-                        <option value="Freezer C">Freezer C</option>
-                    </select>
-                </div>
-                <div class="setting-item">
-                    <label>Auto-archive Old Samples</label>
-                    <div class="toggle-switch">
-                        <input type="checkbox" id="auto-archive">
-                        <label for="auto-archive"></label>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Report Settings -->
-        <div class="settings-section">
-            <h2>
-                <span class="material-icons-round">description</span>
-                Report Settings
-            </h2>
-            <div class="settings-content">
-                <div class="setting-item">
-                    <label>Default Report Format</label>
-                    <select>
-                        <option value="PDF">PDF</option>
-                        <option value="Excel">Excel</option>
-                        <option value="CSV">CSV</option>
-                    </select>
-                </div>
-                <div class="setting-item">
-                    <label>Auto-generate Reports</label>
-                    <div class="toggle-switch">
-                        <input type="checkbox" id="auto-reports">
-                        <label for="auto-reports"></label>
                     </div>
                 </div>
             </div>

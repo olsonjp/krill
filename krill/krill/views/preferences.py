@@ -30,33 +30,14 @@ def get_user_preferences(request):
     try:
         preference, created = UserPreference.objects.get_or_create(
             user=request.user,
-            defaults={
-                'dark_mode': False,
-                'email_notifications': True,
-                'language': 'English',
-                'auto_save_interval': '5 minutes',
-                'data_retention_period': '90 days',
-                'default_storage_location': 'Freezer A',
-                'auto_archive_old_samples': False,
-                'default_report_format': 'PDF',
-                'auto_generate_reports': True,
-                'display_name': request.user.first_name or request.user.username
-            }
+            defaults={'dark_mode': False}
         )
         
         return JsonResponse({
             'success': True,
             'preferences': {
                 'dark_mode': preference.dark_mode,
-                'email_notifications': getattr(preference, 'email_notifications', True),
-                'language': getattr(preference, 'language', 'English'),
-                'auto_save_interval': getattr(preference, 'auto_save_interval', '5 minutes'),
-                'data_retention_period': getattr(preference, 'data_retention_period', '90 days'),
-                'default_storage_location': getattr(preference, 'default_storage_location', 'Freezer A'),
-                'auto_archive_old_samples': getattr(preference, 'auto_archive_old_samples', False),
-                'default_report_format': getattr(preference, 'default_report_format', 'PDF'),
-                'auto_generate_reports': getattr(preference, 'auto_generate_reports', True),
-                'display_name': getattr(preference, 'display_name', request.user.first_name or request.user.username)
+                'display_name': request.user.first_name or request.user.username
             }
         })
     except Exception as e:
@@ -78,20 +59,15 @@ def save_user_preferences(request):
             defaults={'dark_mode': False}
         )
         
-        # Update fields if they exist in the model
+        # Update dark mode if provided
         if 'dark_mode' in data:
             preference.dark_mode = data['dark_mode']
+            preference.save()
         
-        # Update additional fields if they exist in the model
-        # Note: These fields need to be added to the UserPreference model
-        for field in ['email_notifications', 'language', 'auto_save_interval', 
-                     'data_retention_period', 'default_storage_location', 
-                     'auto_archive_old_samples', 'default_report_format', 
-                     'auto_generate_reports', 'display_name']:
-            if field in data and hasattr(preference, field):
-                setattr(preference, field, data[field])
-        
-        preference.save()
+        # Update display name (user's first_name field)
+        if 'display_name' in data:
+            request.user.first_name = data['display_name']
+            request.user.save()
         
         return JsonResponse({
             'success': True,
