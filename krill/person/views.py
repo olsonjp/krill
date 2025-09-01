@@ -265,15 +265,17 @@ def bulk_grant_permission(request):
         if form.is_valid():
             users = form.cleaned_data['users']
             permission_type = form.cleaned_data['permission_type']
+            content_type = form.cleaned_data['content_type']
+            object_id = form.cleaned_data['object_id']
             expires_at = form.cleaned_data['expires_at']
             
             granted_count = 0
             for user in users:
-                # This would need to be adapted for specific object types
-                # For now, we'll just create a generic permission
                 permission, created = Permission.objects.get_or_create(
                     user=user,
                     permission_type=permission_type,
+                    content_type=content_type,
+                    object_id=object_id,
                     defaults={
                         'granted_by': request.user,
                         'expires_at': expires_at

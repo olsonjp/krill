@@ -1,4 +1,4 @@
-from django.test import TestCase
+from django.test import TestCase, Client
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
@@ -6,12 +6,22 @@ from django.utils import timezone
 from django.contrib.contenttypes.models import ContentType
 from django.http import HttpRequest
 from django import forms
+from django.urls import reverse
+from django.test import RequestFactory
+from django.contrib.messages.storage.fallback import FallbackStorage
+from django.contrib.sessions.middleware import SessionMiddleware
+from django.contrib.auth.middleware import AuthenticationMiddleware
 
 from .models import UserRole, Permission, UserAuditLog, UserPreference
 from .forms import (
     CreateUserForm, CustomUserCreationForm, CustomUserChangeForm,
     UserRoleForm, PermissionForm, UserPreferenceForm, BulkPermissionForm,
     UserSearchForm, AuditLogFilterForm
+)
+from .views import (
+    toggle_theme, create_user, user_list, user_detail, user_role_edit,
+    permission_list, grant_permission, revoke_permission, bulk_grant_permission,
+    audit_log, user_permissions_api, grant_object_permission_api, revoke_object_permission_api
 )
 from sample.models.sample import Sample
 from sample.models.source import Source
@@ -712,13 +722,11 @@ class PermissionFormTest(TestCase):
         form_data = {
             'user': self.user.id,
             'permission_type': 'edit',
+            'content_type': self.content_type.id,
+            'object_id': self.sample.id,
             'expires_at': ''
         }
-        form = PermissionForm(
-            data=form_data,
-            content_type=self.content_type,
-            object_id=self.sample.id
-        )
+        form = PermissionForm(data=form_data)
         self.assertTrue(form.is_valid())
         
         permission = form.save(granted_by=self.granted_by)
@@ -734,26 +742,22 @@ class PermissionFormTest(TestCase):
         # Test missing user
         form_data = {
             'permission_type': 'edit',
+            'content_type': self.content_type.id,
+            'object_id': self.sample.id,
             'expires_at': ''
         }
-        form = PermissionForm(
-            data=form_data,
-            content_type=self.content_type,
-            object_id=self.sample.id
-        )
+        form = PermissionForm(data=form_data)
         self.assertFalse(form.is_valid())
         self.assertIn('user', form.errors)
         
         # Test missing permission type
         form_data = {
             'user': self.user.id,
+            'content_type': self.content_type.id,
+            'object_id': self.sample.id,
             'expires_at': ''
         }
-        form = PermissionForm(
-            data=form_data,
-            content_type=self.content_type,
-            object_id=self.sample.id
-        )
+        form = PermissionForm(data=form_data)
         self.assertFalse(form.is_valid())
         self.assertIn('permission_type', form.errors)
     
@@ -763,13 +767,11 @@ class PermissionFormTest(TestCase):
         form_data = {
             'user': self.user.id,
             'permission_type': 'view',
+            'content_type': self.content_type.id,
+            'object_id': self.sample.id,
             'expires_at': expiration_date.strftime('%Y-%m-%d %H:%M:%S')
         }
-        form = PermissionForm(
-            data=form_data,
-            content_type=self.content_type,
-            object_id=self.sample.id
-        )
+        form = PermissionForm(data=form_data)
         self.assertTrue(form.is_valid())
         
         permission = form.save()
@@ -821,9 +823,12 @@ class BulkPermissionFormTest(TestCase):
     
     def test_bulk_permission_form_validation_with_valid_data(self):
         """Test bulk permission form validation with valid data"""
+        content_type = ContentType.objects.get_for_model(Sample)
         form_data = {
             'users': [self.user1.id, self.user2.id],
             'permission_type': 'view',
+            'content_type': content_type.id,
+            'object_id': 1,
             'expires_at': ''
         }
         form = BulkPermissionForm(data=form_data)
@@ -835,9 +840,12 @@ class BulkPermissionFormTest(TestCase):
     
     def test_bulk_permission_form_error_handling_missing_required_fields(self):
         """Test bulk permission form error handling for missing required fields"""
+        content_type = ContentType.objects.get_for_model(Sample)
         # Test missing users
         form_data = {
             'permission_type': 'view',
+            'content_type': content_type.id,
+            'object_id': 1,
             'expires_at': ''
         }
         form = BulkPermissionForm(data=form_data)
@@ -847,6 +855,8 @@ class BulkPermissionFormTest(TestCase):
         # Test missing permission type
         form_data = {
             'users': [self.user1.id],
+            'content_type': content_type.id,
+            'object_id': 1,
             'expires_at': ''
         }
         form = BulkPermissionForm(data=form_data)
@@ -855,10 +865,13 @@ class BulkPermissionFormTest(TestCase):
     
     def test_bulk_permission_form_with_expiration_date(self):
         """Test bulk permission form with expiration date"""
+        content_type = ContentType.objects.get_for_model(Sample)
         expiration_date = timezone.now() + timezone.timedelta(days=30)
         form_data = {
             'users': [self.user1.id],
             'permission_type': 'edit',
+            'content_type': content_type.id,
+            'object_id': 1,
             'expires_at': expiration_date.strftime('%Y-%m-%d %H:%M:%S')
         }
         form = BulkPermissionForm(data=form_data)
@@ -979,3 +992,697 @@ class AuditLogFilterFormTest(TestCase):
         
         # Test placeholders
         self.assertIn('Filter by target type...', form.fields['target_type'].widget.attrs['placeholder'])
+
+
+class PersonViewTest(TestCase):
+    """Base test class for person views with common setup"""
+    
+    def setUp(self):
+        """Set up test data"""
+        self.client = Client()
+        self.factory = RequestFactory()
+        
+        # Create test users with different roles
+        self.viewer_user = User.objects.create_user(
+            username='viewer',
+            email='viewer@example.com',
+            password='testpass123'
+        )
+        # Update the automatically created role
+        self.viewer_role = self.viewer_user.role
+        self.viewer_role.role = 'viewer'
+        self.viewer_role.save()
+        
+        self.lab_member_user = User.objects.create_user(
+            username='lab_member',
+            email='lab_member@example.com',
+            password='testpass123'
+        )
+        # Update the automatically created role
+        self.lab_member_role = self.lab_member_user.role
+        self.lab_member_role.role = 'lab_member'
+        self.lab_member_role.save()
+        
+        self.lab_manager_user = User.objects.create_user(
+            username='lab_manager',
+            email='lab_manager@example.com',
+            password='testpass123'
+        )
+        # Update the automatically created role
+        self.lab_manager_role = self.lab_manager_user.role
+        self.lab_manager_role.role = 'lab_manager'
+        self.lab_manager_role.save()
+        
+        self.lab_admin_user = User.objects.create_user(
+            username='lab_admin',
+            email='lab_admin@example.com',
+            password='testpass123'
+        )
+        # Update the automatically created role
+        self.lab_admin_role = self.lab_admin_user.role
+        self.lab_admin_role.role = 'lab_admin'
+        self.lab_admin_role.save()
+        
+        # Create test source and sample for permission tests
+        self.source = Source.objects.create(name="Test Source")
+        self.sample = Sample.objects.create(name="Test Sample", source=self.source)
+    
+    def _add_session_and_messages(self, request):
+        """Add session and messages middleware to request"""
+        middleware = SessionMiddleware(lambda x: None)
+        middleware.process_request(request)
+        request.session.save()
+        
+        messages = FallbackStorage(request)
+        setattr(request, '_messages', messages)
+        
+        auth_middleware = AuthenticationMiddleware(lambda x: None)
+        auth_middleware.process_request(request)
+
+
+class ToggleThemeViewTest(PersonViewTest):
+    """Test cases for the toggle_theme view"""
+    
+    def test_toggle_theme_requires_login(self):
+        """Test that toggle_theme requires login"""
+        response = self.client.post(reverse('person:toggle_theme'))
+        self.assertEqual(response.status_code, 302)  # Redirect to login
+    
+    def test_toggle_theme_requires_post(self):
+        """Test that toggle_theme only accepts POST requests"""
+        self.client.force_login(self.viewer_user)
+        response = self.client.get(reverse('person:toggle_theme'))
+        self.assertEqual(response.status_code, 405)  # Method not allowed
+    
+    def test_toggle_theme_creates_preference(self):
+        """Test that toggle_theme creates user preference if it doesn't exist"""
+        self.client.force_login(self.viewer_user)
+        response = self.client.post(reverse('person:toggle_theme'))
+        
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+        self.assertTrue(data['dark_mode'])
+        
+        # Check that preference was created
+        preference = UserPreference.objects.get(user=self.viewer_user)
+        self.assertTrue(preference.dark_mode)
+    
+    def test_toggle_theme_toggles_existing_preference(self):
+        """Test that toggle_theme toggles existing preference"""
+        # Update the automatically created preference
+        preference = self.viewer_user.preference
+        preference.dark_mode = False
+        preference.save()
+        
+        self.client.force_login(self.viewer_user)
+        response = self.client.post(reverse('person:toggle_theme'))
+        
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+        self.assertTrue(data['dark_mode'])
+        
+        # Check that preference was toggled
+        preference.refresh_from_db()
+        self.assertTrue(preference.dark_mode)
+
+
+class CreateUserViewTest(PersonViewTest):
+    """Test cases for the create_user view"""
+    
+    def test_create_user_requires_lab_manager_role(self):
+        """Test that create_user requires lab_manager role"""
+        # Test with viewer role
+        self.client.force_login(self.viewer_user)
+        response = self.client.get(reverse('person:create_user'))
+        self.assertEqual(response.status_code, 403)  # Forbidden
+        
+        # Test with lab_member role
+        self.client.force_login(self.lab_member_user)
+        response = self.client.get(reverse('person:create_user'))
+        self.assertEqual(response.status_code, 403)  # Forbidden
+        
+        # Test with lab_manager role
+        self.client.force_login(self.lab_manager_user)
+        response = self.client.get(reverse('person:create_user'))
+        self.assertEqual(response.status_code, 200)  # OK
+    
+    def test_create_user_get_request(self):
+        """Test create_user GET request"""
+        self.client.force_login(self.lab_manager_user)
+        response = self.client.get(reverse('person:create_user'))
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'person/create_user.html')
+        self.assertIn('form', response.context)
+        self.assertIsInstance(response.context['form'], CreateUserForm)
+        self.assertEqual(response.context['title'], 'Create New User')
+    
+    def test_create_user_post_valid_data(self):
+        """Test create_user POST with valid data"""
+        self.client.force_login(self.lab_manager_user)
+        
+        form_data = {
+            'username': 'newuser',
+            'email': 'newuser@example.com',
+            'first_name': 'New',
+            'last_name': 'User',
+            'password1': 'testpass123',
+            'password2': 'testpass123',
+            'role': 'lab_member',
+            'department': 'Research',
+            'lab_unit': 'Lab A'
+        }
+        
+        response = self.client.post(reverse('person:create_user'), form_data)
+        
+        # Should redirect to user detail page
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse('person:user_detail', kwargs={'user_id': User.objects.get(username='newuser').id}))
+        
+        # Check that user was created
+        new_user = User.objects.get(username='newuser')
+        self.assertEqual(new_user.email, 'newuser@example.com')
+        self.assertEqual(new_user.first_name, 'New')
+        self.assertEqual(new_user.last_name, 'User')
+        
+        # Check that user role was created
+        self.assertTrue(hasattr(new_user, 'role'))
+        self.assertEqual(new_user.role.role, 'lab_member')
+        self.assertEqual(new_user.role.department, 'Research')
+        self.assertEqual(new_user.role.lab_unit, 'Lab A')
+        
+        # Check that user preference was created
+        self.assertTrue(hasattr(new_user, 'preference'))
+        self.assertFalse(new_user.preference.dark_mode)
+        
+        # Check that audit log was created
+        audit_log = UserAuditLog.objects.filter(
+            user=self.lab_manager_user,
+            action='create',
+            target_type='User',
+            target_id=new_user.id
+        ).first()
+        self.assertIsNotNone(audit_log)
+        self.assertEqual(audit_log.target_name, 'newuser')
+    
+    def test_create_user_post_invalid_data(self):
+        """Test create_user POST with invalid data"""
+        self.client.force_login(self.lab_manager_user)
+        
+        form_data = {
+            'username': 'newuser',
+            'email': 'invalid-email',  # Invalid email
+            'password1': 'testpass123',
+            'password2': 'differentpass',  # Password mismatch
+            'role': 'lab_member'
+        }
+        
+        response = self.client.post(reverse('person:create_user'), form_data)
+        
+        self.assertEqual(response.status_code, 200)  # Form errors, not redirect
+        self.assertTemplateUsed(response, 'person/create_user.html')
+        self.assertIn('form', response.context)
+        self.assertFalse(response.context['form'].is_valid())
+
+
+class UserListViewTest(PersonViewTest):
+    """Test cases for the user_list view"""
+    
+    def test_user_list_requires_lab_manager_role(self):
+        """Test that user_list requires lab_manager role"""
+        # Test with viewer role
+        self.client.force_login(self.viewer_user)
+        response = self.client.get(reverse('person:user_list'))
+        self.assertEqual(response.status_code, 403)  # Forbidden
+        
+        # Test with lab_manager role
+        self.client.force_login(self.lab_manager_user)
+        response = self.client.get(reverse('person:user_list'))
+        self.assertEqual(response.status_code, 200)  # OK
+    
+    def test_user_list_get_request(self):
+        """Test user_list GET request"""
+        self.client.force_login(self.lab_manager_user)
+        response = self.client.get(reverse('person:user_list'))
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'person/user_list.html')
+        self.assertIn('page_obj', response.context)
+        self.assertIn('form', response.context)
+        self.assertIsInstance(response.context['form'], UserSearchForm)
+        self.assertIn('total_users', response.context)
+    
+    def test_user_list_with_search_filter(self):
+        """Test user_list with search filter"""
+        self.client.force_login(self.lab_manager_user)
+        
+        # Search by username
+        response = self.client.get(reverse('person:user_list'), {'search': 'lab_manager'})
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('page_obj', response.context)
+        
+        # Search by role
+        response = self.client.get(reverse('person:user_list'), {'role': 'lab_manager'})
+        self.assertEqual(response.status_code, 200)
+        
+        # Search by department
+        response = self.client.get(reverse('person:user_list'), {'department': 'Research'})
+        self.assertEqual(response.status_code, 200)
+        
+        # Search by active status
+        response = self.client.get(reverse('person:user_list'), {'is_active': 'True'})
+        self.assertEqual(response.status_code, 200)
+
+
+class UserDetailViewTest(PersonViewTest):
+    """Test cases for the user_detail view"""
+    
+    def test_user_detail_requires_lab_manager_role(self):
+        """Test that user_detail requires lab_manager role"""
+        # Test with viewer role
+        self.client.force_login(self.viewer_user)
+        response = self.client.get(reverse('person:user_detail', kwargs={'user_id': self.lab_member_user.id}))
+        self.assertEqual(response.status_code, 403)  # Forbidden
+        
+        # Test with lab_manager role
+        self.client.force_login(self.lab_manager_user)
+        response = self.client.get(reverse('person:user_detail', kwargs={'user_id': self.lab_member_user.id}))
+        self.assertEqual(response.status_code, 200)  # OK
+    
+    def test_user_detail_get_request(self):
+        """Test user_detail GET request"""
+        self.client.force_login(self.lab_manager_user)
+        response = self.client.get(reverse('person:user_detail', kwargs={'user_id': self.lab_member_user.id}))
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'person/user_detail.html')
+        self.assertIn('user_role', response.context)
+        self.assertEqual(response.context['user_role'], self.lab_member_role)
+        self.assertIn('permissions', response.context)
+        self.assertIn('role_permissions', response.context)
+        self.assertIn('recent_activity', response.context)
+    
+    def test_user_detail_nonexistent_user(self):
+        """Test user_detail with nonexistent user"""
+        self.client.force_login(self.lab_manager_user)
+        response = self.client.get(reverse('person:user_detail', kwargs={'user_id': 99999}))
+        self.assertEqual(response.status_code, 404)  # Not found
+
+
+class UserRoleEditViewTest(PersonViewTest):
+    """Test cases for the user_role_edit view"""
+    
+    def test_user_role_edit_requires_lab_manager_role(self):
+        """Test that user_role_edit requires lab_manager role"""
+        # Test with viewer role
+        self.client.force_login(self.viewer_user)
+        response = self.client.get(reverse('person:user_role_edit', kwargs={'user_id': self.lab_member_user.id}))
+        self.assertEqual(response.status_code, 403)  # Forbidden
+        
+        # Test with lab_manager role
+        self.client.force_login(self.lab_manager_user)
+        response = self.client.get(reverse('person:user_role_edit', kwargs={'user_id': self.lab_member_user.id}))
+        self.assertEqual(response.status_code, 200)  # OK
+    
+    def test_user_role_edit_get_request(self):
+        """Test user_role_edit GET request"""
+        self.client.force_login(self.lab_manager_user)
+        response = self.client.get(reverse('person:user_role_edit', kwargs={'user_id': self.lab_member_user.id}))
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'person/user_role_edit.html')
+        self.assertIn('form', response.context)
+        self.assertIsInstance(response.context['form'], UserRoleForm)
+        self.assertIn('user_role', response.context)
+        self.assertEqual(response.context['user_role'], self.lab_member_role)
+    
+    def test_user_role_edit_post_valid_data(self):
+        """Test user_role_edit POST with valid data"""
+        self.client.force_login(self.lab_manager_user)
+        
+        form_data = {
+            'role': 'lab_manager',
+            'department': 'Updated Research',
+            'lab_unit': 'Lab B'
+        }
+        
+        response = self.client.post(
+            reverse('person:user_role_edit', kwargs={'user_id': self.lab_member_user.id}),
+            form_data
+        )
+        
+        # Should redirect to user detail page
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse('person:user_detail', kwargs={'user_id': self.lab_member_user.id}))
+        
+        # Check that role was updated
+        self.lab_member_role.refresh_from_db()
+        self.assertEqual(self.lab_member_role.role, 'lab_manager')
+        self.assertEqual(self.lab_member_role.department, 'Updated Research')
+        self.assertEqual(self.lab_member_role.lab_unit, 'Lab B')
+        
+        # Check that audit log was created
+        audit_log = UserAuditLog.objects.filter(
+            user=self.lab_manager_user,
+            action='role_changed',
+            target_type='User',
+            target_id=self.lab_member_user.id
+        ).first()
+        self.assertIsNotNone(audit_log)
+        self.assertEqual(audit_log.target_name, 'lab_member')
+
+
+class PermissionListViewTest(PersonViewTest):
+    """Test cases for the permission_list view"""
+    
+    def test_permission_list_requires_lab_manager_role(self):
+        """Test that permission_list requires lab_manager role"""
+        # Test with viewer role
+        self.client.force_login(self.viewer_user)
+        response = self.client.get(reverse('person:permission_list'))
+        self.assertEqual(response.status_code, 403)  # Forbidden
+        
+        # Test with lab_manager role
+        self.client.force_login(self.lab_manager_user)
+        response = self.client.get(reverse('person:permission_list'))
+        self.assertEqual(response.status_code, 200)  # OK
+    
+    def test_permission_list_get_request(self):
+        """Test permission_list GET request"""
+        self.client.force_login(self.lab_manager_user)
+        response = self.client.get(reverse('person:permission_list'))
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'person/permission_list.html')
+        self.assertIn('page_obj', response.context)
+        self.assertIn('total_permissions', response.context)
+    
+    def test_permission_list_with_filters(self):
+        """Test permission_list with filters"""
+        self.client.force_login(self.lab_manager_user)
+        
+        # Filter by user
+        response = self.client.get(reverse('person:permission_list'), {'user': 'lab_member'})
+        self.assertEqual(response.status_code, 200)
+        
+        # Filter by permission type
+        response = self.client.get(reverse('person:permission_list'), {'permission_type': 'view'})
+        self.assertEqual(response.status_code, 200)
+        
+        # Filter by content type
+        response = self.client.get(reverse('person:permission_list'), {'content_type': 'sample'})
+        self.assertEqual(response.status_code, 200)
+
+
+class GrantPermissionViewTest(PersonViewTest):
+    """Test cases for the grant_permission view"""
+    
+    def test_grant_permission_requires_lab_manager_role(self):
+        """Test that grant_permission requires lab_manager role"""
+        # Test with viewer role
+        self.client.force_login(self.viewer_user)
+        response = self.client.get(reverse('person:grant_permission'))
+        self.assertEqual(response.status_code, 403)  # Forbidden
+        
+        # Test with lab_manager role
+        self.client.force_login(self.lab_manager_user)
+        response = self.client.get(reverse('person:grant_permission'))
+        self.assertEqual(response.status_code, 200)  # OK
+    
+    def test_grant_permission_get_request(self):
+        """Test grant_permission GET request"""
+        self.client.force_login(self.lab_manager_user)
+        response = self.client.get(reverse('person:grant_permission'))
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'person/permission_form.html')
+        self.assertIn('form', response.context)
+        self.assertIsInstance(response.context['form'], PermissionForm)
+        self.assertEqual(response.context['title'], 'Grant Permission')
+    
+    def test_grant_permission_post_valid_data(self):
+        """Test grant_permission POST with valid data"""
+        self.client.force_login(self.lab_manager_user)
+        
+        content_type = ContentType.objects.get_for_model(Sample)
+        form_data = {
+            'user': self.lab_member_user.id,
+            'permission_type': 'view',
+            'content_type': content_type.id,
+            'object_id': self.sample.id,
+            'expires_at': ''
+        }
+        
+        response = self.client.post(reverse('person:grant_permission'), form_data)
+        
+        # Should redirect to permission list
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse('person:permission_list'))
+        
+        # Check that permission was created
+        permission = Permission.objects.filter(
+            user=self.lab_member_user,
+            permission_type='view'
+        ).first()
+        self.assertIsNotNone(permission)
+        self.assertEqual(permission.granted_by, self.lab_manager_user)
+
+
+class BulkGrantPermissionViewTest(PersonViewTest):
+    """Test cases for the bulk_grant_permission view"""
+    
+    def test_bulk_grant_permission_requires_lab_manager_role(self):
+        """Test that bulk_grant_permission requires lab_manager role"""
+        # Test with viewer role
+        self.client.force_login(self.viewer_user)
+        response = self.client.get(reverse('person:bulk_grant_permission'))
+        self.assertEqual(response.status_code, 403)  # Forbidden
+        
+        # Test with lab_manager role
+        self.client.force_login(self.lab_manager_user)
+        response = self.client.get(reverse('person:bulk_grant_permission'))
+        self.assertEqual(response.status_code, 200)  # OK
+    
+    def test_bulk_grant_permission_get_request(self):
+        """Test bulk_grant_permission GET request"""
+        self.client.force_login(self.lab_manager_user)
+        response = self.client.get(reverse('person:bulk_grant_permission'))
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'person/bulk_permission_form.html')
+        self.assertIn('form', response.context)
+        self.assertIsInstance(response.context['form'], BulkPermissionForm)
+        self.assertEqual(response.context['title'], 'Bulk Grant Permissions')
+    
+    def test_bulk_grant_permission_post_valid_data(self):
+        """Test bulk_grant_permission POST with valid data"""
+        self.client.force_login(self.lab_manager_user)
+        
+        content_type = ContentType.objects.get_for_model(Sample)
+        form_data = {
+            'users': [self.lab_member_user.id],
+            'permission_type': 'view',
+            'content_type': content_type.id,
+            'object_id': self.sample.id,
+            'expires_at': ''
+        }
+        
+        response = self.client.post(reverse('person:bulk_grant_permission'), form_data)
+        
+        # Should redirect to permission list
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse('person:permission_list'))
+        
+        # Check that permission was created
+        permission = Permission.objects.filter(
+            user=self.lab_member_user,
+            permission_type='view'
+        ).first()
+        self.assertIsNotNone(permission)
+        self.assertEqual(permission.granted_by, self.lab_manager_user)
+
+
+class AuditLogViewTest(PersonViewTest):
+    """Test cases for the audit_log view"""
+    
+    def test_audit_log_requires_lab_admin_role(self):
+        """Test that audit_log requires lab_admin role"""
+        # Test with lab_manager role
+        self.client.force_login(self.lab_manager_user)
+        response = self.client.get(reverse('person:audit_log'))
+        self.assertEqual(response.status_code, 403)  # Forbidden
+        
+        # Test with lab_admin role
+        self.client.force_login(self.lab_admin_user)
+        response = self.client.get(reverse('person:audit_log'))
+        self.assertEqual(response.status_code, 200)  # OK
+    
+    def test_audit_log_get_request(self):
+        """Test audit_log GET request"""
+        self.client.force_login(self.lab_admin_user)
+        response = self.client.get(reverse('person:audit_log'))
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'person/audit_log.html')
+        self.assertIn('page_obj', response.context)
+        self.assertIn('form', response.context)
+        self.assertIsInstance(response.context['form'], AuditLogFilterForm)
+        self.assertIn('total_logs', response.context)
+    
+    def test_audit_log_with_filters(self):
+        """Test audit_log with filters"""
+        self.client.force_login(self.lab_admin_user)
+        
+        # Filter by user
+        response = self.client.get(reverse('person:audit_log'), {'user': self.lab_member_user.id})
+        self.assertEqual(response.status_code, 200)
+        
+        # Filter by action
+        response = self.client.get(reverse('person:audit_log'), {'action': 'create'})
+        self.assertEqual(response.status_code, 200)
+        
+        # Filter by target type
+        response = self.client.get(reverse('person:audit_log'), {'target_type': 'User'})
+        self.assertEqual(response.status_code, 200)
+
+
+class UserPermissionsApiViewTest(PersonViewTest):
+    """Test cases for the user_permissions_api view"""
+    
+    def test_user_permissions_api_requires_lab_manager_role(self):
+        """Test that user_permissions_api requires lab_manager role"""
+        # Test with viewer role
+        self.client.force_login(self.viewer_user)
+        response = self.client.get(reverse('person:user_permissions_api', kwargs={'user_id': self.lab_member_user.id}))
+        self.assertEqual(response.status_code, 403)  # Forbidden
+        
+        # Test with lab_manager role
+        self.client.force_login(self.lab_manager_user)
+        response = self.client.get(reverse('person:user_permissions_api', kwargs={'user_id': self.lab_member_user.id}))
+        self.assertEqual(response.status_code, 200)  # OK
+    
+    def test_user_permissions_api_get_request(self):
+        """Test user_permissions_api GET request"""
+        self.client.force_login(self.lab_manager_user)
+        response = self.client.get(reverse('person:user_permissions_api', kwargs={'user_id': self.lab_member_user.id}))
+        
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        
+        # Check response structure
+        self.assertIn('user', data)
+        self.assertIn('role_permissions', data)
+        self.assertIn('object_permissions', data)
+        
+        # Check user data
+        self.assertEqual(data['user']['id'], self.lab_member_user.id)
+        self.assertEqual(data['user']['username'], 'lab_member')
+        self.assertEqual(data['user']['role'], 'lab_member')
+    
+    def test_user_permissions_api_nonexistent_user(self):
+        """Test user_permissions_api with nonexistent user"""
+        self.client.force_login(self.lab_manager_user)
+        response = self.client.get(reverse('person:user_permissions_api', kwargs={'user_id': 99999}))
+        self.assertEqual(response.status_code, 404)  # Not found
+
+
+class GrantObjectPermissionApiViewTest(PersonViewTest):
+    """Test cases for the grant_object_permission_api view"""
+    
+    def test_grant_object_permission_api_requires_lab_manager_role(self):
+        """Test that grant_object_permission_api requires lab_manager role"""
+        # Test with viewer role
+        self.client.force_login(self.viewer_user)
+        response = self.client.post(reverse('person:grant_object_permission_api'))
+        self.assertEqual(response.status_code, 403)  # Forbidden
+        
+        # Test with lab_manager role
+        self.client.force_login(self.lab_manager_user)
+        response = self.client.post(reverse('person:grant_object_permission_api'))
+        self.assertEqual(response.status_code, 400)  # Bad request (missing parameters)
+    
+    def test_grant_object_permission_api_requires_post(self):
+        """Test that grant_object_permission_api only accepts POST requests"""
+        self.client.force_login(self.lab_manager_user)
+        response = self.client.get(reverse('person:grant_object_permission_api'))
+        self.assertEqual(response.status_code, 405)  # Method not allowed
+    
+    def test_grant_object_permission_api_missing_parameters(self):
+        """Test grant_object_permission_api with missing parameters"""
+        self.client.force_login(self.lab_manager_user)
+        response = self.client.post(reverse('person:grant_object_permission_api'))
+        
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertIn('error', data)
+        self.assertEqual(data['error'], 'Missing required parameters')
+    
+    def test_grant_object_permission_api_invalid_model(self):
+        """Test grant_object_permission_api with invalid model"""
+        self.client.force_login(self.lab_manager_user)
+        
+        form_data = {
+            'user_id': self.lab_member_user.id,
+            'model_name': 'InvalidModel',
+            'object_id': self.sample.id,
+            'permission_type': 'view'
+        }
+        
+        response = self.client.post(reverse('person:grant_object_permission_api'), form_data)
+        
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertIn('error', data)
+        self.assertEqual(data['error'], 'Invalid model name')
+
+
+class RevokeObjectPermissionApiViewTest(PersonViewTest):
+    """Test cases for the revoke_object_permission_api view"""
+    
+    def test_revoke_object_permission_api_requires_lab_manager_role(self):
+        """Test that revoke_object_permission_api requires lab_manager role"""
+        # Test with viewer role
+        self.client.force_login(self.viewer_user)
+        response = self.client.post(reverse('person:revoke_object_permission_api'))
+        self.assertEqual(response.status_code, 403)  # Forbidden
+        
+        # Test with lab_manager role
+        self.client.force_login(self.lab_manager_user)
+        response = self.client.post(reverse('person:revoke_object_permission_api'))
+        self.assertEqual(response.status_code, 400)  # Bad request (missing parameters)
+    
+    def test_revoke_object_permission_api_requires_post(self):
+        """Test that revoke_object_permission_api only accepts POST requests"""
+        self.client.force_login(self.lab_manager_user)
+        response = self.client.get(reverse('person:revoke_object_permission_api'))
+        self.assertEqual(response.status_code, 405)  # Method not allowed
+    
+    def test_revoke_object_permission_api_missing_parameters(self):
+        """Test revoke_object_permission_api with missing parameters"""
+        self.client.force_login(self.lab_manager_user)
+        response = self.client.post(reverse('person:revoke_object_permission_api'))
+        
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertIn('error', data)
+        self.assertEqual(data['error'], 'Missing required parameters')
+    
+    def test_revoke_object_permission_api_invalid_model(self):
+        """Test revoke_object_permission_api with invalid model"""
+        self.client.force_login(self.lab_manager_user)
+        
+        form_data = {
+            'user_id': self.lab_member_user.id,
+            'model_name': 'InvalidModel',
+            'object_id': self.sample.id,
+            'permission_type': 'view'
+        }
+        
+        response = self.client.post(reverse('person:revoke_object_permission_api'), form_data)
+        
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertIn('error', data)
+        self.assertEqual(data['error'], 'Invalid model name')

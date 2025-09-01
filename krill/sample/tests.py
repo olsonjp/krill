@@ -1,8 +1,10 @@
-from django.test import TestCase
+from django.test import TestCase, Client
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.db import IntegrityError
 from django import forms
+from django.urls import reverse
+from django.contrib.auth import get_user_model
 
 from .models.sample import Sample
 from .models.aliquot import (
@@ -14,8 +16,13 @@ from .forms import (
     SampleForm, AliquotForm, AliquotLocationForm, 
     AliquotTypeForm, AliquotDispositionForm, SourceForm
 )
+from .views.list import SampleListView
+from .views.create import ModelCreateView
 from storage.models.storage import Device, Shelf, Rack, Box
 from storage.models.site import Site
+from person.models import UserRole
+
+User = get_user_model()
 
 
 class SampleModelTest(TestCase):
@@ -962,3 +969,278 @@ class SourceFormTest(TestCase):
         source = form.save()
         self.assertEqual(source.name, 'Test Source No Description')
         self.assertEqual(source.description, '')  # Empty string, not None
+
+
+class SampleViewTest(TestCase):
+    """Base test class for sample views with common setup"""
+    
+    def setUp(self):
+        """Set up test data"""
+        self.client = Client()
+        
+        # Create test user with lab_member role
+        self.user = User.objects.create_user(
+            username='testuser',
+            email='test@example.com',
+            password='testpass123'
+        )
+        # Update the automatically created role
+        self.user_role = self.user.role
+        self.user_role.role = 'lab_member'
+        self.user_role.save()
+        
+        # Create test data
+        self.source = Source.objects.create(name="Test Source")
+        self.sample = Sample.objects.create(
+            name="Test Sample",
+            source=self.source
+        )
+        self.aliquot_type = AliquotType.objects.create(name="Test Type")
+        self.aliquot = Aliquot.objects.create(
+            sample=self.sample,
+            quantity=3,
+            aliquotType=self.aliquot_type
+        )
+        
+        # Create storage hierarchy for location tests
+        self.site = Site.objects.create(name="Test Site")
+        self.device = Device.objects.create(name="Test Device", site=self.site)
+        self.shelf = Shelf.objects.create(name="Test Shelf", device=self.device)
+        self.rack = Rack.objects.create(name="Test Rack", shelf=self.shelf)
+        self.box = Box.objects.create(
+            name="Test Box",
+            rack=self.rack,
+            rows=10,
+            columns=10
+        )
+
+
+class SampleListViewTest(SampleViewTest):
+    """Test cases for the SampleListView"""
+    
+    def test_sample_list_requires_login(self):
+        """Test that sample list requires login"""
+        response = self.client.get(reverse('sample:list'))
+        self.assertEqual(response.status_code, 302)  # Redirect to login
+    
+    def test_sample_list_get_request_default(self):
+        """Test sample list GET request with default type (sample)"""
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:list'))
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'sample/list.html')
+        self.assertIn('items', response.context)
+        self.assertIn('model_name', response.context)
+        self.assertEqual(response.context['model_name'], 'Samples')
+        
+        # Check that samples are in the context
+        items = response.context['items']
+        self.assertIn(self.sample, items)
+    
+    def test_sample_list_get_request_aliquot_type(self):
+        """Test sample list GET request with aliquot type"""
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:list'), {'type': 'aliquot'})
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'sample/list.html')
+        self.assertIn('items', response.context)
+        self.assertIn('model_name', response.context)
+        self.assertEqual(response.context['model_name'], 'Aliquots')
+        
+        # Check that aliquots are in the context
+        items = response.context['items']
+        self.assertIn(self.aliquot, items)
+    
+    def test_sample_list_get_request_aliquot_type_type(self):
+        """Test sample list GET request with aliquot-type type"""
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:list'), {'type': 'aliquot-type'})
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'sample/list.html')
+        self.assertIn('items', response.context)
+        self.assertIn('model_name', response.context)
+        self.assertEqual(response.context['model_name'], 'Aliquot Types')
+        
+        # Check that aliquot types are in the context
+        items = response.context['items']
+        self.assertIn(self.aliquot_type, items)
+    
+    def test_sample_list_get_request_source_type(self):
+        """Test sample list GET request with source type"""
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:list'), {'type': 'source'})
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'sample/list.html')
+        self.assertIn('items', response.context)
+        self.assertIn('model_name', response.context)
+        self.assertEqual(response.context['model_name'], 'Sources')
+        
+        # Check that sources are in the context
+        items = response.context['items']
+        self.assertIn(self.source, items)
+
+
+class ModelCreateViewTest(SampleViewTest):
+    """Test cases for the ModelCreateView"""
+    
+    def test_model_create_requires_login(self):
+        """Test that model create requires login"""
+        response = self.client.get(reverse('sample:create'))
+        self.assertEqual(response.status_code, 302)  # Redirect to login
+    
+    def test_model_create_get_request_default(self):
+        """Test model create GET request with default type (sample)"""
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:create'))
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'sample/create.html')
+        self.assertIn('form', response.context)
+        self.assertIn('model_type', response.context)
+        self.assertIn('model_name', response.context)
+        self.assertEqual(response.context['model_type'], 'sample')
+        self.assertEqual(response.context['model_name'], 'Sample')
+        self.assertIsInstance(response.context['form'], SampleForm)
+    
+    def test_model_create_get_request_aliquot_type(self):
+        """Test model create GET request with aliquot type"""
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:create'), {'type': 'aliquot'})
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'sample/create.html')
+        self.assertIn('form', response.context)
+        self.assertIn('model_type', response.context)
+        self.assertIn('model_name', response.context)
+        self.assertEqual(response.context['model_type'], 'aliquot')
+        self.assertEqual(response.context['model_name'], 'Aliquot')
+        self.assertIsInstance(response.context['form'], AliquotForm)
+    
+    def test_model_create_get_request_aliquot_type_type(self):
+        """Test model create GET request with aliquot-type type"""
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:create'), {'type': 'aliquot-type'})
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'sample/create.html')
+        self.assertIn('form', response.context)
+        self.assertIn('model_type', response.context)
+        self.assertIn('model_name', response.context)
+        self.assertEqual(response.context['model_type'], 'aliquot-type')
+        self.assertEqual(response.context['model_name'], 'Aliquot Type')
+        self.assertIsInstance(response.context['form'], AliquotTypeForm)
+    
+    def test_model_create_get_request_source_type(self):
+        """Test model create GET request with source type"""
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:create'), {'type': 'source'})
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'sample/create.html')
+        self.assertIn('form', response.context)
+        self.assertIn('model_type', response.context)
+        self.assertIn('model_name', response.context)
+        self.assertEqual(response.context['model_type'], 'source')
+        self.assertEqual(response.context['model_name'], 'Source')
+        self.assertIsInstance(response.context['form'], SourceForm)
+    
+    def test_model_create_post_valid_sample_data(self):
+        """Test model create POST with valid sample data"""
+        self.client.force_login(self.user)
+        
+        form_data = {
+            'name': 'New Sample',
+            'source': self.source.id,
+            'notes': 'Test notes'
+        }
+        
+        response = self.client.post(reverse('sample:create'), form_data)
+        
+        # Should redirect to sample list
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, f"{reverse('sample:list')}?type=sample")
+        
+        # Check that sample was created
+        new_sample = Sample.objects.get(name='New Sample')
+        self.assertEqual(new_sample.source, self.source)
+        self.assertEqual(new_sample.notes, 'Test notes')
+    
+    def test_model_create_post_valid_aliquot_data(self):
+        """Test model create POST with valid aliquot data"""
+        self.client.force_login(self.user)
+        
+        form_data = {
+            'sample': self.sample.id,
+            'quantity': 5,
+            'aliquotType': self.aliquot_type.id,
+            'passage': '1'
+        }
+        
+        response = self.client.post(f"{reverse('sample:create')}?type=aliquot", form_data)
+        
+        # Should redirect to sample list with aliquot type
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, f"{reverse('sample:list')}?type=aliquot")
+        
+        # Check that aliquot was created
+        new_aliquot = Aliquot.objects.get(sample=self.sample, quantity=5)
+        self.assertEqual(new_aliquot.aliquotType, self.aliquot_type)
+        self.assertEqual(new_aliquot.passage, '1')
+    
+    def test_model_create_post_valid_aliquot_type_data(self):
+        """Test model create POST with valid aliquot type data"""
+        self.client.force_login(self.user)
+        
+        form_data = {
+            'name': 'New Aliquot Type',
+            'description': 'Test description'
+        }
+        
+        response = self.client.post(f"{reverse('sample:create')}?type=aliquot-type", form_data)
+        
+        # Should redirect to sample list with aliquot-type type
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, f"{reverse('sample:list')}?type=aliquot-type")
+        
+        # Check that aliquot type was created
+        new_aliquot_type = AliquotType.objects.get(name='New Aliquot Type')
+        self.assertEqual(new_aliquot_type.description, 'Test description')
+    
+    def test_model_create_post_valid_source_data(self):
+        """Test model create POST with valid source data"""
+        self.client.force_login(self.user)
+        
+        form_data = {
+            'name': 'New Source',
+            'description': 'Test description'
+        }
+        
+        response = self.client.post(f"{reverse('sample:create')}?type=source", form_data)
+        
+        # Should redirect to sample list with source type
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, f"{reverse('sample:list')}?type=source")
+        
+        # Check that source was created
+        new_source = Source.objects.get(name='New Source')
+        self.assertEqual(new_source.description, 'Test description')
+    
+    def test_model_create_post_invalid_data(self):
+        """Test model create POST with invalid data"""
+        self.client.force_login(self.user)
+        
+        form_data = {
+            'name': '',  # Invalid: empty name
+            'source': self.source.id
+        }
+        
+        response = self.client.post(reverse('sample:create'), form_data)
+        
+        self.assertEqual(response.status_code, 200)  # Form errors, not redirect
+        self.assertTemplateUsed(response, 'sample/create.html')
+        self.assertIn('form', response.context)
+        self.assertFalse(response.context['form'].is_valid())

@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.models import ContentType
 from .models import UserRole, Permission, UserPreference, UserAuditLog
 
 User = get_user_model()
@@ -47,18 +48,12 @@ class CreateUserForm(UserCreationForm):
         user = super().save(commit=False)
         if commit:
             user.save()
-            # Create user role
-            UserRole.objects.create(
-                user=user,
-                role=self.cleaned_data['role'],
-                department=self.cleaned_data['department'],
-                lab_unit=self.cleaned_data['lab_unit']
-            )
-            # Create user preference
-            UserPreference.objects.create(
-                user=user,
-                dark_mode=False
-            )
+            # Update the automatically created user role
+            user_role = user.role
+            user_role.role = self.cleaned_data['role']
+            user_role.department = self.cleaned_data['department']
+            user_role.lab_unit = self.cleaned_data['lab_unit']
+            user_role.save()
         return user
 
 
@@ -88,13 +83,12 @@ class CustomUserCreationForm(UserCreationForm):
         user = super().save(commit=False)
         if commit:
             user.save()
-            # Create user role
-            UserRole.objects.create(
-                user=user,
-                role=self.cleaned_data['role'],
-                department=self.cleaned_data['department'],
-                lab_unit=self.cleaned_data['lab_unit']
-            )
+            # Update the automatically created user role
+            user_role = user.role
+            user_role.role = self.cleaned_data['role']
+            user_role.department = self.cleaned_data['department']
+            user_role.lab_unit = self.cleaned_data['lab_unit']
+            user_role.save()
         return user
 
 
@@ -172,6 +166,15 @@ class PermissionForm(forms.ModelForm):
         widget=forms.Select(attrs={'class': 'form-control'}),
         help_text='Type of permission to grant'
     )
+    content_type = forms.ModelChoiceField(
+        queryset=ContentType.objects.all(),
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text='Select the content type'
+    )
+    object_id = forms.IntegerField(
+        widget=forms.NumberInput(attrs={'class': 'form-control'}),
+        help_text='Enter the object ID'
+    )
     expires_at = forms.DateTimeField(
         required=False,
         widget=forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
@@ -180,7 +183,7 @@ class PermissionForm(forms.ModelForm):
     
     class Meta:
         model = Permission
-        fields = ['user', 'permission_type', 'expires_at']
+        fields = ['user', 'permission_type', 'content_type', 'object_id', 'expires_at']
     
     def __init__(self, *args, **kwargs):
         self.content_type = kwargs.pop('content_type', None)
@@ -222,6 +225,15 @@ class BulkPermissionForm(forms.Form):
         choices=Permission.PERMISSION_TYPES,
         widget=forms.Select(attrs={'class': 'form-control'}),
         help_text='Type of permission to grant'
+    )
+    content_type = forms.ModelChoiceField(
+        queryset=ContentType.objects.all(),
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text='Select the content type'
+    )
+    object_id = forms.IntegerField(
+        widget=forms.NumberInput(attrs={'class': 'form-control'}),
+        help_text='Enter the object ID'
     )
     expires_at = forms.DateTimeField(
         required=False,

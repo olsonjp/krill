@@ -185,25 +185,30 @@ This document outlines the unit testing requirements for the custom functionalit
   - UserSearch form validation
   - AuditLogFilter form validation
 
-#### 2. View Tests (0/12 tests) ❌
-- **Sample View Tests**
-  - Sample list view
-  - Sample detail view
-  - Sample create view
-  - Sample edit view
-  - Sample delete view
+#### 2. View Tests (69 tests) ✅
+- **Person View Tests** (40 tests) ✅
+  - ToggleTheme view tests
+  - CreateUser view tests
+  - UserList view tests
+  - UserDetail view tests
+  - UserRoleEdit view tests
+  - PermissionList view tests
+  - GrantPermission view tests
+  - BulkGrantPermission view tests
+  - AuditLog view tests
+  - UserPermissionsApi view tests
+  - GrantObjectPermissionApi view tests
+  - RevokeObjectPermissionApi view tests
 
-- **Storage View Tests**
-  - Storage list view
-  - Storage detail view
-  - Storage create view
-  - Storage capacity view
+- **Sample View Tests** (15 tests) ✅
+  - SampleListView tests
+  - ModelCreateView tests
 
-- **User Management View Tests**
-  - User list view
-  - User detail view
-  - User role edit view
-  - User audit log view
+- **Storage View Tests** (14 tests) ✅
+  - StorageListView tests
+  - HomeView tests
+  - StorageView tests
+  - DashboardStats view tests
 
 #### 3. API Endpoint Tests (0/8 tests) ❌
 - **Sample API Tests**
@@ -257,9 +262,8 @@ This document outlines the unit testing requirements for the custom functionalit
 
 ## 🎯 NEXT STEPS
 
-1. **Create View Tests** - Test view functionality and permissions
-2. **Add API Tests** - Test API endpoints and responses
-3. **Implement Management Command Tests** - Test custom Django management commands
+1. **Add API Tests** - Test API endpoints and responses
+2. **Implement Management Command Tests** - Test custom Django management commands
 
 ---
 
@@ -270,11 +274,11 @@ This document outlines the unit testing requirements for the custom functionalit
 - **User Management Models**: 26/26 tests ✅ (100%)
 - **Signal Handlers**: 18/18 tests ✅ (100%)
 - **Forms**: 79/79 tests ✅ (100%)
-- **Views**: 0/12 tests ❌ (0%)
+- **Views**: 69/69 tests ✅ (100%)
 - **API Endpoints**: 0/8 tests ❌ (0%)
 - **Management Commands**: 0/3 tests ❌ (0%)
 
-**Overall Progress**: 172/197 tests completed (87%)
+**Overall Progress**: 241/266 tests completed (91%)
 
 ---
 
@@ -299,3 +303,6 @@ This document outlines the unit testing requirements for the custom functionalit
 - ✅ Form validation tests for all sample forms (Sample, Aliquot, AliquotLocation, AliquotType, AliquotDisposition, Source)
 - ✅ Form validation tests for all storage forms (Site, Device, Shelf, Rack, Box)
 - ✅ Form validation tests for all person forms (CreateUser, CustomUserCreation, CustomUserChange, UserRole, Permission, UserPreference, BulkPermission, UserSearch, AuditLogFilter)
+- ✅ View tests for all person views (ToggleTheme, CreateUser, UserList, UserDetail, UserRoleEdit, PermissionList, GrantPermission, BulkGrantPermission, AuditLog, UserPermissionsApi, GrantObjectPermissionApi, RevokeObjectPermissionApi)
+- ✅ View tests for all sample views (SampleListView, ModelCreateView)
+- ✅ View tests for all storage views (StorageListView, HomeView, StorageView, DashboardStats)
