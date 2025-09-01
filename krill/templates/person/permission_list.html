@@ -1,0 +1,74 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Permissions{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Permissions</h3>
+                    <div class="card-tools">
+                        <a href="{% url 'person:grant_permission' %}" class="btn btn-primary">Grant Permission</a>
+                        <a href="{% url 'person:bulk_grant_permission' %}" class="btn btn-secondary">Bulk Grant</a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Permission Type</th>
+                                    <th>Object</th>
+                                    <th>Granted By</th>
+                                    <th>Granted At</th>
+                                    <th>Expires At</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for permission in page_obj %}
+                                <tr>
+                                    <td>{{ permission.user.username }}</td>
+                                    <td>{{ permission.get_permission_type_display }}</td>
+                                    <td>{{ permission.content_object }}</td>
+                                    <td>{{ permission.granted_by.username|default:"-" }}</td>
+                                    <td>{{ permission.granted_at|date:"M d, Y H:i" }}</td>
+                                    <td>{{ permission.expires_at|date:"M d, Y H:i"|default:"Never" }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center">No permissions found.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% if page_obj.has_other_pages %}
+                    <nav>
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                            </li>
+                            {% endif %}
+                            {% for num in page_obj.paginator.page_range %}
+                            <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                            </li>
+                            {% endfor %}
+                            {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

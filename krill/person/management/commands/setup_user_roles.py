@@ -17,17 +17,13 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         force = options['force']
-        
         self.stdout.write('Setting up user roles and preferences...')
-        
         users_processed = 0
         roles_created = 0
         roles_updated = 0
         preferences_created = 0
-        
         for user in User.objects.all():
             users_processed += 1
-            
             # Set up UserRole
             try:
                 user_role = user.role
@@ -51,7 +47,6 @@ class Command(BaseCommand):
                     role = 'lab_manager'
                 else:
                     role = 'viewer'
-                
                 UserRole.objects.create(
                     user=user,
                     role=role,
@@ -60,7 +55,6 @@ class Command(BaseCommand):
                 )
                 roles_created += 1
                 self.stdout.write(f'Created role for {user.username}: {role}')
-            
             # Set up UserPreference
             try:
                 user.preference
@@ -71,7 +65,6 @@ class Command(BaseCommand):
                 )
                 preferences_created += 1
                 self.stdout.write(f'Created preferences for {user.username}')
-        
         self.stdout.write(
             self.style.SUCCESS(
                 f'Successfully processed {users_processed} users:\n'

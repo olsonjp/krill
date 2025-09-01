@@ -521,7 +521,6 @@ class Box(models.Model):
     # ... existing fields ...
     auto_store = models.BooleanField(default=False, help_text="Enable automatic aliquot storage")
     auto_store_priority = models.IntegerField(default=0, help_text="Priority for auto-storage (lower = higher priority)")
-    
 class Device(models.Model):
     # ... existing fields ...
     auto_store_enabled = models.BooleanField(default=False, help_text="Enable auto-store for all boxes in this device")
@@ -552,7 +551,6 @@ def auto_store_aliquot(sender, instance, created, **kwargs):
             auto_store=True,
             device__auto_store_enabled=True
         ).order_by('auto_store_priority')
-        
         for box in auto_store_boxes:
             available_slots = box.get_available_slots()
             if available_slots:

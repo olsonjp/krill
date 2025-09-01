@@ -1,7 +1,6 @@
 document.addEventListener('DOMContentLoaded', function() {
     const sidebarLinks = document.querySelectorAll('.sidebar a');
     const menuBtn = document.querySelector('#menu-btn');
-    
     // Handle sidebar link active states
     sidebarLinks.forEach(link => {
         link.addEventListener('click', function() {

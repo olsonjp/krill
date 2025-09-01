@@ -7,7 +7,6 @@ from ..forms import DeviceForm, ShelfForm, RackForm, BoxForm, SiteForm
 class StorageFormView(View):
     template_name = 'forms/model_form.html'
     success_url = 'storage:list'
-    
     def get_form_class(self):
         storage_type = self.kwargs.get('type')
         form_classes = {
@@ -18,14 +17,12 @@ class StorageFormView(View):
             'box': BoxForm,
         }
         return form_classes.get(storage_type)
-    
     def get_success_url(self):
         return reverse(self.success_url)
 
     def get_title(self):
         storage_type = self.kwargs.get('type').title()
         return f'Add New {storage_type}'
-    
     def get_description(self):
         storage_type = self.kwargs.get('type').title()
         return f'Create a new {storage_type.lower()} in the storage system'
@@ -35,7 +32,6 @@ class StorageFormView(View):
         if not form_class:
             messages.error(request, 'Invalid storage type')
             return redirect(self.get_success_url())
-            
         context = {
             'form': form_class(),
             'form_title': self.get_title(),
@@ -48,13 +44,11 @@ class StorageFormView(View):
         if not form_class:
             messages.error(request, 'Invalid storage type')
             return redirect(self.get_success_url())
-            
         form = form_class(request.POST)
         if form.is_valid():
             form.save()
             messages.success(request, f'{self.get_title()} created successfully!')
             return redirect(self.get_success_url())
-        
         context = {
             'form': form,
             'form_title': self.get_title(),

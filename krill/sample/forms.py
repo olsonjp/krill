@@ -18,14 +18,13 @@ class SampleForm(forms.ModelForm):
 class AliquotForm(forms.ModelForm):
     class Meta:
         model = Aliquot
-        fields = ['parent', 'sample', 'quantity', 'aliquotType', 'disposition', 
+        fields = ['parent', 'sample', 'quantity', 'aliquotType', 
                  'passage', 'experiment', 'notes']
         help_texts = {
             'parent': 'Parent aliquot, if this is a derivative',
             'sample': 'Sample this aliquot belongs to',
             'quantity': 'Quantity of the aliquot',
             'aliquotType': 'Type of aliquot',
-            'disposition': 'Current disposition of the aliquot',
             'passage': 'Passage number',
             'experiment': 'Experiment details',
             'notes': 'Additional notes',

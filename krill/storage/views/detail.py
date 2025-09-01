@@ -11,11 +11,9 @@ from sample.models.aliquot import AliquotLocation
 @method_decorator(login_required, name='dispatch')
 class StorageDetailView(DetailView):
     template_name = 'storage/detail.html'
-    
     def get_object(self):
         model_type = self.kwargs.get('type', 'site')
         pk = self.kwargs.get('pk')
-        
         if model_type == 'box':
             return get_object_or_404(Box, pk=pk)
         elif model_type == 'shelf':
@@ -24,10 +22,8 @@ class StorageDetailView(DetailView):
             return get_object_or_404(Device, pk=pk)
         else:
             return get_object_or_404(Site, pk=pk)
-    
     def get_form_class(self):
         model_type = self.kwargs.get('type', 'site')
-        
         if model_type == 'box':
             return BoxForm
         elif model_type == 'shelf':
@@ -36,12 +32,10 @@ class StorageDetailView(DetailView):
             return DeviceForm
         else:
             return SiteForm
-    
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['model_type'] = self.kwargs.get('type', 'site')
         context['form'] = self.get_form_class()(instance=self.object)
-        
         # Add storage information for boxes
         if self.kwargs.get('type') == 'box':
             box = self.object
@@ -49,7 +43,6 @@ class StorageDetailView(DetailView):
             locations = AliquotLocation.objects.filter(
                 box=box
             ).select_related('aliquot__sample')
-            
             # Create a grid representation of the box
             box_grid = []
             for row in range(1, box.rows + 1):
@@ -75,22 +68,18 @@ class StorageDetailView(DetailView):
                             'tube_number': None
                         })
                 box_grid.append(row_data)
-            
             context['box_grid'] = box_grid
             context['total_slots'] = box.rows * box.columns
             context['used_slots'] = locations.count()
             context['available_slots'] = context['total_slots'] - context['used_slots']
             context['storage_percentage'] = (context['used_slots'] / context['total_slots']) * 100 if context['total_slots'] > 0 else 0
             context['locations'] = locations
-        
         return context
 
     def post(self, request, *args, **kwargs):
         self.object = self.get_object()
         form = self.get_form_class()(request.POST, instance=self.object)
-        
         if form.is_valid():
             form.save()
             return redirect('storage:list')
-        
         return render(request, self.template_name, {'object': self.object, 'form': form})

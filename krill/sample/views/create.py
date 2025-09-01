@@ -11,10 +11,8 @@ from ..forms import SampleForm, AliquotForm, AliquotTypeForm, SourceForm
 @method_decorator(login_required, name='dispatch')
 class ModelCreateView(CreateView):
     template_name = 'sample/create.html'
-    
     def get_form_class(self):
         model_type = self.request.GET.get('type', 'sample')
-        
         if model_type == 'aliquot':
             return AliquotForm
         elif model_type == 'aliquot-type':
@@ -23,7 +21,6 @@ class ModelCreateView(CreateView):
             return SourceForm
         else:
             return SampleForm
-    
     def get_success_url(self):
         model_type = self.request.GET.get('type', 'sample')
         return f"{reverse_lazy('sample:list')}?type={model_type}"

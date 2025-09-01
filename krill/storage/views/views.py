@@ -1,5 +1,7 @@
 from django.shortcuts import render
 from django.views.generic import View
+from django.contrib.auth.decorators import login_required
+from django.utils.decorators import method_decorator
 
 # Site View
 class HomeView(View):
@@ -38,6 +40,7 @@ class HomeView(View):
         })"""
 
 
+@method_decorator(login_required, name='dispatch')
 class StorageView(View):
     template_name = 'storage/storage.html'
 

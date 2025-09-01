@@ -26,14 +26,12 @@ class UserRole(models.Model):
         ('lab_member', 'Lab Member'),
         ('viewer', 'Viewer'),
     ]
-    
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='role')
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='viewer')
     department = models.CharField(max_length=100, blank=True, null=True)
     lab_unit = models.CharField(max_length=100, blank=True, null=True)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
-    
     @classmethod
     def get_or_create_for_user(cls, user):
         """Get or create a UserRole for a user"""
@@ -46,26 +44,21 @@ class UserRole(models.Model):
                 role = 'lab_manager'
             else:
                 role = 'viewer'
-            
             return cls.objects.create(
                 user=user,
                 role=role,
                 department='',
                 lab_unit=''
             )
-    
     class Meta:
         verbose_name = "User Role"
         verbose_name_plural = "User Roles"
-    
     def __str__(self):
         return f"{self.user.username} - {self.get_role_display()}"
-    
     def has_permission(self, permission):
         """Check if user has a specific permission based on their role"""
         role_permissions = self.get_role_permissions()
         return permission in role_permissions
-    
     def get_role_permissions(self):
         """Get permissions based on role hierarchy"""
         permissions = {
@@ -130,7 +123,6 @@ class Permission(models.Model):
         ('approve', 'Approve'),
         ('bulk_operations', 'Bulk Operations'),
     ]
-    
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='permissions')
     permission_type = models.CharField(max_length=20, choices=PERMISSION_TYPES)
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, related_name='object_permissions')
@@ -139,15 +131,12 @@ class Permission(models.Model):
     granted_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='granted_permissions')
     granted_at = models.DateTimeField(default=timezone.now)
     expires_at = models.DateTimeField(null=True, blank=True)
-    
     class Meta:
         unique_together = ['user', 'permission_type', 'content_type', 'object_id']
         verbose_name = "Permission"
         verbose_name_plural = "Permissions"
-    
     def __str__(self):
         return f"{self.user.username} - {self.permission_type} - {self.content_object}"
-    
     def is_valid(self):
         """Check if permission is still valid (not expired)"""
         if self.expires_at:
@@ -170,7 +159,6 @@ class UserAuditLog(models.Model):
         ('permission_revoked', 'Permission Revoked'),
         ('role_changed', 'Role Changed'),
     ]
-    
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='audit_logs')
     action = models.CharField(max_length=20, choices=ACTION_CHOICES)
     target_type = models.CharField(max_length=50, blank=True, null=True)
@@ -180,28 +168,23 @@ class UserAuditLog(models.Model):
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.TextField(blank=True, null=True)
     timestamp = models.DateTimeField(default=timezone.now)
-    
     class Meta:
         ordering = ['-timestamp']
         verbose_name = "User Audit Log"
         verbose_name_plural = "User Audit Logs"
-    
     def __str__(self):
         return f"{self.user.username} - {self.action} - {self.timestamp}"
-    
     @classmethod
     def log_action(cls, user, action, target_type=None, target_id=None, target_name=None, 
                    details=None, request=None):
         """Convenience method to log user actions"""
         if details is None:
             details = {}
-        
         ip_address = None
         user_agent = ""
         if request:
             ip_address = cls.get_client_ip(request)
             user_agent = request.META.get('HTTP_USER_AGENT', '')
-        
         return cls.objects.create(
             user=user,
             action=action,
@@ -212,7 +195,6 @@ class UserAuditLog(models.Model):
             ip_address=ip_address,
             user_agent=user_agent
         )
-    
     @staticmethod
     def get_client_ip(request):
         """Get client IP address from request"""

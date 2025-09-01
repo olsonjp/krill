@@ -60,7 +60,6 @@ class HomeView(View):
 
         # Get dashboard statistics
         stats = get_dashboard_statistics()
-        
         # Get recent activity
         recent_activity = get_recent_activity()
 
@@ -80,38 +79,31 @@ def get_dashboard_statistics():
     try:
         # Active samples (non-deleted)
         active_samples = Sample.objects.count()
-        
         # Storage usage calculation
         total_slots = 0
         used_slots = 0
-        
         # Calculate total slots from all boxes
         boxes = Box.objects.all()
         for box in boxes:
             total_slots += box.rows * box.columns
-        
         # Calculate used slots from aliquot locations
         used_slots = AliquotLocation.objects.count()
-        
         # Calculate percentage
         storage_usage = 0
         if total_slots > 0:
             storage_usage = round((used_slots / total_slots) * 100)
-        
         # Recent reports (using audit logs for now)
         # In a real system, you'd have a Report model
         recent_reports = UserAuditLog.objects.filter(
             action='report_generated',
             timestamp__gte=timezone.now() - timedelta(days=7)
         ).count()
-        
         # Alerts (using audit logs for now)
         # In a real system, you'd have an Alert model
         alerts = UserAuditLog.objects.filter(
             action__in=['alert_created', 'warning_created'],
             timestamp__gte=timezone.now() - timedelta(days=1)
         ).count()
-        
         return {
             'active_samples': active_samples,
             'storage_usage': storage_usage,
@@ -135,7 +127,6 @@ def get_recent_activity():
     """Get recent activity from audit logs"""
     try:
         recent_activities = UserAuditLog.objects.select_related('user').order_by('-timestamp')[:5]
-        
         activities = []
         for activity in recent_activities:
             # Format the activity message based on action type
@@ -151,7 +142,6 @@ def get_recent_activity():
                 message = f"Aliquot updated: {activity.target_name or 'Unknown'}"
             else:
                 message = f"{activity.action.replace('_', ' ').title()}: {activity.target_name or 'Unknown'}"
-            
             # Calculate time ago
             time_diff = timezone.now() - activity.timestamp
             if time_diff.days > 0:
@@ -164,14 +154,12 @@ def get_recent_activity():
                 time_ago = f"{minutes} minute{'s' if minutes != 1 else ''} ago"
             else:
                 time_ago = "Just now"
-            
             activities.append({
                 'message': message,
                 'time_ago': time_ago,
                 'action_type': activity.action,
                 'user': activity.user.username if activity.user else 'System',
             })
-        
         return activities
     except Exception as e:
         # Return default activities if there's an error
@@ -190,7 +178,6 @@ class ReportsView(View):
 
     def get(self, request):
         return render(request, self.template_name)
-    
 @method_decorator(login_required, name='dispatch')
 class SettingsView(View):
     template_name = 'krill/settings.html'
