@@ -239,8 +239,10 @@ docker-compose up -d
 ## Documentation
 
 - [Database Setup Guide](DATABASE_SETUP.md) - Comprehensive database configuration
-- [API Documentation](docs/api.md) - API endpoints and usage
-- [Deployment Guide](docs/deployment.md) - Production deployment instructions
+- [Production Deployment Guide](PRODUCTION_DEPLOYMENT.md) - Complete production deployment instructions
+- [DigitalOcean App Platform Quick Reference](DO_APP_PLATFORM_QUICK_REF.md) - DO-specific deployment guide
+- [Dockerfile Deployment Guide](DOCKERFILE_DEPLOYMENT.md) - How the Dockerfile handles working directory
+- [API Documentation](docs/api.md) - API endpoints and usage (coming soon)
 
 ## Support
 

@@ -20,12 +20,8 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'your-production-secret-key-her
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-# Production hosts - update with your actual domain
-ALLOWED_HOSTS = [
-    'your-domain.com',
-    'www.your-domain.com',
-    'api.your-domain.com',
-]
+# Production hosts - read from environment variable
+ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 # Security Settings
 SECURE_BROWSER_XSS_FILTER = True
@@ -52,8 +48,7 @@ SESSION_SAVE_EVERY_REQUEST = True
 CSRF_COOKIE_HTTPONLY = True
 CSRF_COOKIE_AGE = 31449600  # 1 year
 CSRF_TRUSTED_ORIGINS = [
-    'https://your-domain.com',
-    'https://www.your-domain.com',
+    f'https://{host}' for host in ALLOWED_HOSTS if host not in ['localhost', '127.0.0.1']
 ]
 
 # Database - Use PostgreSQL in production
@@ -84,11 +79,19 @@ CACHES = {
 
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_ROOT = BASE_DIR.parent / 'staticfiles'
+
+# Static files directories (for collectstatic)
+STATICFILES_DIRS = [
+    BASE_DIR / "static/krill",
+]
 
 # Media files
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# Configure Whitenoise for static file serving
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Logging configuration
 LOGGING = {
@@ -181,6 +184,7 @@ RATELIMIT_USE_CACHE = 'default'
 # Security middleware additions
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Add Whitenoise for static files
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',

@@ -1,0 +1,24 @@
+name: krill-app
+services:
+- name: web
+  source_dir: /
+  github:
+    repo: your-username/krill
+    branch: main
+  run_command: python manage.py migrate && gunicorn wsgi:application --bind 0.0.0.0:8000
+  environment_slug: python
+  instance_count: 1
+  instance_size_slug: basic-xxs
+  envs:
+  - key: DATABASE_ENGINE
+    value: postgresql
+  - key: DJANGO_SECRET_KEY
+    value: your-secret-key-here
+  - key: DJANGO_DEBUG
+    value: "False"
+  - key: DJANGO_SETTINGS_MODULE
+    value: krill.settings_production
+  - key: ENVIRONMENT
+    value: production
+  - key: DB_SSLMODE
+    value: require
