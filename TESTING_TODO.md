@@ -119,18 +119,14 @@ This document outlines the unit testing requirements for the custom functionalit
   - Preference string representation
   - Preference timestamp fields
 
----
-
-## 🔄 IN PROGRESS / PARTIALLY COMPLETED
-
-### Signal Handlers and Business Logic (0/15 tests) ❌
-- **Aliquot Tube Creation Signal Tests** (0/4 tests) ❌
+### Signal Handlers and Business Logic (18 tests) ✅
+- **Aliquot Tube Creation Signal Tests** (4/4 tests) ✅
   - Automatic tube creation when aliquot is created
   - Tube creation with different quantities
   - Tube creation with zero quantity
   - Tube creation prevents infinite loops
 
-- **Auto-Storage Signal Tests** (0/6 tests) ❌
+- **Auto-Storage Signal Tests** (6/6 tests) ✅
   - Automatic storage of stored tubes
   - No auto-storage for non-stored tubes
   - Auto-store box selection algorithm
@@ -138,14 +134,17 @@ This document outlines the unit testing requirements for the custom functionalit
   - Auto-store disabled scenarios
   - Auto-store inheritance from device to box
 
-- **Tube Disposition Change Signal Tests** (0/4 tests) ❌
+- **Tube Disposition Change Signal Tests** (4/4 tests) ✅
   - Storage location removal when tube disposition changes
   - Storage location removal for exhausted tubes
   - No storage removal for stored to stored changes
   - Old disposition storage
 
-- **Aliquot Tube Management Tests** (0/1 tests) ❌
+- **Aliquot Tube Management Tests** (4/4 tests) ✅
   - Individual tube disposition management
+  - Tube count calculations (stored vs unstored)
+  - Tube count calculations for non-stored aliquots
+  - Simple disposition change without signal interference
 
 ---
 
@@ -238,11 +237,10 @@ This document outlines the unit testing requirements for the custom functionalit
 
 ## 🎯 NEXT STEPS
 
-1. **Fix Signal Handler Tests** - Update existing signal tests to work with new explicit tube creation approach
-2. **Add Form Validation Tests** - Test form validation and error handling
-3. **Create View Tests** - Test view functionality and permissions
-4. **Add API Tests** - Test API endpoints and responses
-5. **Implement Management Command Tests** - Test custom Django management commands
+1. **Add Form Validation Tests** - Test form validation and error handling
+2. **Create View Tests** - Test view functionality and permissions
+3. **Add API Tests** - Test API endpoints and responses
+4. **Implement Management Command Tests** - Test custom Django management commands
 
 ---
 
@@ -251,13 +249,13 @@ This document outlines the unit testing requirements for the custom functionalit
 - **Sample Models**: 23/23 tests ✅ (100%)
 - **Storage Models**: 23/23 tests ✅ (100%)
 - **User Management Models**: 26/26 tests ✅ (100%)
-- **Signal Handlers**: 0/15 tests ❌ (0%)
+- **Signal Handlers**: 18/18 tests ✅ (100%)
 - **Forms**: 0/8 tests ❌ (0%)
 - **Views**: 0/12 tests ❌ (0%)
 - **API Endpoints**: 0/8 tests ❌ (0%)
 - **Management Commands**: 0/3 tests ❌ (0%)
 
-**Overall Progress**: 72/118 tests completed (61%)
+**Overall Progress**: 93/118 tests completed (79%)
 
 ---
 
@@ -276,3 +274,6 @@ This document outlines the unit testing requirements for the custom functionalit
 - ✅ Computed disposition logic (exhausted when no tubes, stored when tubes exist)
 - ✅ Error handling for invalid tube numbers
 - ✅ Tube count properties (`stored_tubes_count`, `unstored_tubes_count`)
+- ✅ Signal handler tests for automatic tube creation and storage
+- ✅ Signal handler tests for disposition change handling
+- ✅ Signal handler tests for auto-storage functionality
