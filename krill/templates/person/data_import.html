@@ -1,0 +1,299 @@
+{% extends 'base/layout.html' %}
+
+{% block title %}Data Import - Krill{% endblock %}
+
+{% block content %}
+<div class="detail-container">
+    <div class="detail-header">
+        <h1>
+            <i class="material-icons-round">upload_file</i>
+            Data Import
+        </h1>
+    </div>
+
+    <div class="detail-content">
+        {% if error %}
+        <div class="error-message">
+            <strong>Error:</strong> {{ error }}
+        </div>
+        {% endif %}
+        
+        {% if messages %}
+            {% for message in messages %}
+                <div class="{% if message.tags == 'error' %}error-message{% else %}success-message{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+        
+        <div class="import-form">
+            <h3><i class="material-icons-round">file_upload</i> Upload CSV File</h3>
+            <p class="form-description">
+                Import sample data from CSV files. The system will automatically create sources, samples, storage locations, and aliquots based on your data.
+            </p>
+            
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                
+                <div class="detail-field">
+                    {{ form.csv_file.label_tag }}
+                    {{ form.csv_file }}
+                    {% if form.csv_file.help_text %}
+                        <div class="help-text">{{ form.csv_file.help_text }}</div>
+                    {% endif %}
+                    {% if form.csv_file.errors %}
+                        <div class="field-errors">
+                            {% for error in form.csv_file.errors %}
+                                <span class="error">{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="detail-field">
+                    {{ form.dry_run.label_tag }}
+                    {{ form.dry_run }}
+                    {% if form.dry_run.help_text %}
+                        <div class="help-text">{{ form.dry_run.help_text }}</div>
+                    {% endif %}
+                </div>
+                
+                <div class="form-buttons">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="material-icons-round">
+                            {% if dry_run %}cloud_upload{% else %}preview{% endif %}
+                        </i>
+                        {% if dry_run %}Import Data{% else %}Preview Import{% endif %}
+                    </button>
+                    <a href="{% url 'person:user_list' %}" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+        
+        {% if preview_data %}
+        <div class="preview-section">
+            <h3><i class="material-icons-round">preview</i> Import Preview</h3>
+            <div class="preview-notice">
+                <i class="material-icons-round">info</i>
+                <p><strong>This is a preview. No data has been imported yet.</strong></p>
+            </div>
+            
+            <div class="preview-grid">
+                <div class="preview-item">
+                    <h4>Sources</h4>
+                    <div class="preview-count">{{ preview_data.sources|length }}</div>
+                    <div class="preview-list">
+                        {% for source in preview_data.sources %}
+                            <div class="preview-list-item">{{ source }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <div class="preview-item">
+                    <h4>Samples</h4>
+                    <div class="preview-count">{{ preview_data.samples|length }}</div>
+                    <div class="preview-list">
+                        {% for sample in preview_data.samples %}
+                            <div class="preview-list-item">{{ sample }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <div class="preview-item">
+                    <h4>Storage Items</h4>
+                    <div class="preview-count">{{ preview_data.storage_items|length }}</div>
+                    <div class="preview-list">
+                        {% for item in preview_data.storage_items %}
+                            <div class="preview-list-item">{{ item }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <div class="preview-item">
+                    <h4>Aliquot Types</h4>
+                    <div class="preview-count">{{ preview_data.aliquot_types|length }}</div>
+                    <div class="preview-list">
+                        {% for type in preview_data.aliquot_types %}
+                            <div class="preview-list-item">{{ type }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <div class="preview-item">
+                    <h4>Dispositions</h4>
+                    <div class="preview-count">{{ preview_data.dispositions|length }}</div>
+                    <div class="preview-list">
+                        {% for disp in preview_data.dispositions %}
+                            <div class="preview-list-item">{{ disp }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <div class="preview-item">
+                    <h4>Summary</h4>
+                    <div class="preview-count">{{ preview_data.aliquots }}</div>
+                    <div class="preview-list">
+                        <div class="preview-list-item">
+                            <strong>Total Aliquots:</strong> {{ preview_data.aliquots }}
+                        </div>
+                        <div class="preview-list-item">
+                            <strong>With Locations:</strong> {{ preview_data.locations }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="preview-actions">
+                <form method="post" enctype="multipart/form-data" style="display: inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="csv_file" value="{{ form.csv_file.value }}">
+                    <button type="submit" class="btn btn-success">
+                        <i class="material-icons-round">cloud_upload</i>
+                        Proceed with Import
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+/* Data Import Specific Styles */
+.import-form {
+    background: var(--color-white);
+    padding: 2rem;
+    border-radius: var(--border-radius-1);
+    box-shadow: var(--box-shadow);
+    margin-bottom: 2rem;
+}
+
+.import-form h3 {
+    color: var(--color-dark);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.form-description {
+    color: var(--color-dark-variant);
+    margin-bottom: 1.5rem;
+    line-height: 1.5;
+}
+
+.preview-section {
+    background: var(--color-gray-light);
+    padding: 2rem;
+    border-radius: var(--border-radius-1);
+    margin-top: 2rem;
+}
+
+.preview-section h3 {
+    color: var(--color-dark);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.preview-notice {
+    background: var(--color-info-lighter);
+    color: var(--color-info-darker);
+    padding: 1rem;
+    border-radius: var(--border-radius-1);
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.preview-notice i {
+    font-size: 1.2rem;
+}
+
+.preview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.preview-item {
+    background: var(--color-white);
+    padding: 1.5rem;
+    border-radius: var(--border-radius-1);
+    border-left: 4px solid var(--color-primary);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.preview-item h4 {
+    color: var(--color-dark);
+    margin: 0 0 1rem 0;
+    font-size: 1.1em;
+    font-weight: 600;
+}
+
+.preview-count {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--color-primary);
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.preview-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.preview-list-item {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--color-light);
+    color: var(--color-dark);
+}
+
+.preview-list-item:last-child {
+    border-bottom: none;
+}
+
+.preview-actions {
+    text-align: center;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--color-light);
+}
+
+.error-message {
+    background: var(--color-danger-light);
+    color: var(--color-danger-dark);
+    padding: 1rem;
+    border-radius: var(--border-radius-1);
+    border: 1px solid var(--color-danger);
+    margin-bottom: 1.5rem;
+}
+
+.success-message {
+    background: var(--color-success-light);
+    color: var(--color-success-dark);
+    padding: 1rem;
+    border-radius: var(--border-radius-1);
+    border: 1px solid var(--color-success);
+    margin-bottom: 1.5rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .preview-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .preview-item {
+        padding: 1rem;
+    }
+    
+    .preview-count {
+        font-size: 1.5rem;
+    }
+}
+</style>
+{% endblock %}

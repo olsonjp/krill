@@ -2,9 +2,10 @@ from django.contrib import admin
 from django.urls import path, include
 from django.contrib.auth import views as auth_views
 from .views import home, reports, settings
+from person.admin import admin_site
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path('admin/', admin_site.urls),
     path('', home, name='home'),
     path('reports/', reports, name='reports'),
     path('settings/', settings, name='settings'),

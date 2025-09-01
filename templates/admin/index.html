@@ -1,0 +1,164 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block extrastyle %}{{ block.super }}
+<link rel="stylesheet" type="text/css" href="{% static "admin/css/dashboard.css" %}">
+<style>
+    .admin-actions {
+        background: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+    
+    .admin-actions h2 {
+        margin-top: 0;
+        color: #333;
+        border-bottom: 2px solid #79aec8;
+        padding-bottom: 10px;
+    }
+    
+    .action-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        margin-top: 15px;
+    }
+    
+    .action-card {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 6px;
+        border-left: 4px solid #79aec8;
+        transition: transform 0.2s ease;
+    }
+    
+    .action-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .action-card h3 {
+        margin: 0 0 10px 0;
+        color: #333;
+        font-size: 1.2em;
+    }
+    
+    .action-card p {
+        color: #666;
+        margin: 0 0 15px 0;
+        line-height: 1.4;
+    }
+    
+    .action-btn {
+        display: inline-block;
+        padding: 8px 16px;
+        background: #79aec8;
+        color: white;
+        text-decoration: none;
+        border-radius: 4px;
+        font-size: 0.9em;
+        transition: background 0.2s ease;
+    }
+    
+    .action-btn:hover {
+        background: #417690;
+        color: white;
+        text-decoration: none;
+    }
+    
+    .action-btn.danger {
+        background: #dc3545;
+    }
+    
+    .action-btn.danger:hover {
+        background: #c82333;
+    }
+    
+    .action-btn.success {
+        background: #28a745;
+    }
+    
+    .action-btn.success:hover {
+        background: #218838;
+    }
+</style>
+{% endblock %}
+
+{% block coltype %}colMS{% endblock %}
+
+{% block bodyclass %}{{ block.super }} dashboard{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+&rsaquo; {% trans 'Dashboard' %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    {% include "admin/app_list.html" with app_list=app_list show_changelinks=True %}
+    
+    <div class="admin-actions">
+        <h2>{% trans 'System Administration' %}</h2>
+        <div class="action-grid">
+            <div class="action-card">
+                <h3>{% trans 'Data Import' %}</h3>
+                <p>{% trans 'Import sample data from CSV files. Supports bulk import of sources, samples, storage locations, and aliquots.' %}</p>
+                <a href="{% url 'admin:data_import' %}" class="action-btn">{% trans 'Import Data' %}</a>
+            </div>
+            
+            <div class="action-card">
+                <h3>{% trans 'User Management' %}</h3>
+                <p>{% trans 'Manage user accounts, roles, permissions, and access levels. Monitor user activity and audit logs.' %}</p>
+                <a href="{% url 'admin:person_user_changelist' %}" class="action-btn">{% trans 'Manage Users' %}</a>
+            </div>
+            
+            <div class="action-card">
+                <h3>{% trans 'System Health' %}</h3>
+                <p>{% trans 'Monitor system performance, database status, and overall application health.' %}</p>
+                <a href="#" class="action-btn success">{% trans 'System Status' %}</a>
+            </div>
+            
+            <div class="action-card">
+                <h3>{% trans 'Backup & Restore' %}</h3>
+                <p>{% trans 'Create database backups, export data, and restore from previous backups.' %}</p>
+                <a href="#" class="action-btn">{% trans 'Backup Data' %}</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block sidebar %}
+<div id="content-related">
+    <div class="module" id="recent-actions-module">
+        <h2>{% trans 'Recent actions' %}</h2>
+        {% load log %}
+        {% get_admin_log 10 as admin_log for_user user %}
+        {% if not admin_log %}
+        <p>{% trans 'None available' %}</p>
+        {% else %}
+        <ul class="actionlist">
+        {% for entry in admin_log %}
+        <li class="{% if entry.is_addition %}addlink{% endif %}{% if entry.is_change %}changelink{% endif %}{% if entry.is_deletion %}deletelink{% endif %}">
+            {% if entry.is_deletion or not entry.get_admin_url %}
+                {{ entry.object_repr }}
+            {% else %}
+                <a href="{{ entry.get_admin_url }}">{{ entry.object_repr }}</a>
+            {% endif %}
+            <br>
+            {% if entry.content_type %}
+                <span class="mini quiet">{% filter capfirst %}{{ entry.content_type.name }}{% endfilter %}</span>
+            {% else %}
+                <span class="mini quiet">{% trans 'Unknown content' %}</span>
+            {% endif %}
+        </li>
+        {% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
