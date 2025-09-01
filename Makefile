@@ -3,7 +3,7 @@
 
 .PHONY: help build-dev build-test build-prod build-all test run-dev run-prod clean
 .PHONY: server migrate makemigrations shell collectstatic createsuperuser
-.PHONY: test-local test-docker security-check deploy-check
+.PHONY: test-local test-docker security-check deploy-check push-prod
 
 # Default target
 help:
@@ -36,6 +36,7 @@ help:
 	@echo "  build-test    - Build testing image"
 	@echo "  build-prod    - Build production image"
 	@echo "  build-all     - Build all images"
+	@echo "  push-prod     - Push production image to DigitalOcean registry"
 	@echo "  run-dev       - Run development container"
 	@echo "  run-prod      - Run production container"
 	@echo "  docker-shell  - Access container shell"
@@ -70,6 +71,10 @@ build-prod:
 build-all:
 	@echo "Building all images..."
 	./build.sh all
+
+push-prod:
+	@echo "Pushing production image to DigitalOcean registry..."
+	./build.sh push
 
 # Run commands
 run-dev:
