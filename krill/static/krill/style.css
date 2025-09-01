@@ -1120,6 +1120,7 @@ main table tbody tr:last-child td{
 .form-buttons {
     display: flex;
     justify-content: flex-end;
+    gap: 0.5rem;
     margin-top: 2rem;
 }
 
