@@ -1094,40 +1094,6 @@ main table tbody tr:last-child td{
     color: var(--color-dark);
 }
 
-.edit-button, .move-button, .save-button, .cancel-button {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    border-radius: var(--border-radius-1);
-    border: none;
-    cursor: pointer;
-    font-size: 1rem;
-    transition: all 300ms ease;
-}
-
-.edit-button {
-    background: var(--color-primary);
-    color: var(--color-white);
-}
-
-.move-button {
-    background: var(--color-warning);
-    color: var(--color-white);
-    margin-left: 0.5rem;
-}
-
-.save-button {
-    background: var(--color-success);
-    color: var(--color-white);
-}
-
-.cancel-button {
-    background: var(--color-danger);
-    color: var(--color-white);
-    margin-left: 1rem;
-}
-
 .detail-content, .detail-form {
     background: var(--color-white);
     padding: 2rem;
@@ -2210,6 +2176,83 @@ main table tbody tr:last-child td{
     color: var(--color-dark-variant);
 }
 
+/* Button Styles */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: var(--border-radius-1);
+    border: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    font-family: var(--font-family);
+}
+
+.btn:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+.btn-primary {
+    background: var(--color-primary);
+    color: var(--color-white);
+}
+
+.btn-secondary {
+    background: var(--color-dark-variant);
+    color: var(--color-white);
+}
+
+.btn-success {
+    background: var(--color-success);
+    color: var(--color-white);
+}
+
+.btn-warning {
+    background: var(--color-warning);
+    color: var(--color-dark);
+}
+
+/* Dark mode adjustments for warning button */
+.dark-mode-variables .btn-warning {
+    color: #2c3e50; /* Darker text color for better contrast on yellow in dark mode */
+}
+
+.btn-danger {
+    background: var(--color-danger);
+    color: var(--color-white);
+}
+
+.btn-info {
+    background: var(--color-info-dark);
+    color: var(--color-white);
+}
+
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+}
+
+.btn-lg {
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+}
+
+/* Header Actions Container */
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .search-fields {
@@ -2255,5 +2298,10 @@ main table tbody tr:last-child td{
     .aliquot-details {
         flex-direction: column;
         gap: 0.5rem;
+    }
+    .header-actions {
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: stretch;
     }
 }

@@ -4,10 +4,12 @@
 <div class="detail-container">
     <div class="detail-header">
         <h1>{{ object.name }}</h1>
-        <button class="edit-button" onclick="toggleEdit()">
-            <span class="material-icons-round">edit</span>
-            Edit
-        </button>
+        <div class="header-actions">
+            <button class="btn btn-primary" id="editButton" onclick="toggleEdit()">
+                <span class="material-icons-round">edit</span>
+                Edit
+            </button>
+        </div>
     </div>
 
     <div class="detail-content" id="viewMode">
@@ -120,11 +122,11 @@
             </div>
             {% endfor %}
             <div class="form-buttons">
-                <button type="submit" class="save-button">
+                <button type="submit" class="btn btn-success">
                     <span class="material-icons-round">save</span>
                     Save
                 </button>
-                <button type="button" class="cancel-button" onclick="toggleEdit()">
+                <button type="button" class="btn btn-danger" onclick="toggleEdit()">
                     <span class="material-icons-round">close</span>
                     Cancel
                 </button>
@@ -137,7 +139,7 @@
 function toggleEdit() {
     const viewMode = document.getElementById('viewMode');
     const editMode = document.getElementById('editMode');
-    const editButton = document.querySelector('.edit-button');
+    const editButton = document.getElementById('editButton');
     viewMode.classList.toggle('hidden');
     editMode.classList.toggle('hidden');
     editButton.classList.toggle('hidden');
