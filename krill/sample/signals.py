@@ -9,7 +9,8 @@ def create_aliquot_tubes(sender, instance, created, **kwargs):
     """
     if created and not hasattr(instance, '_tubes_created'):
         # Get the default disposition (usually "Stored")
-        default_disposition = instance.disposition
+        from .models.aliquot import AliquotDisposition
+        default_disposition = AliquotDisposition.objects.get(dispositionType='stored')
         
         # Create individual tube instances
         for tube_number in range(1, instance.quantity + 1):

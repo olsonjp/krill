@@ -17,8 +17,7 @@ class SampleListView(ListView):
         if model_type == 'aliquot':
             context['items'] = Aliquot.objects.select_related(
                 'sample', 
-                'aliquotType', 
-                'disposition'
+                'aliquotType'
             ).prefetch_related(
                 'aliquotlocation_set__box'
             ).all()
