@@ -1,6 +1,49 @@
 # requirements.txt
 
+# Core Django
 asgiref==3.7.2
 Django==5.0.1
 sqlparse==0.4.4
 typing_extensions==4.9.0
+
+# Database
+psycopg2-binary==2.9.9  # PostgreSQL adapter for production
+
+# Cache and Sessions
+redis==5.0.1
+django-redis==5.4.0
+
+# Security
+django-ratelimit==4.1.0  # Rate limiting
+django-cors-headers==4.3.1  # CORS handling
+django-axes==6.1.0  # Login attempt tracking
+
+# Environment and Configuration
+python-dotenv==1.0.0  # Environment variable management
+django-environ==0.11.2  # Environment configuration
+
+# Monitoring and Logging
+django-debug-toolbar==4.2.0  # Development debugging (dev only)
+sentry-sdk==1.38.0  # Error tracking and monitoring
+
+# File Handling
+Pillow==10.1.0  # Image processing
+python-magic==0.4.27  # File type detection
+
+# API and Serialization
+djangorestframework==3.14.0  # REST API framework
+django-filter==23.5  # Filtering for APIs
+
+# Testing and Security Analysis
+bandit==1.7.5  # Security linter
+safety==2.3.5  # Dependency vulnerability checker
+coverage==7.3.2  # Code coverage
+
+# Production and Deployment
+gunicorn==21.2.0  # WSGI server
+whitenoise==6.6.0  # Static file serving
+django-storages==1.14.2  # File storage backends
+
+# Development Tools (optional)
+django-extensions==3.2.3  # Development utilities
+ipython==8.17.2  # Enhanced Python shell
