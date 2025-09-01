@@ -1,0 +1,543 @@
+{% extends 'base/layout.html' %}
+{% load static %}
+
+{% block title %}Storage Audit Report - Krill{% endblock %}
+
+{% block content %}
+<div class="home-container">
+    <!-- Welcome Section -->
+    <div class="welcome-section">
+        <h1>Storage Audit Report</h1>
+        <p class="subtitle">Generate a random audit of occupied storage slots to verify data integrity</p>
+    </div>
+
+    <div class="stats-container">
+        <div class="stat-card">
+            <span class="material-icons-round">assignment_turned_in</span>
+            <div class="stat-info">
+                <h3>Audit Type</h3>
+                <p>Random Sampling</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <span class="material-icons-round">storage</span>
+            <div class="stat-info">
+                <h3>Storage System</h3>
+                <p>All Devices</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <span class="material-icons-round">checklist</span>
+            <div class="stat-info">
+                <h3>Output Format</h3>
+                <p>Interactive Checklist</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <span class="material-icons-round">schedule</span>
+            <div class="stat-info">
+                <h3>Generation Time</h3>
+                <p>Instant</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audit Configuration -->
+    <div class="recent-activity">
+        <div class="section-header">
+            <h2>Audit Configuration</h2>
+        </div>
+        <div class="activity-list">
+            <form id="auditForm" class="audit-form">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="reportName">Report Name</label>
+                    <input type="text" class="form-control" id="reportName" name="name" 
+                           placeholder="Storage Audit - 2024-01-15" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="sampleSize">Sample Size</label>
+                    <input type="number" class="form-control" id="sampleSize" name="sample_size" 
+                           value="10" min="1" max="100" required>
+                    <small class="form-text">Number of occupied slots to randomly select for audit (1-100)</small>
+                </div>
+                
+                <div class="form-group">
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="includeEmpty" name="include_empty_checks">
+                        <label class="form-check-label" for="includeEmpty">
+                            Include empty slot verification
+                        </label>
+                        <small class="form-text">Also randomly check some empty slots to verify they are actually empty</small>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary" id="generateBtn">
+                        <span class="material-icons-round">assignment_turned_in</span>
+                        Generate Audit Report
+                    </button>
+                    <a href="{% url 'reports:reports_dashboard' %}" class="btn btn-secondary">
+                        <span class="material-icons-round">arrow_back</span>
+                        Back to Dashboard
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Audit Information -->
+    <div class="recent-activity">
+        <div class="section-header">
+            <h2>Audit Information</h2>
+        </div>
+        <div class="activity-list">
+            <div class="info-item">
+                <span class="material-icons-round">info</span>
+                <div class="info-content">
+                    <p><strong>What is a Storage Audit?</strong></p>
+                    <small>A storage audit randomly selects occupied storage slots and provides a checklist for physical verification. This helps ensure data integrity and catch any discrepancies between the system records and actual storage.</small>
+                </div>
+            </div>
+            
+            <div class="info-item">
+                <span class="material-icons-round">list_alt</span>
+                <div class="info-content">
+                    <p><strong>Audit Process:</strong></p>
+                    <small>1. System randomly selects occupied slots → 2. Generate audit checklist with location details → 3. Physical verification of each slot → 4. Record any discrepancies found → 5. Update system records if needed</small>
+                </div>
+            </div>
+            
+            <div class="info-item">
+                <span class="material-icons-round">check_circle</span>
+                <div class="info-content">
+                    <p><strong>Benefits:</strong></p>
+                    <small>Quality control and data integrity • Identify misplaced samples • Verify storage accuracy • Compliance and documentation</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Section -->
+    <div class="recent-activity" id="resultsSection" style="display: none;">
+        <div class="section-header">
+            <h2>Audit Report Generated</h2>
+        </div>
+        <div class="activity-list">
+            <div id="auditResults"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('auditForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = {
+        name: formData.get('name'),
+        sample_size: parseInt(formData.get('sample_size')),
+        include_empty_checks: formData.get('include_empty_checks') === 'on'
+    };
+    
+    const generateBtn = document.getElementById('generateBtn');
+    const originalText = generateBtn.innerHTML;
+    generateBtn.innerHTML = '<span class="material-icons-round rotating">refresh</span> Generating...';
+    generateBtn.disabled = true;
+    
+    fetch('{% url "reports:generate_audit_report" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            displayAuditResults(data.data);
+            document.getElementById('resultsSection').style.display = 'block';
+            document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth' });
+        } else {
+            alert('Error: ' + (data.error || 'Failed to generate audit report'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error generating audit report');
+    })
+    .finally(() => {
+        generateBtn.innerHTML = originalText;
+        generateBtn.disabled = false;
+    });
+});
+
+function displayAuditResults(auditData) {
+    const resultsDiv = document.getElementById('auditResults');
+    
+    let html = `
+        <div class="info-item success">
+            <span class="material-icons-round">check_circle</span>
+            <div class="info-content">
+                <p><strong>Audit Report Generated Successfully</strong></p>
+                <small>${auditData.summary}</small>
+            </div>
+        </div>
+        
+        <div class="stats-container">
+            <div class="stat-card">
+                <span class="material-icons-round">inventory_2</span>
+                <div class="stat-info">
+                    <h3>Total Occupied</h3>
+                    <p>${auditData.total_occupied_slots}</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <span class="material-icons-round">assignment_turned_in</span>
+                <div class="stat-info">
+                    <h3>Selected for Audit</h3>
+                    <p>${auditData.sample_size}</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <span class="material-icons-round">checklist</span>
+                <div class="stat-info">
+                    <h3>Checklist Items</h3>
+                    <p>${auditData.audit_slots.length}</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <span class="material-icons-round">visibility_off</span>
+                <div class="stat-info">
+                    <h3>Empty Slots</h3>
+                    <p>${auditData.empty_audit_slots ? auditData.empty_audit_slots.length : 0}</p>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    if (auditData.audit_slots.length > 0) {
+        html += `
+            <div class="info-item">
+                <span class="material-icons-round">assignment_turned_in</span>
+                <div class="info-content">
+                    <p><strong>Audit Checklist - Occupied Slots</strong></p>
+                    <small>Use this checklist for physical verification of the selected storage slots.</small>
+                </div>
+            </div>
+        `;
+        
+        auditData.audit_slots.forEach((slot, index) => {
+            html += `
+                <div class="audit-item">
+                    <div class="audit-header">
+                        <span class="material-icons-round">location_on</span>
+                        <div class="audit-location">
+                            <strong>${slot.site} - ${slot.device} - ${slot.box} (${slot.row},${slot.column})</strong>
+                            <small>Sample: ${slot.sample_name} (ID: ${slot.sample_id})</small>
+                        </div>
+                    </div>
+                    <div class="audit-fields">
+                        <div class="field-group">
+                            <label>Expected Tubes:</label>
+                            <span class="expected-value">${slot.expected_tubes}</span>
+                        </div>
+                        <div class="field-group">
+                            <label>Actual Tubes:</label>
+                            <input type="number" class="form-control audit-input" value="${slot.actual_tubes}" min="0">
+                        </div>
+                        <div class="field-group">
+                            <label>Discrepancy:</label>
+                            <input type="checkbox" class="form-check-input">
+                        </div>
+                        <div class="field-group full-width">
+                            <label>Notes:</label>
+                            <input type="text" class="form-control audit-input" placeholder="Notes...">
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+    }
+    
+    if (auditData.empty_audit_slots && auditData.empty_audit_slots.length > 0) {
+        html += `
+            <div class="info-item">
+                <span class="material-icons-round">visibility_off</span>
+                <div class="info-content">
+                    <p><strong>Empty Slot Verification</strong></p>
+                    <small>Verify these slots are actually empty as expected.</small>
+                </div>
+            </div>
+        `;
+        
+        auditData.empty_audit_slots.forEach(slot => {
+            html += `
+                <div class="audit-item empty-slot">
+                    <div class="audit-header">
+                        <span class="material-icons-round">location_on</span>
+                        <div class="audit-location">
+                            <strong>${slot.site} - ${slot.device} - ${slot.box} (${slot.row},${slot.column})</strong>
+                            <small>Expected: Empty</small>
+                        </div>
+                    </div>
+                    <div class="audit-fields">
+                        <div class="field-group">
+                            <label>Actually Empty:</label>
+                            <input type="checkbox" class="form-check-input" checked>
+                        </div>
+                        <div class="field-group full-width">
+                            <label>Notes:</label>
+                            <input type="text" class="form-control audit-input" placeholder="Notes...">
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+    }
+    
+    html += `
+        <div class="form-actions">
+            <button class="btn btn-primary" onclick="printAuditReport()">
+                <span class="material-icons-round">print</span>
+                Print Audit Checklist
+            </button>
+            <button class="btn btn-secondary" onclick="downloadAuditData()">
+                <span class="material-icons-round">download</span>
+                Download Data
+            </button>
+        </div>
+    `;
+    
+    resultsDiv.innerHTML = html;
+}
+
+function printAuditReport() {
+    window.print();
+}
+
+function downloadAuditData() {
+    alert('Download functionality would be implemented here');
+}
+
+// Rotating animation for loading
+const style = document.createElement('style');
+style.textContent = `
+    .rotating {
+        animation: rotate 2s linear infinite;
+    }
+    
+    @keyframes rotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+`;
+document.head.appendChild(style);
+</script>
+
+<style>
+.audit-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-group label {
+    font-weight: 500;
+    color: var(--color-dark);
+}
+
+.form-control {
+    padding: 12px;
+    border: 1px solid var(--color-light);
+    border-radius: var(--border-radius-1);
+    font-size: 0.9rem;
+    background: var(--color-white);
+    color: var(--color-dark);
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(108, 155, 207, 0.25);
+}
+
+.form-text {
+    font-size: 0.8rem;
+    color: var(--color-info-dark);
+}
+
+.form-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.form-check-input {
+    margin-top: 2px;
+}
+
+.form-check-label {
+    font-weight: 500;
+    color: var(--color-dark);
+}
+
+.form-actions {
+    display: flex;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.info-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+    padding: 20px;
+    background: var(--color-white);
+    border-radius: var(--border-radius-1);
+    border: 1px solid var(--color-light);
+}
+
+.info-item.success {
+    background: #d4edda;
+    border-color: #c3e6cb;
+}
+
+.info-item .material-icons-round {
+    color: var(--color-primary);
+    font-size: 1.5rem;
+    margin-top: 2px;
+}
+
+.info-item.success .material-icons-round {
+    color: var(--color-success);
+}
+
+.info-content p {
+    margin: 0 0 8px 0;
+    color: var(--color-dark);
+}
+
+.info-content small {
+    color: var(--color-dark-variant);
+    line-height: 1.4;
+}
+
+.audit-item {
+    background: var(--color-white);
+    border: 1px solid var(--color-light);
+    border-radius: var(--border-radius-1);
+    padding: 20px;
+    margin-bottom: 15px;
+}
+
+.audit-item.empty-slot {
+    background: #f8f9fa;
+    border-color: #e9ecef;
+}
+
+.audit-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.audit-header .material-icons-round {
+    color: var(--color-primary);
+    font-size: 1.2rem;
+    margin-top: 2px;
+}
+
+.audit-location strong {
+    color: var(--color-dark);
+    display: block;
+    margin-bottom: 4px;
+}
+
+.audit-location small {
+    color: var(--color-dark-variant);
+}
+
+.audit-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.field-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.field-group label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--color-dark);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.expected-value {
+    padding: 8px 12px;
+    background: var(--color-light);
+    border-radius: var(--border-radius-1);
+    font-weight: 500;
+    color: var(--color-dark);
+}
+
+.audit-input {
+    padding: 8px 12px;
+    border: 1px solid var(--color-light);
+    border-radius: var(--border-radius-1);
+    font-size: 0.9rem;
+}
+
+.audit-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(108, 155, 207, 0.25);
+}
+
+@media print {
+    .btn, .form-actions, .audit-input {
+        display: none !important;
+    }
+    .audit-item {
+        break-inside: avoid;
+        margin-bottom: 20px;
+    }
+    .expected-value {
+        background: #f0f0f0 !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .audit-fields {
+        grid-template-columns: 1fr;
+    }
+    
+    .audit-header {
+        flex-direction: column;
+        gap: 8px;
+    }
+}
+</style>
+{% endblock %}
