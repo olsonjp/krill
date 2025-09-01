@@ -9,6 +9,7 @@ class ReportTemplate(models.Model):
         ('storage_capacity', 'Storage Capacity'),
         ('user_activity', 'User Activity'),
         ('aliquot_tracking', 'Aliquot Tracking'),
+        ('storage_audit', 'Storage Audit'),
         ('custom', 'Custom Report'),
     ]
     

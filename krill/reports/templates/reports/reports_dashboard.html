@@ -75,16 +75,6 @@
         <div class="col-lg-4 col-md-6 mb-3">
             <div class="card action-card h-100">
                 <div class="card-body text-center">
-                    <i class="fas fa-file-alt fa-3x text-primary mb-3"></i>
-                    <h5 class="card-title">Generate Report</h5>
-                    <p class="card-text">Create a new report from templates</p>
-                    <a href="{% url 'reports:generate_report' %}" class="btn btn-primary">Generate</a>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-4 col-md-6 mb-3">
-            <div class="card action-card h-100">
-                <div class="card-body text-center">
                     <i class="fas fa-search fa-3x text-success mb-3"></i>
                     <h5 class="card-title">Search Samples</h5>
                     <p class="card-text">Find samples and aliquots</p>
@@ -99,6 +89,16 @@
                     <h5 class="card-title">View Alerts</h5>
                     <p class="card-text">Check system alerts</p>
                     <a href="{% url 'reports:alert_list' %}" class="btn btn-warning">View</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 col-md-6 mb-3">
+            <div class="card action-card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-clipboard-check fa-3x text-info mb-3"></i>
+                    <h5 class="card-title">Storage Audit</h5>
+                    <p class="card-text">Random audit of occupied slots</p>
+                    <a href="{% url 'reports:generate_audit_report' %}" class="btn btn-info">Audit</a>
                 </div>
             </div>
         </div>

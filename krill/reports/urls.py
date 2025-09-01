@@ -12,6 +12,7 @@ urlpatterns = [
     
     # Report Generation
     path('generate/', views.generate_report, name='generate_report'),
+    path('audit/', views.generate_audit_report, name='generate_audit_report'),
     path('list/', views.report_list, name='report_list'),
     path('detail/<int:report_id>/', views.report_detail, name='report_detail'),
     path('download/<int:report_id>/', views.download_report, name='download_report'),

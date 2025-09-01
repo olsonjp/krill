@@ -146,8 +146,7 @@ def generate_report(request):
             created_by=request.user
         )
         
-        # TODO: Implement actual report generation logic
-        # For now, just mark as complete with sample data
+        # Generate report data based on type
         sample_data = generate_sample_report_data(template.report_type, parameters)
         report.mark_complete(result_data=sample_data)
         
@@ -159,6 +158,59 @@ def generate_report(request):
         })
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+def generate_audit_report(request):
+    """Generate a storage audit report with random slot selection"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            sample_size = int(data.get('sample_size', 10))
+            include_empty_checks = data.get('include_empty_checks', False)
+            report_name = data.get('name', f'Storage Audit - {timezone.now().strftime("%Y-%m-%d")}')
+            
+            # Create or get the storage audit template
+            template, created = ReportTemplate.objects.get_or_create(
+                report_type='storage_audit',
+                defaults={
+                    'name': 'Storage Audit Template',
+                    'description': 'Random audit of occupied storage slots',
+                    'template_data': {'default_sample_size': 10},
+                    'created_by': request.user
+                }
+            )
+            
+            # Create report instance
+            parameters = {
+                'sample_size': sample_size,
+                'include_empty_checks': include_empty_checks
+            }
+            
+            report = Report.objects.create(
+                template=template,
+                name=report_name,
+                format='json',  # Audit reports work best as JSON for data processing
+                parameters=parameters,
+                created_by=request.user
+            )
+            
+            # Generate audit data
+            audit_data = generate_storage_audit_data(parameters)
+            report.mark_complete(result_data=audit_data)
+            
+            return JsonResponse({
+                'success': True,
+                'report_id': report.id,
+                'status': report.status,
+                'message': 'Audit report generated successfully',
+                'data': audit_data
+            })
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+    
+    # GET request - show audit report form
+    return render(request, 'reports/audit_report_form.html')
 
 
 @login_required
@@ -391,7 +443,7 @@ def storage_dashboard(request):
 
 # Helper functions
 def generate_sample_report_data(report_type, parameters):
-    """Generate sample data for reports (placeholder)"""
+    """Generate sample data for reports"""
     if report_type == 'sample_inventory':
         return {
             'total_samples': Sample.objects.count(),
@@ -406,8 +458,103 @@ def generate_sample_report_data(report_type, parameters):
             'available_slots': total_slots - used_slots,
             'usage_percentage': round((used_slots / total_slots * 100) if total_slots > 0 else 0),
         }
+    elif report_type == 'storage_audit':
+        return generate_storage_audit_data(parameters)
     else:
         return {'message': 'Report data placeholder'}
+
+
+def generate_storage_audit_data(parameters):
+    """Generate storage audit data with random slot selection"""
+    import random
+    from django.db.models import Prefetch
+    
+    # Get parameters with defaults
+    sample_size = int(parameters.get('sample_size', 10))
+    include_empty_checks = parameters.get('include_empty_checks', False)
+    
+    # Get all occupied slots
+    occupied_locations = AliquotLocation.objects.select_related(
+        'aliquot__sample',
+        'box__device__site'
+    ).prefetch_related(
+        Prefetch('aliquot__sample__aliquots', queryset=Aliquot.objects.all())
+    ).all()
+    
+    total_occupied = occupied_locations.count()
+    
+    if total_occupied == 0:
+        return {
+            'total_occupied_slots': 0,
+            'sample_size': sample_size,
+            'audit_slots': [],
+            'summary': 'No occupied slots found for audit'
+        }
+    
+    # Randomly select slots for audit
+    actual_sample_size = min(sample_size, total_occupied)
+    audit_slots = random.sample(list(occupied_locations), actual_sample_size)
+    
+    # Format audit data
+    audit_data = []
+    for location in audit_slots:
+        slot_data = {
+            'location_id': location.id,
+            'site': location.box.device.site.name if location.box.device.site else 'Unknown',
+            'device': location.box.device.name,
+            'box': location.box.name,
+            'row': location.row,
+            'column': location.column,
+            'aliquot_id': location.aliquot.id if location.aliquot else None,
+            'sample_name': location.aliquot.sample.name if location.aliquot and location.aliquot.sample else 'Unknown',
+            'sample_id': location.aliquot.sample.id if location.aliquot and location.aliquot.sample else None,
+            'aliquot_quantity': location.aliquot.quantity if location.aliquot else 0,
+            'expected_tubes': location.aliquot.quantity if location.aliquot else 0,
+            'actual_tubes': 0,  # This would be filled in during physical audit
+            'discrepancy': False,  # This would be calculated during physical audit
+            'notes': '',  # For audit notes
+        }
+        audit_data.append(slot_data)
+    
+    # If including empty slot checks, also randomly select some empty slots
+    empty_audit_data = []
+    if include_empty_checks:
+        # Get all boxes and their total capacity
+        all_boxes = Box.objects.select_related('device__site').all()
+        empty_slots = []
+        
+        for box in all_boxes:
+            occupied_in_box = AliquotLocation.objects.filter(box=box).values_list('row', 'column')
+            occupied_set = set(occupied_in_box)
+            
+            for row in range(1, box.rows + 1):
+                for col in range(1, box.columns + 1):
+                    if (row, col) not in occupied_set:
+                        empty_slots.append({
+                            'site': box.device.site.name if box.device.site else 'Unknown',
+                            'device': box.device.name,
+                            'box': box.name,
+                            'row': row,
+                            'column': col,
+                            'expected_empty': True,
+                            'actual_empty': True,  # This would be filled in during physical audit
+                            'notes': ''
+                        })
+        
+        # Randomly select some empty slots for verification
+        if empty_slots:
+            empty_sample_size = min(5, len(empty_slots))  # Check up to 5 empty slots
+            empty_audit_data = random.sample(empty_slots, empty_sample_size)
+    
+    return {
+        'total_occupied_slots': total_occupied,
+        'sample_size': actual_sample_size,
+        'audit_slots': audit_data,
+        'empty_slots_checked': include_empty_checks,
+        'empty_audit_slots': empty_audit_data,
+        'generated_at': timezone.now().isoformat(),
+        'summary': f'Random audit of {actual_sample_size} occupied slots from {total_occupied} total occupied slots'
+    }
 
 
 def generate_csv_response(data):
