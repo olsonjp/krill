@@ -8,6 +8,14 @@
     <div class="detail-header">
         <h1><i class="material-icons-round">science</i> Tube Detail</h1>
         <div class="header-actions">
+            <button class="edit-button" onclick="toggleEdit()">
+                <span class="material-icons-round">edit</span>
+                Edit
+            </button>
+            <button class="move-button" onclick="toggleMove()">
+                <span class="material-icons-round">move_to_inbox</span>
+                Move
+            </button>
             <a href="{% url 'sample:detail' type='aliquot' pk=tube.aliquot.id %}" class="btn btn-secondary">
                 <span class="material-icons-round">arrow_back</span>
                 Back to Aliquot
@@ -107,5 +115,101 @@
             {% endif %}
         </div>
     </div>
+
+    <div class="detail-form hidden" id="editMode">
+        <form method="post" class="detail-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="edit">
+            {% for field in form %}
+            <div class="detail-field">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}
+                <small class="help-text">{{ field.help_text }}</small>
+                {% endif %}
+                {% if field.errors %}
+                <div class="field-errors">
+                    {% for error in field.errors %}
+                    <span class="error">{{ error }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+            <div class="form-buttons">
+                <button type="submit" class="save-button">
+                    <span class="material-icons-round">save</span>
+                    Save
+                </button>
+                <button type="button" class="cancel-button" onclick="toggleEdit()">
+                    <span class="material-icons-round">close</span>
+                    Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div class="detail-form hidden" id="moveMode">
+        <form method="post" class="detail-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="move">
+            {% for field in move_form %}
+            <div class="detail-field">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}
+                <small class="help-text">{{ field.help_text }}</small>
+                {% endif %}
+                {% if field.errors %}
+                <div class="field-errors">
+                    {% for error in field.errors %}
+                    <span class="error">{{ error }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+            <div class="form-buttons">
+                <button type="submit" class="save-button">
+                    <span class="material-icons-round">move_to_inbox</span>
+                    Move Tube
+                </button>
+                <button type="button" class="cancel-button" onclick="toggleMove()">
+                    <span class="material-icons-round">close</span>
+                    Cancel
+                </button>
+            </div>
+        </form>
+    </div>
 </div>
+
+<script>
+function toggleEdit() {
+    const viewMode = document.getElementById('viewMode');
+    const editMode = document.getElementById('editMode');
+    const moveMode = document.getElementById('moveMode');
+    const editButton = document.querySelector('.edit-button');
+    const moveButton = document.querySelector('.move-button');
+    
+    viewMode.classList.toggle('hidden');
+    editMode.classList.toggle('hidden');
+    moveMode.classList.add('hidden');
+    editButton.classList.toggle('hidden');
+    moveButton.classList.toggle('hidden');
+}
+
+function toggleMove() {
+    const viewMode = document.getElementById('viewMode');
+    const editMode = document.getElementById('editMode');
+    const moveMode = document.getElementById('moveMode');
+    const editButton = document.querySelector('.edit-button');
+    const moveButton = document.querySelector('.move-button');
+    
+    viewMode.classList.toggle('hidden');
+    moveMode.classList.toggle('hidden');
+    editMode.classList.add('hidden');
+    moveButton.classList.toggle('hidden');
+    editButton.classList.toggle('hidden');
+}
+</script>
 {% endblock %}

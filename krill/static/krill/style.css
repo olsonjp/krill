@@ -1094,7 +1094,7 @@ main table tbody tr:last-child td{
     color: var(--color-dark);
 }
 
-.edit-button, .save-button, .cancel-button {
+.edit-button, .move-button, .save-button, .cancel-button {
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -1109,6 +1109,12 @@ main table tbody tr:last-child td{
 .edit-button {
     background: var(--color-primary);
     color: var(--color-white);
+}
+
+.move-button {
+    background: var(--color-warning);
+    color: var(--color-white);
+    margin-left: 0.5rem;
 }
 
 .save-button {
