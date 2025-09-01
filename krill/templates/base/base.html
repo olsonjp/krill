@@ -19,7 +19,7 @@
     {# Extra header content #}
     {% block extrahead %}{% endblock extrahead %}
 </head>
-<body {% if user.is_authenticated and user.preference.dark_mode %}class="dark-mode-variables"{% endif %}>
+<body {% if user.is_authenticated and user_preference.dark_mode %}class="dark-mode-variables"{% endif %}>
     <!-- Page Layout -->
     {% block layout%}{% endblock %}
 
