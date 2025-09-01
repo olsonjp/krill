@@ -81,5 +81,5 @@ class StorageDetailView(DetailView):
         form = self.get_form_class()(request.POST, instance=self.object)
         if form.is_valid():
             form.save()
-            return redirect('storage:list')
+            return redirect('storage:storage_list')
         return render(request, self.template_name, {'object': self.object, 'form': form})
