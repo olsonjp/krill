@@ -1,0 +1,659 @@
+{% extends 'base/layout.html' %}
+{% load static %}
+
+{% block content %}
+<div class="issues-container">
+    <div class="issues-header">
+        <h1>Issue Tracking</h1>
+        <div class="header-actions">
+            <button class="btn btn-primary" onclick="showReportIssueModal()">
+                <span class="material-icons-round">bug_report</span>
+                Report Issue
+            </button>
+        </div>
+    </div>
+
+    <!-- Issues Statistics -->
+    <div class="issues-stats">
+        <div class="stat-card">
+            <span class="material-icons-round">bug_report</span>
+            <div class="stat-info">
+                <h3>Total Issues</h3>
+                <p>{{ total_issues }}</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <span class="material-icons-round">pending</span>
+            <div class="stat-info">
+                <h3>Open</h3>
+                <p>{{ open_issues }}</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <span class="material-icons-round">priority_high</span>
+            <div class="stat-info">
+                <h3>Urgent</h3>
+                <p>{{ urgent_issues }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Issues List -->
+    <div class="issues-list">
+        <div class="list-header">
+            <h2>Recent Issues</h2>
+            <div class="list-filters">
+                <select class="form-control" onchange="filterIssues(this.value)">
+                    <option value="">All Status</option>
+                    <option value="open">Open</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="resolved">Resolved</option>
+                    <option value="closed">Closed</option>
+                </select>
+                <select class="form-control" onchange="filterByPriority(this.value)">
+                    <option value="">All Priority</option>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="urgent">Urgent</option>
+                </select>
+            </div>
+        </div>
+
+        {% if issues %}
+            <div class="issues-grid">
+                {% for issue in issues %}
+                <div class="issue-item" data-status="{{ issue.status }}" data-priority="{{ issue.priority }}">
+                    <div class="issue-header">
+                        <div class="issue-title">
+                            <h3>{{ issue.title }}</h3>
+                            <span class="priority-badge priority-{{ issue.priority }}">{{ issue.get_priority_display }}</span>
+                        </div>
+                        <span class="status-badge status-{{ issue.status }}">{{ issue.get_status_display }}</span>
+                    </div>
+                    <div class="issue-meta">
+                        <p class="issue-description">{{ issue.description|truncatechars:150 }}</p>
+                        <p><strong>Type:</strong> {{ issue.issue_type|title }}</p>
+                        <p><strong>Reported by:</strong> {{ issue.reported_by.username }}</p>
+                        {% if issue.assigned_to %}
+                            <p><strong>Assigned to:</strong> {{ issue.assigned_to.username }}</p>
+                        {% endif %}
+                        <p><strong>Created:</strong> {{ issue.created_at|date:"M d, Y H:i" }}</p>
+                        {% if issue.resolved_at %}
+                            <p><strong>Resolved:</strong> {{ issue.resolved_at|date:"M d, Y H:i" }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="issue-actions">
+                        {% if issue.status == 'open' %}
+                            <button class="btn btn-warning" onclick="assignIssue({{ issue.id }})">
+                                <span class="material-icons-round">assignment</span>
+                                Assign
+                            </button>
+                        {% elif issue.status == 'open' or issue.status == 'in_progress' %}
+                            <button class="btn btn-success" onclick="resolveIssue({{ issue.id }})">
+                                <span class="material-icons-round">done_all</span>
+                                Resolve
+                            </button>
+                        {% endif %}
+                        <button class="btn btn-primary" onclick="viewIssue({{ issue.id }})">
+                            <span class="material-icons-round">visibility</span>
+                            View
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Pagination -->
+            {% if issues.has_other_pages %}
+            <div class="pagination">
+                {% if issues.has_previous %}
+                    <a href="?page={{ issues.previous_page_number }}" class="page-link">&laquo; Previous</a>
+                {% endif %}
+                
+                <span class="current-page">
+                    Page {{ issues.number }} of {{ issues.paginator.num_pages }}
+                </span>
+                
+                {% if issues.has_next %}
+                    <a href="?page={{ issues.next_page_number }}" class="page-link">Next &raquo;</a>
+                {% endif %}
+            </div>
+            {% endif %}
+        {% else %}
+            <div class="no-issues">
+                <span class="material-icons-round">check_circle</span>
+                <h3>No issues found</h3>
+                <p>All systems are running smoothly.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Report Issue Modal -->
+<div id="reportIssueModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Report New Issue</h2>
+            <span class="close" onclick="closeReportIssueModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="reportIssueForm">
+                <div class="form-group">
+                    <label for="issueTitle">Issue Title</label>
+                    <input type="text" id="issueTitle" name="title" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="issueDescription">Description</label>
+                    <textarea id="issueDescription" name="description" class="form-control" rows="5" required></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="issuePriority">Priority</label>
+                        <select id="issuePriority" name="priority" class="form-control">
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                            <option value="urgent">Urgent</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="issueType">Issue Type</label>
+                        <select id="issueType" name="issue_type" class="form-control">
+                            <option value="bug">Bug</option>
+                            <option value="feature_request">Feature Request</option>
+                            <option value="maintenance">Maintenance</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="assignedTo">Assign To (Optional)</label>
+                    <select id="assignedTo" name="assigned_to" class="form-control">
+                        <option value="">Select assignee</option>
+                        <option value="1">Admin User</option>
+                        <option value="2">Manager User</option>
+                    </select>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeReportIssueModal()">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="reportIssue()">Report Issue</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function showReportIssueModal() {
+    document.getElementById('reportIssueModal').style.display = 'block';
+}
+
+function closeReportIssueModal() {
+    document.getElementById('reportIssueModal').style.display = 'none';
+}
+
+function reportIssue() {
+    const form = document.getElementById('reportIssueForm');
+    const formData = new FormData(form);
+    
+    const data = {
+        title: formData.get('title'),
+        description: formData.get('description'),
+        priority: formData.get('priority'),
+        issue_type: formData.get('issue_type'),
+        assigned_to: formData.get('assigned_to') ? parseInt(formData.get('assigned_to')) : null,
+    };
+    
+    fetch('{% url "reports:report_issue" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeReportIssueModal();
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error reporting issue');
+    });
+}
+
+function assignIssue(issueId) {
+    // TODO: Implement issue assignment
+    alert('Issue assignment coming soon!');
+}
+
+function resolveIssue(issueId) {
+    if (confirm('Are you sure you want to resolve this issue?')) {
+        // TODO: Implement issue resolution
+        alert('Issue resolution coming soon!');
+    }
+}
+
+function viewIssue(issueId) {
+    // TODO: Implement issue detail view
+    alert('Issue detail view coming soon!');
+}
+
+function filterIssues(status) {
+    const issueItems = document.querySelectorAll('.issue-item');
+    issueItems.forEach(item => {
+        if (status === '' || item.dataset.status === status) {
+            item.style.display = 'block';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
+function filterByPriority(priority) {
+    const issueItems = document.querySelectorAll('.issue-item');
+    issueItems.forEach(item => {
+        if (priority === '' || item.dataset.priority === priority) {
+            item.style.display = 'block';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('reportIssueModal');
+    if (event.target === modal) {
+        closeReportIssueModal();
+    }
+}
+</script>
+
+<style>
+.issues-container {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.issues-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.header-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.issues-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.stat-card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.stat-card .material-icons-round {
+    font-size: 2.5rem;
+    color: #007bff;
+}
+
+.stat-info h3 {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.stat-info p {
+    margin: 5px 0 0 0;
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #333;
+}
+
+.issues-list {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.list-header {
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.list-filters {
+    display: flex;
+    gap: 15px;
+}
+
+.list-filters select {
+    min-width: 150px;
+}
+
+.issues-grid {
+    padding: 20px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    gap: 20px;
+}
+
+.issue-item {
+    border: 1px solid #eee;
+    border-radius: 8px;
+    padding: 20px;
+    transition: all 0.3s ease;
+}
+
+.issue-item:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+
+.issue-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+}
+
+.issue-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.issue-title h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #333;
+}
+
+.priority-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.priority-low { background: #d4edda; color: #155724; }
+.priority-medium { background: #fff3cd; color: #856404; }
+.priority-high { background: #f8d7da; color: #721c24; }
+.priority-urgent { background: #721c24; color: white; }
+
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.status-open { background: #f8d7da; color: #721c24; }
+.status-in_progress { background: #cce5ff; color: #004085; }
+.status-resolved { background: #d4edda; color: #155724; }
+.status-closed { background: #e2e3e5; color: #383d41; }
+
+.issue-meta {
+    margin-bottom: 20px;
+}
+
+.issue-meta p {
+    margin: 8px 0;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.issue-description {
+    font-weight: 500;
+    color: #333 !important;
+    margin-bottom: 15px !important;
+}
+
+.issue-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background: #007bff;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #0056b3;
+}
+
+.btn-warning {
+    background: #ffc107;
+    color: #212529;
+}
+
+.btn-warning:hover {
+    background: #e0a800;
+}
+
+.btn-success {
+    background: #28a745;
+    color: white;
+}
+
+.btn-success:hover {
+    background: #218838;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #545b62;
+}
+
+.no-issues {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+}
+
+.no-issues .material-icons-round {
+    font-size: 4rem;
+    color: #ddd;
+    margin-bottom: 20px;
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    padding: 20px;
+    border-top: 1px solid #eee;
+}
+
+.page-link {
+    padding: 8px 12px;
+    text-decoration: none;
+    color: #007bff;
+    border: 1px solid #007bff;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+}
+
+.page-link:hover {
+    background: #007bff;
+    color: white;
+}
+
+.current-page {
+    color: #666;
+    font-weight: 500;
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+}
+
+.modal-content {
+    background-color: white;
+    margin: 5% auto;
+    padding: 0;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 600px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
+.modal-header {
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 1.3rem;
+}
+
+.close {
+    color: #aaa;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close:hover {
+    color: #000;
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.modal-footer {
+    padding: 20px;
+    border-top: 1px solid #eee;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+    color: #333;
+}
+
+.form-control {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+}
+
+@media (max-width: 768px) {
+    .issues-header {
+        flex-direction: column;
+        gap: 15px;
+        align-items: flex-start;
+    }
+    
+    .list-header {
+        flex-direction: column;
+        gap: 15px;
+        align-items: flex-start;
+    }
+    
+    .list-filters {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .issues-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}

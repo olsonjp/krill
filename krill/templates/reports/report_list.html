@@ -1,0 +1,534 @@
+{% extends 'base/layout.html' %}
+{% load static %}
+
+{% block title %}Reports List - Krill{% endblock %}
+
+{% block content %}
+<div class="home-container">
+    <!-- Welcome Section -->
+    <div class="welcome-section">
+        <h1>Reports</h1>
+        <p class="subtitle">Browse and manage generated reports</p>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="stats-container">
+        <div class="stat-card">
+            <span class="material-icons-round">description</span>
+            <div class="stat-info">
+                <h3>Total Reports</h3>
+                <p>{{ total_reports }}</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <span class="material-icons-round">pending_actions</span>
+            <div class="stat-info">
+                <h3>Pending</h3>
+                <p>{{ pending_reports }}</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <span class="material-icons-round">check_circle</span>
+            <div class="stat-info">
+                <h3>Completed</h3>
+                <p>{{ completed_reports }}</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <span class="material-icons-round">add_circle</span>
+            <div class="stat-info">
+                <h3>Generate New</h3>
+                <p>Available</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="quick-actions">
+        <h2>Quick Actions</h2>
+        <div class="action-grid">
+            <button class="action-btn" onclick="showGenerateReportModal()">
+                <span class="material-icons-round">add_circle</span>
+                Generate Report
+            </button>
+            <button class="action-btn" onclick="filterReports('')">
+                <span class="material-icons-round">refresh</span>
+                Show All
+            </button>
+            <button class="action-btn" onclick="filterReports('complete')">
+                <span class="material-icons-round">check_circle</span>
+                Completed Only
+            </button>
+            <button class="action-btn" onclick="filterReports('pending')">
+                <span class="material-icons-round">pending_actions</span>
+                Pending Only
+            </button>
+        </div>
+    </div>
+
+    <!-- Reports List -->
+    <div class="recent-activity">
+        <div class="section-header">
+            <h2>Recent Reports</h2>
+            <div class="header-actions">
+                <select class="form-control" onchange="filterReports(this.value)" style="width: auto;">
+                    <option value="">All Status</option>
+                    <option value="pending">Pending</option>
+                    <option value="processing">Processing</option>
+                    <option value="complete">Complete</option>
+                    <option value="failed">Failed</option>
+                </select>
+            </div>
+        </div>
+        <div class="activity-list">
+            {% if reports %}
+                {% for report in reports %}
+                <div class="activity-item report-item" data-status="{{ report.status }}">
+                    <span class="material-icons-round">
+                        {% if report.status == 'complete' %}
+                            check_circle
+                        {% elif report.status == 'pending' %}
+                            schedule
+                        {% elif report.status == 'processing' %}
+                            refresh
+                        {% elif report.status == 'failed' %}
+                            error
+                        {% else %}
+                            description
+                        {% endif %}
+                    </span>
+                    <div class="activity-info">
+                        <div class="report-header">
+                            <h3>{{ report.name }}</h3>
+                            <span class="status-badge status-{{ report.status }}">{{ report.get_status_display }}</span>
+                        </div>
+                        <div class="report-meta">
+                            <p><strong>Template:</strong> {{ report.template.name }}</p>
+                            <p><strong>Format:</strong> {{ report.get_format_display }}</p>
+                            <p><strong>Created:</strong> {{ report.created_at|date:"M d, Y H:i" }}</p>
+                            {% if report.completed_at %}
+                                <p><strong>Completed:</strong> {{ report.completed_at|date:"M d, Y H:i" }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="report-actions">
+                            {% if report.status == 'complete' %}
+                                <button class="btn btn-secondary" onclick="downloadReport({{ report.id }})">
+                                    <span class="material-icons-round">download</span>
+                                    Download
+                                </button>
+                            {% endif %}
+                            <button class="btn btn-primary" onclick="viewReport({{ report.id }})">
+                                <span class="material-icons-round">visibility</span>
+                                View
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+
+                <!-- Pagination -->
+                {% if reports.has_other_pages %}
+                <div class="pagination">
+                    {% if reports.has_previous %}
+                        <a href="?page={{ reports.previous_page_number }}" class="page-link">
+                            <span class="material-icons-round">chevron_left</span>
+                            Previous
+                        </a>
+                    {% endif %}
+                    
+                    <span class="current-page">
+                        Page {{ reports.number }} of {{ reports.paginator.num_pages }}
+                    </span>
+                    
+                    {% if reports.has_next %}
+                        <a href="?page={{ reports.next_page_number }}" class="page-link">
+                            Next
+                            <span class="material-icons-round">chevron_right</span>
+                        </a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            {% else %}
+                <div class="activity-item">
+                    <span class="material-icons-round">description</span>
+                    <div class="activity-info">
+                        <p><strong>No reports found</strong></p>
+                        <small>Generate your first report to get started.</small>
+                        <div class="report-actions" style="margin-top: 15px;">
+                            <button class="btn btn-primary" onclick="showGenerateReportModal()">
+                                <span class="material-icons-round">add_circle</span>
+                                Generate Report
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Generate Report Modal -->
+<div id="generateReportModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Generate New Report</h2>
+            <span class="close" onclick="closeGenerateReportModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="generateReportForm">
+                <div class="form-group">
+                    <label for="template">Report Template</label>
+                    <select id="template" name="template" class="form-control" required>
+                        <option value="">Select a template</option>
+                        <option value="1">Sample Inventory Report</option>
+                        <option value="2">Storage Capacity Report</option>
+                        <option value="3">Quality Control Summary</option>
+                        <option value="4">User Activity Report</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="reportName">Report Name</label>
+                    <input type="text" id="reportName" name="name" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="reportDescription">Description (Optional)</label>
+                    <textarea id="reportDescription" name="description" class="form-control" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="reportFormat">Format</label>
+                    <select id="reportFormat" name="format" class="form-control">
+                        <option value="pdf">PDF</option>
+                        <option value="excel">Excel</option>
+                        <option value="csv">CSV</option>
+                        <option value="json">JSON</option>
+                    </select>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeGenerateReportModal()">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="generateReport()">Generate Report</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function showGenerateReportModal() {
+    document.getElementById('generateReportModal').style.display = 'block';
+}
+
+function closeGenerateReportModal() {
+    document.getElementById('generateReportModal').style.display = 'none';
+}
+
+function generateReport() {
+    const form = document.getElementById('generateReportForm');
+    const formData = new FormData(form);
+    
+    const data = {
+        template_id: formData.get('template'),
+        name: formData.get('name'),
+        description: formData.get('description'),
+        format: formData.get('format'),
+        parameters: {}
+    };
+    
+    fetch('{% url "reports:generate_report" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeGenerateReportModal();
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error generating report');
+    });
+}
+
+function viewReport(reportId) {
+    window.location.href = `/reports/detail/${reportId}/`;
+}
+
+function downloadReport(reportId) {
+    window.location.href = `/reports/download/${reportId}/`;
+}
+
+function filterReports(status) {
+    const reportItems = document.querySelectorAll('.report-item');
+    reportItems.forEach(item => {
+        if (status === '' || item.dataset.status === status) {
+            item.style.display = 'flex';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('generateReportModal');
+    if (event.target === modal) {
+        closeGenerateReportModal();
+    }
+}
+</script>
+
+<style>
+.report-item {
+    background: var(--color-white);
+    border: 1px solid var(--color-light);
+    border-radius: var(--border-radius-1);
+    padding: 20px;
+    margin-bottom: 15px;
+    transition: all 0.3s ease;
+}
+
+.report-item:hover {
+    box-shadow: var(--box-shadow);
+    transform: translateY(-2px);
+}
+
+.report-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    gap: 15px;
+}
+
+.report-header h3 {
+    margin: 0;
+    color: var(--color-dark);
+    font-size: 1.1rem;
+    flex: 1;
+}
+
+.status-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.status-pending { background: #fff3cd; color: #856404; }
+.status-processing { background: #cce5ff; color: #004085; }
+.status-complete { background: #d4edda; color: #155724; }
+.status-failed { background: #f8d7da; color: #721c24; }
+
+.report-meta {
+    margin-bottom: 15px;
+}
+
+.report-meta p {
+    margin: 5px 0;
+    font-size: 0.9rem;
+    color: var(--color-dark-variant);
+}
+
+.report-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: var(--border-radius-1);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    text-decoration: none;
+}
+
+.btn-primary {
+    background: var(--color-primary);
+    color: var(--color-white);
+}
+
+.btn-primary:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: var(--color-dark-variant);
+    color: var(--color-white);
+}
+
+.btn-secondary:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    padding: 20px 0;
+    margin-top: 20px;
+}
+
+.page-link {
+    padding: 8px 12px;
+    text-decoration: none;
+    color: var(--color-primary);
+    border: 1px solid var(--color-primary);
+    border-radius: var(--border-radius-1);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.page-link:hover {
+    background: var(--color-primary);
+    color: var(--color-white);
+}
+
+.current-page {
+    color: var(--color-dark-variant);
+    font-weight: 500;
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+}
+
+.modal-content {
+    background-color: var(--color-white);
+    margin: 5% auto;
+    padding: 0;
+    border-radius: var(--border-radius-2);
+    width: 90%;
+    max-width: 500px;
+    box-shadow: var(--box-shadow);
+}
+
+.modal-header {
+    padding: 20px;
+    border-bottom: 1px solid var(--color-light);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 1.3rem;
+    color: var(--color-dark);
+}
+
+.close {
+    color: var(--color-info-dark);
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close:hover {
+    color: var(--color-dark);
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.modal-footer {
+    padding: 20px;
+    border-top: 1px solid var(--color-light);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+    color: var(--color-dark);
+}
+
+.form-control {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--color-light);
+    border-radius: var(--border-radius-1);
+    font-size: 0.9rem;
+    background: var(--color-white);
+    color: var(--color-dark);
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(108, 155, 207, 0.25);
+}
+
+@media (max-width: 768px) {
+    .report-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .report-actions {
+        flex-direction: column;
+    }
+    
+    .btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .pagination {
+        flex-direction: column;
+        gap: 10px;
+    }
+}
+</style>
+{% endblock %}

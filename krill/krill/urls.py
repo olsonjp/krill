@@ -37,7 +37,7 @@ urlpatterns = [
     path('dashboard/stats/', dashboard_stats, name='dashboard_stats'),
     path('samples/', include('sample.urls')),
     path('storage/', include('storage.urls')),
-    path('reports/', ReportsView.as_view(), name='reports'),
+    path('reports/', include('reports.urls')),
     path('settings/', SettingsView.as_view(), name='settings'),
     path('preferences/theme/', toggle_theme, name='toggle_theme'),
     path('users/', include('person.urls')),
