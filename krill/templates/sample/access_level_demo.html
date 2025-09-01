@@ -1,0 +1,169 @@
+{% extends 'base/layout.html' %}
+
+{% block title %}Access Level Demo - {{ sample.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-shield-alt"></i>
+                        Access Level Demo - {{ sample.name }}
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <!-- Access Level Information -->
+                    <div class="alert alert-info">
+                        <h5><i class="fas fa-info-circle"></i> Access Level Information</h5>
+                        <p><strong>Current Access Level:</strong> 
+                            <span class="badge badge-{% if sample.access_level == 'admins_only' %}danger{% elif sample.access_level == 'admins_managers' %}warning{% else %}success{% endif %}">
+                                {{ sample.get_access_level_display }}
+                            </span>
+                        </p>
+                        <p><strong>Your Role:</strong> 
+                            <span class="badge badge-primary">{{ user_role.get_role_display }}</span>
+                        </p>
+                        <p><strong>Access Status:</strong> 
+                            <span class="badge badge-success">
+                                <i class="fas fa-check"></i> Access Granted
+                            </span>
+                        </p>
+                    </div>
+
+                    <!-- Sample Details -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Sample Details</h5>
+                            <table class="table table-bordered">
+                                <tr>
+                                    <th>Name:</th>
+                                    <td>{{ sample.name }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Source:</th>
+                                    <td>{{ sample.source.name }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Experiment:</th>
+                                    <td>{{ sample.experiment|default:"Not specified" }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Notes:</th>
+                                    <td>{{ sample.notes|default:"No notes" }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Access Level:</th>
+                                    <td>
+                                        <span class="badge badge-{% if sample.access_level == 'admins_only' %}danger{% elif sample.access_level == 'admins_managers' %}warning{% else %}success{% endif %}">
+                                            {{ sample.get_access_level_display }}
+                                        </span>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Access Level Breakdown</h5>
+                            <div class="list-group">
+                                <div class="list-group-item">
+                                    <h6 class="mb-1">
+                                        <i class="fas fa-user-shield text-danger"></i>
+                                        Admins Only
+                                    </h6>
+                                    <small class="text-muted">Restricted to Lab Administrators only</small>
+                                </div>
+                                <div class="list-group-item">
+                                    <h6 class="mb-1">
+                                        <i class="fas fa-user-tie text-warning"></i>
+                                        Admins & Managers
+                                    </h6>
+                                    <small class="text-muted">Available to Lab Administrators and Lab Managers</small>
+                                </div>
+                                <div class="list-group-item">
+                                    <h6 class="mb-1">
+                                        <i class="fas fa-users text-success"></i>
+                                        All Lab Members
+                                    </h6>
+                                    <small class="text-muted">Available to all lab members and above</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <h5>Available Actions</h5>
+                            <div class="btn-group" role="group">
+                                {% if can_edit %}
+                                <button type="button" class="btn btn-primary">
+                                    <i class="fas fa-edit"></i> Edit Sample
+                                </button>
+                                {% endif %}
+                                {% if can_delete %}
+                                <button type="button" class="btn btn-danger">
+                                    <i class="fas fa-trash"></i> Delete Sample
+                                </button>
+                                {% endif %}
+                                <a href="{% url 'sample:list' %}" class="btn btn-secondary">
+                                    <i class="fas fa-list"></i> Back to List
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Access Level Statistics -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <h5>Access Level Statistics</h5>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="card bg-danger text-white">
+                                        <div class="card-body text-center">
+                                            <h3 id="admins-only-count">-</h3>
+                                            <p>Admins Only</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card bg-warning text-white">
+                                        <div class="card-body text-center">
+                                            <h3 id="admins-managers-count">-</h3>
+                                            <p>Admins & Managers</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card bg-success text-white">
+                                        <div class="card-body text-center">
+                                            <h3 id="all-members-count">-</h3>
+                                            <p>All Members</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Load access level statistics
+document.addEventListener('DOMContentLoaded', function() {
+    fetch('/samples/access-level-info/')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('admins-only-count').textContent = data.sample_counts.admins_only || 0;
+            document.getElementById('admins-managers-count').textContent = data.sample_counts.admins_managers || 0;
+            document.getElementById('all-members-count').textContent = data.sample_counts.all_members || 0;
+        })
+        .catch(error => {
+            console.error('Error loading access level info:', error);
+        });
+});
+</script>
+{% endblock %}
