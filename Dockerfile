@@ -77,10 +77,13 @@ RUN groupadd -r krill && useradd -r -g krill krill
 RUN chown -R krill:krill /app
 USER krill
 
+# Set working directory to krill subdirectory for production
+WORKDIR /app/krill
+
 # Expose port
 EXPOSE 8000
 
-# Production command
+# Production command - now relative to /app/krill
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "120", "krill.wsgi:application"]
 
 # Testing stage
