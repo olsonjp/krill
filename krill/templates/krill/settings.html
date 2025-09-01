@@ -20,21 +20,21 @@
             <div class="settings-content">
                 <div class="setting-item">
                     <label>Display Name</label>
-                    <input type="text" value="John Doe" />
+                    <input type="text" value="{{ user.first_name|default:user.username }}" />
                 </div>
                 <div class="setting-item">
                     <label>Email Notifications</label>
                     <div class="toggle-switch">
-                        <input type="checkbox" id="email-notifications" checked>
+                        <input type="checkbox" id="email-notifications">
                         <label for="email-notifications"></label>
                     </div>
                 </div>
                 <div class="setting-item">
                     <label>Language</label>
                     <select>
-                        <option>English</option>
-                        <option>Spanish</option>
-                        <option>French</option>
+                        <option value="English">English</option>
+                        <option value="Spanish">Spanish</option>
+                        <option value="French">French</option>
                     </select>
                 </div>
             </div>
@@ -50,26 +50,26 @@
                 <div class="setting-item">
                     <label>Dark Mode</label>
                     <div class="toggle-switch">
-                        <input type="checkbox" id="dark-mode">
+                        <input type="checkbox" id="dark-mode" {% if user_preference.dark_mode %}checked{% endif %}>
                         <label for="dark-mode"></label>
                     </div>
                 </div>
                 <div class="setting-item">
                     <label>Auto-save Interval</label>
                     <select>
-                        <option>1 minute</option>
-                        <option>5 minutes</option>
-                        <option>15 minutes</option>
-                        <option>30 minutes</option>
+                        <option value="1 minute">1 minute</option>
+                        <option value="5 minutes">5 minutes</option>
+                        <option value="15 minutes">15 minutes</option>
+                        <option value="30 minutes">30 minutes</option>
                     </select>
                 </div>
                 <div class="setting-item">
                     <label>Data Retention Period</label>
                     <select>
-                        <option>30 days</option>
-                        <option>60 days</option>
-                        <option>90 days</option>
-                        <option>180 days</option>
+                        <option value="30 days">30 days</option>
+                        <option value="60 days">60 days</option>
+                        <option value="90 days">90 days</option>
+                        <option value="180 days">180 days</option>
                     </select>
                 </div>
             </div>
@@ -85,9 +85,9 @@
                 <div class="setting-item">
                     <label>Default Storage Location</label>
                     <select>
-                        <option>Freezer A</option>
-                        <option>Freezer B</option>
-                        <option>Freezer C</option>
+                        <option value="Freezer A">Freezer A</option>
+                        <option value="Freezer B">Freezer B</option>
+                        <option value="Freezer C">Freezer C</option>
                     </select>
                 </div>
                 <div class="setting-item">
@@ -110,15 +110,15 @@
                 <div class="setting-item">
                     <label>Default Report Format</label>
                     <select>
-                        <option>PDF</option>
-                        <option>Excel</option>
-                        <option>CSV</option>
+                        <option value="PDF">PDF</option>
+                        <option value="Excel">Excel</option>
+                        <option value="CSV">CSV</option>
                     </select>
                 </div>
                 <div class="setting-item">
                     <label>Auto-generate Reports</label>
                     <div class="toggle-switch">
-                        <input type="checkbox" id="auto-reports" checked>
+                        <input type="checkbox" id="auto-reports">
                         <label for="auto-reports"></label>
                     </div>
                 </div>
@@ -131,4 +131,8 @@
         <button class="save-settings">Save Changes</button>
     </div>
 </div>
+{% endblock %}
+
+{% block extrahead %}
+<script src="{% static 'js/settings.js' %}"></script>
 {% endblock %}
