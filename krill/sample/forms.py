@@ -2,14 +2,16 @@ from django import forms
 from .models.sample import Sample
 from .models.aliquot import Aliquot, AliquotLocation, AliquotType, AliquotDisposition, AliquotTube
 from .models.source import Source
+
 class SampleForm(forms.ModelForm):
     class Meta:
         model = Sample
-        fields = ['name', 'source', 'notes']
+        fields = ['name', 'source', 'notes', 'access_level']
         help_texts = {
             'name': 'Unique identifier for the sample',
             'source': 'Source of the sample',
             'notes': 'Additional information about the sample',
+            'access_level': 'Restrict access to specific user tiers',
         }
         widgets = {
             'notes': forms.Textarea(attrs={'rows': 4}),
@@ -18,20 +20,16 @@ class SampleForm(forms.ModelForm):
 class AliquotForm(forms.ModelForm):
     class Meta:
         model = Aliquot
-        fields = ['parent', 'sample', 'quantity', 'aliquotType', 
-                 'passage', 'experiment', 'notes']
+        fields = ['parent', 'sample', 'quantity', 'aliquot_type', 'access_level']
         help_texts = {
             'parent': 'Parent aliquot, if this is a derivative',
             'sample': 'Sample this aliquot belongs to',
             'quantity': 'Quantity of the aliquot',
-            'aliquotType': 'Type of aliquot',
-            'passage': 'Passage number',
-            'experiment': 'Experiment details',
-            'notes': 'Additional notes',
+            'aliquot_type': 'Type of aliquot',
+            'access_level': 'Restrict access to specific user tiers',
         }
         widgets = {
-            'notes': forms.Textarea(attrs={'rows': 4}),
-            'experiment': forms.Textarea(attrs={'rows': 4}),
+            'quantity': forms.NumberInput(attrs={'min': 1}),
         }
 
 class AliquotLocationForm(forms.ModelForm):
@@ -58,11 +56,10 @@ class AliquotTypeForm(forms.ModelForm):
 class AliquotDispositionForm(forms.ModelForm):
     class Meta:
         model = AliquotDisposition
-        fields = ['name', 'dispositionType', 'description']
+        fields = ['name', 'disposition_type']
         help_texts = {
             'name': 'Name of this disposition',
-            'dispositionType': 'Type of disposition',
-            'description': 'Description of this disposition',
+            'disposition_type': 'Type of disposition',
         }
 
 class SourceForm(forms.ModelForm):
@@ -98,24 +95,4 @@ class AliquotTubeMoveForm(forms.Form):
     def __init__(self, *args, **kwargs):
         from storage.models.storage import Box
         super().__init__(*args, **kwargs)
-        # Set the queryset for boxes
-        self.fields['box'].queryset = Box.objects.all().order_by('name')
-    
-    def clean(self):
-        cleaned_data = super().clean()
-        box = cleaned_data.get('box')
-        row = cleaned_data.get('row')
-        column = cleaned_data.get('column')
-        
-        if box and row and column:
-            # Check if the position is within the box dimensions
-            if row > box.rows:
-                raise forms.ValidationError(f"Row {row} is outside the box dimensions (max: {box.rows})")
-            if column > box.columns:
-                raise forms.ValidationError(f"Column {column} is outside the box dimensions (max: {box.columns})")
-            
-            # Check if the position is already occupied
-            if AliquotLocation.objects.filter(box=box, row=row, column=column).exists():
-                raise forms.ValidationError(f"Position ({row}, {column}) in {box.name} is already occupied")
-        
-        return cleaned_data 
+        self.fields['box'].queryset = Box.objects.all() 

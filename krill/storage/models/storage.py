@@ -5,6 +5,12 @@ class Device(models.Model):
     """
     A Device represents a freezer or dewer in which Samples are stored.
     """
+    ACCESS_LEVEL_CHOICES = [
+        ('admins_only', 'Admins Only'),
+        ('admins_managers', 'Admins & Managers'),
+        ('all_members', 'All Lab Members'),
+    ]
+    
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
     site = models.ForeignKey(Site, on_delete=models.PROTECT, related_name='devices')
@@ -12,6 +18,13 @@ class Device(models.Model):
         default=False, 
         help_text="Enable auto-store for all boxes in this device"
     )
+    access_level = models.CharField(
+        max_length=20,
+        choices=ACCESS_LEVEL_CHOICES,
+        default='all_members',
+        help_text="Restrict access to specific user tiers"
+    )
+    
     def __str__(self):
         return self.name
 
@@ -19,9 +32,21 @@ class Shelf(models.Model):
     """
     A Shelf represents a shelf in a freezer in which Samples are stored. Dewers will have a single shelf.
     """
+    ACCESS_LEVEL_CHOICES = [
+        ('admins_only', 'Admins Only'),
+        ('admins_managers', 'Admins & Managers'),
+        ('all_members', 'All Lab Members'),
+    ]
+    
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
     device = models.ForeignKey(Device, on_delete=models.PROTECT, related_name='shelves')
+    access_level = models.CharField(
+        max_length=20,
+        choices=ACCESS_LEVEL_CHOICES,
+        default='all_members',
+        help_text="Restrict access to specific user tiers"
+    )
 
     class Meta:
         verbose_name_plural = "shelves"
@@ -33,9 +58,21 @@ class Rack(models.Model):
     """
     A Rack represents a rack in a freezer or a cane in a dewer in which Samples are stored.
     """
+    ACCESS_LEVEL_CHOICES = [
+        ('admins_only', 'Admins Only'),
+        ('admins_managers', 'Admins & Managers'),
+        ('all_members', 'All Lab Members'),
+    ]
+    
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
     shelf = models.ForeignKey(Shelf, on_delete=models.PROTECT, related_name='racks')
+    access_level = models.CharField(
+        max_length=20,
+        choices=ACCESS_LEVEL_CHOICES,
+        default='all_members',
+        help_text="Restrict access to specific user tiers"
+    )
 
     def __str__(self):
         return self.name
@@ -44,11 +81,23 @@ class Box(models.Model):
     """
     A Box represents a box in which aliquots are stored.
     """
+    ACCESS_LEVEL_CHOICES = [
+        ('admins_only', 'Admins Only'),
+        ('admins_managers', 'Admins & Managers'),
+        ('all_members', 'All Lab Members'),
+    ]
+    
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
     rack = models.ForeignKey(Rack, on_delete=models.PROTECT, related_name='boxes')
     rows = models.IntegerField()
     columns = models.IntegerField()
+    access_level = models.CharField(
+        max_length=20,
+        choices=ACCESS_LEVEL_CHOICES,
+        default='all_members',
+        help_text="Restrict access to specific user tiers"
+    )
 
     def __str__(self):
         return self.name
@@ -66,6 +115,7 @@ class Box(models.Model):
         """Get all aliquots in this box."""
         from sample.models.aliquot import AliquotLocation
         return AliquotLocation.objects.filter(box=self)
+        
     def get_available_slots(self):
         """Get available slots in this box for auto-storage."""
         from sample.models.aliquot import AliquotLocation
@@ -82,6 +132,7 @@ class Box(models.Model):
                         'column': col
                     })
         return available_slots
+        
     def has_available_slots(self):
         """Check if this box has any available slots."""
         return len(self.get_available_slots()) > 0

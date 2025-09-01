@@ -20,30 +20,33 @@
             </div>
             <div class="detail-field">
                 <label>Type:</label>
-                <span>{{ object.aliquotType.name }}</span>
+                <span>{{ object.aliquot_type.name|default:"Not specified" }}</span>
+            </div>
+            <div class="detail-field">
+                <label>Quantity:</label>
+                <span>{{ object.quantity }}</span>
             </div>
             <div class="detail-field">
                 <label>Disposition:</label>
-                <span>{{ object.disposition.name }}</span>
+                <span>{{ object.disposition }}</span>
             </div>
             <div class="detail-field">
-                <label>Passage:</label>
-                <span>{{ object.passage }}</span>
-            </div>
-            <div class="detail-field">
-                <label>Experiment:</label>
-                <span>{{ object.experiment }}</span>
-            </div>
-            <div class="detail-field">
-                <label>Notes:</label>
-                <span>{{ object.notes }}</span>
+                <label>Access Level:</label>
+                <span class="access-level-badge access-level-{{ object.access_level }}">
+                    <i class="material-icons-round">
+                        {% if object.access_level == 'admins_only' %}admin_panel_settings
+                        {% elif object.access_level == 'admins_managers' %}supervisor_account
+                        {% else %}group{% endif %}
+                    </i>
+                    {{ object.get_access_level_display }}
+                </span>
             </div>
             <!-- Tube Information -->
             <div class="detail-section">
                 <h3><i class="material-icons-round">science</i> Individual Tubes</h3>
                 <div class="detail-field">
                     <label>Total Tubes:</label>
-                    <span>{{ object.quantity }} ({{ object.stored_tubes_count }} stored, {{ object.in_use_tubes_count }} in use, {{ object.exhausted_tubes_count }} exhausted)</span>
+                    <span>{{ object.quantity }} ({{ object.stored_tubes_count }} stored, {{ object.unstored_tubes_count }} unstored)</span>
                 </div>
                 <!-- Tube Status Summary -->
                 <div class="tube-summary">
@@ -51,13 +54,9 @@
                         <span class="status-count">{{ object.stored_tubes_count }}</span>
                         <span class="status-label">Stored</span>
                     </div>
-                    <div class="tube-status-item in-use">
-                        <span class="status-count">{{ object.in_use_tubes_count }}</span>
-                        <span class="status-label">In Use</span>
-                    </div>
-                    <div class="tube-status-item exhausted">
-                        <span class="status-count">{{ object.exhausted_tubes_count }}</span>
-                        <span class="status-label">Exhausted</span>
+                    <div class="tube-status-item unstored">
+                        <span class="status-count">{{ object.unstored_tubes_count }}</span>
+                        <span class="status-label">Unstored</span>
                     </div>
                 </div>
             </div>
@@ -66,17 +65,19 @@
             <div class="detail-section">
                 <h3><i class="material-icons-round">list</i> Tube Details</h3>
                 <div class="tubes-list">
-                    {% for tube in tubes %}
-                    <div class="tube-item {{ tube.disposition.dispositionType|lower|cut:' ' }}">
+                    {% for tube in object.tubes.all %}
+                    <div class="tube-item {{ tube.disposition.disposition_type|lower|cut:' ' }}">
                         <div class="tube-header">
-                            <span class="tube-number"><a href="{% url 'sample:tube_detail' pk=tube.id %}">Tube #{{ tube.tube_number }}</a></span>
+                            <span class="tube-number">Tube #{{ tube.tube_number }}</span>
                             <span class="tube-status">{{ tube.disposition.name }}</span>
                         </div>
-                        {% if tube.disposition.dispositionType == 'stored' and tube.storage_location %}
-                        <div class="tube-location">
-                            <span>{{ tube.storage_location.box.rack.shelf.device.name }} → {{ tube.storage_location.box.rack.shelf.name }} → {{ tube.storage_location.box.rack.name }} → <a href="{% url 'storage:detail' type='box' pk=tube.storage_location.box.id %}?highlight_row={{ tube.storage_location.row }}&highlight_col={{ tube.storage_location.column }}" class="box-link">{{ tube.storage_location.box.name }}</a> ({{ tube.storage_location.row }}, {{ tube.storage_location.column }})</span>
-                        </div>
-                        {% endif %}
+                        {% for location in tube.aliquot.locations.all %}
+                            {% if location.tube_number == tube.tube_number %}
+                            <div class="tube-location">
+                                <span>{{ location.box.rack.shelf.device.name }} → {{ location.box.rack.shelf.name }} → {{ location.box.rack.name }} → <a href="{% url 'storage:detail' type='box' pk=location.box.id %}?highlight_row={{ location.row }}&highlight_col={{ location.column }}" class="box-link">{{ location.box.name }}</a> ({{ location.row }}, {{ location.column }})</span>
+                            </div>
+                            {% endif %}
+                        {% endfor %}
                     </div>
                     {% endfor %}
                 </div>
@@ -97,8 +98,23 @@
                 <span>{{ object.source.name }}</span>
             </div>
             <div class="detail-field">
+                <label>Experiment:</label>
+                <span>{{ object.experiment|default:"Not specified" }}</span>
+            </div>
+            <div class="detail-field">
                 <label>Notes:</label>
-                <span>{{ object.notes }}</span>
+                <span>{{ object.notes|default:"No notes" }}</span>
+            </div>
+            <div class="detail-field">
+                <label>Access Level:</label>
+                <span class="access-level-badge access-level-{{ object.access_level }}">
+                    <i class="material-icons-round">
+                        {% if object.access_level == 'admins_only' %}admin_panel_settings
+                        {% elif object.access_level == 'admins_managers' %}supervisor_account
+                        {% else %}group{% endif %}
+                    </i>
+                    {{ object.get_access_level_display }}
+                </span>
             </div>
         {% endif %}
     </div>
@@ -135,6 +151,37 @@
         </form>
     </div>
 </div>
+
+<style>
+.access-level-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-weight: 500;
+}
+
+.access-level-badge i {
+    font-size: 16px;
+}
+
+.access-level-admins_only {
+    background-color: #dc3545;
+    color: white;
+}
+
+.access-level-admins_managers {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.access-level-all_members {
+    background-color: #28a745;
+    color: white;
+}
+</style>
 
 <script>
 function toggleEdit() {

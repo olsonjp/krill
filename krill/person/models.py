@@ -32,6 +32,7 @@ class UserRole(models.Model):
     lab_unit = models.CharField(max_length=100, blank=True, null=True)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
+    
     @classmethod
     def get_or_create_for_user(cls, user):
         """Get or create a UserRole for a user"""
@@ -50,15 +51,19 @@ class UserRole(models.Model):
                 department='',
                 lab_unit=''
             )
+    
     class Meta:
         verbose_name = "User Role"
         verbose_name_plural = "User Roles"
+    
     def __str__(self):
         return f"{self.user.username} - {self.get_role_display()}"
+    
     def has_permission(self, permission):
         """Check if user has a specific permission based on their role"""
         role_permissions = self.get_role_permissions()
         return permission in role_permissions
+    
     def get_role_permissions(self):
         """Get permissions based on role hierarchy"""
         permissions = {
@@ -111,6 +116,52 @@ class UserRole(models.Model):
             ]
         }
         return permissions.get(self.role, [])
+    
+    def has_access_level(self, object_access_level):
+        """
+        Check if user has access to an object based on its access level restriction.
+        
+        Args:
+            object_access_level (str): The access level of the object ('admins_only', 'admins_managers', 'all_members')
+        
+        Returns:
+            bool: True if user has access, False otherwise
+        """
+        # Define role hierarchy for access level checking
+        role_hierarchy = {
+            'lab_admin': 3,
+            'lab_manager': 2,
+            'lab_member': 1,
+            'viewer': 0,
+        }
+        
+        # Define access level requirements
+        access_level_requirements = {
+            'admins_only': 3,  # Only lab_admin
+            'admins_managers': 2,  # lab_admin and lab_manager
+            'all_members': 1,  # lab_admin, lab_manager, and lab_member
+        }
+        
+        user_level = role_hierarchy.get(self.role, 0)
+        required_level = access_level_requirements.get(object_access_level, 0)
+        
+        return user_level >= required_level
+    
+    def can_access_object(self, obj):
+        """
+        Check if user can access a specific object based on its access level.
+        
+        Args:
+            obj: Model instance with access_level field
+        
+        Returns:
+            bool: True if user has access, False otherwise
+        """
+        if not hasattr(obj, 'access_level'):
+            # If object doesn't have access_level, allow access
+            return True
+        
+        return self.has_access_level(obj.access_level)
 
 
 class Permission(models.Model):
@@ -131,12 +182,15 @@ class Permission(models.Model):
     granted_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='granted_permissions')
     granted_at = models.DateTimeField(default=timezone.now)
     expires_at = models.DateTimeField(null=True, blank=True)
+    
     class Meta:
         unique_together = ['user', 'permission_type', 'content_type', 'object_id']
         verbose_name = "Permission"
         verbose_name_plural = "Permissions"
+    
     def __str__(self):
         return f"{self.user.username} - {self.permission_type} - {self.content_object}"
+    
     def is_valid(self):
         """Check if permission is still valid (not expired)"""
         if self.expires_at:
@@ -168,12 +222,15 @@ class UserAuditLog(models.Model):
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.TextField(blank=True, null=True)
     timestamp = models.DateTimeField(default=timezone.now)
+    
     class Meta:
         ordering = ['-timestamp']
         verbose_name = "User Audit Log"
         verbose_name_plural = "User Audit Logs"
+    
     def __str__(self):
         return f"{self.user.username} - {self.action} - {self.timestamp}"
+    
     @classmethod
     def log_action(cls, user, action, target_type=None, target_id=None, target_name=None, 
                    details=None, request=None):
@@ -195,6 +252,7 @@ class UserAuditLog(models.Model):
             ip_address=ip_address,
             user_agent=user_agent
         )
+    
     @staticmethod
     def get_client_ip(request):
         """Get client IP address from request"""

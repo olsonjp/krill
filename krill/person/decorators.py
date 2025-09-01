@@ -30,6 +30,7 @@ def require_permission(permission, model_class=None, object_id_param='pk'):
                     request=request
                 )
                 return HttpResponseForbidden("Insufficient permissions")
+            
             # Check object-level permissions if model_class is provided
             if model_class and object_id_param in kwargs:
                 object_id = kwargs[object_id_param]
@@ -43,6 +44,7 @@ def require_permission(permission, model_class=None, object_id_param='pk'):
                         request=request
                     )
                     return HttpResponseForbidden("Insufficient permissions for this object")
+            
             return view_func(request, *args, **kwargs)
         return wrapper
     return decorator
@@ -103,6 +105,29 @@ def require_minimum_role(minimum_role):
     return decorator
 
 
+def require_access_level(level):
+    """
+    Decorator to check user has required access level for an object.
+    Args:
+        level (str): The access level required ('admins_only', 'admins_managers', 'all_members')
+    """
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapper(request, *args, **kwargs):
+            user_role = UserRole.get_or_create_for_user(request.user)
+            if not user_role.has_access_level(level):
+                UserAuditLog.log_action(
+                    user=request.user,
+                    action='view',
+                    details={'access_level_denied': level, 'current_role': user_role.role},
+                    request=request
+                )
+                return HttpResponseForbidden("Insufficient access level")
+            return view_func(request, *args, **kwargs)
+        return wrapper
+    return decorator
+
+
 def has_object_permission(user, model_class, object_id, permission_type):
     """
     Check if user has specific permission for a model instance.
@@ -130,11 +155,13 @@ def has_object_permission(user, model_class, object_id, permission_type):
             department='',
             lab_unit=''
         )
+    
     # Get the model name for permission checking
     model_name = model_class.__name__.lower()
     role_permission = f"{model_name}.{permission_type}"
     if not user.role.has_permission(role_permission):
         return False
+    
     # Check for specific object-level permissions
     content_type = ContentType.objects.get_for_model(model_class)
     try:
@@ -148,6 +175,24 @@ def has_object_permission(user, model_class, object_id, permission_type):
     except Permission.DoesNotExist:
         # No specific object permission, rely on role-based permission
         return True
+
+
+def has_object_access(user, model_class, object_id):
+    """
+    Check if user has access to a specific object based on its access level.
+    Args:
+        user: The user to check
+        model_class: The model class
+        object_id: The object ID
+    Returns:
+        bool: True if user has access, False otherwise
+    """
+    try:
+        obj = model_class.objects.get(id=object_id)
+        user_role = UserRole.get_or_create_for_user(user)
+        return user_role.can_access_object(obj)
+    except model_class.DoesNotExist:
+        return False
 
 
 def grant_object_permission(user, model_class, object_id, permission_type, granted_by=None, expires_at=None):
@@ -179,6 +224,7 @@ def grant_object_permission(user, model_class, object_id, permission_type, grant
         permission.granted_by = granted_by
         permission.expires_at = expires_at
         permission.save()
+    
     # Log the permission grant
     UserAuditLog.log_action(
         user=granted_by or user,
@@ -215,6 +261,7 @@ def revoke_object_permission(user, model_class, object_id, permission_type, revo
             object_id=object_id
         )
         permission.delete()
+        
         # Log the permission revocation
         UserAuditLog.log_action(
             user=revoked_by or user,
@@ -251,6 +298,7 @@ def require_permission_cbv(permission, model_class=None, object_id_param='pk'):
                     request=request
                 )
                 return HttpResponseForbidden("Insufficient permissions")
+            
             # Check object-level permissions if model_class is provided
             if model_class and object_id_param in kwargs:
                 object_id = kwargs[object_id_param]
@@ -264,6 +312,7 @@ def require_permission_cbv(permission, model_class=None, object_id_param='pk'):
                         request=request
                     )
                     return HttpResponseForbidden("Insufficient permissions for this object")
+            
             return original_dispatch(self, request, *args, **kwargs)
         cls.dispatch = dispatch
         return cls
@@ -287,6 +336,29 @@ def require_role_cbv(role):
                     request=request
                 )
                 return HttpResponseForbidden("Insufficient role privileges")
+            return original_dispatch(self, request, *args, **kwargs)
+        cls.dispatch = dispatch
+        return cls
+    return decorator
+
+
+def require_access_level_cbv(level):
+    """Class-based view version of require_access_level decorator"""
+    def decorator(cls):
+        if not issubclass(cls, View):
+            raise ValueError("Decorator can only be applied to View subclasses")
+        original_dispatch = cls.dispatch
+        @wraps(original_dispatch)
+        def dispatch(self, request, *args, **kwargs):
+            user_role = UserRole.get_or_create_for_user(request.user)
+            if not user_role.has_access_level(level):
+                UserAuditLog.log_action(
+                    user=request.user,
+                    action='view',
+                    details={'access_level_denied': level, 'current_role': user_role.role},
+                    request=request
+                )
+                return HttpResponseForbidden("Insufficient access level")
             return original_dispatch(self, request, *args, **kwargs)
         cls.dispatch = dispatch
         return cls

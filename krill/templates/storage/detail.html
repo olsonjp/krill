@@ -34,6 +34,17 @@
                 <label>Auto-Store:</label>
                 <span>{% if object.auto_store_enabled %}Enabled{% else %}Disabled{% endif %}</span>
             </div>
+            <div class="detail-field">
+                <label>Access Level:</label>
+                <span class="access-level-badge access-level-{{ object.access_level }}">
+                    <i class="material-icons-round">
+                        {% if object.access_level == 'admins_only' %}admin_panel_settings
+                        {% elif object.access_level == 'admins_managers' %}supervisor_account
+                        {% else %}group{% endif %}
+                    </i>
+                    {{ object.get_access_level_display }}
+                </span>
+            </div>
             <!-- Storage Statistics -->
             <div class="detail-section">
                 <h3><i class="material-icons-round">storage</i> Storage Statistics</h3>
@@ -66,7 +77,7 @@
                             {% for slot in row %}
                             <div class="test-tube-slot {% if slot.occupied %}occupied{% else %}empty{% endif %}"
                                  data-row="{{ slot.row }}" data-col="{{ slot.column }}"
-                                 title="{% if slot.occupied %}{{ slot.sample.name }} - {{ slot.aliquot.aliquotType.name }}{% else %}Empty slot{% endif %}">
+                                 title="{% if slot.occupied %}{{ slot.sample.name }} - {{ slot.aliquot.aliquot_type.name }}{% else %}Empty slot{% endif %}">
                                 {% if slot.occupied %}
                                 <a href="{% url 'sample:detail' type='aliquot' pk=slot.aliquot.id %}" class="test-tube-link">
                                 {% endif %}
@@ -125,25 +136,80 @@
                 </div>
             </div>
             {% endif %}
+        {% elif model_type == 'rack' %}
+            <div class="detail-field">
+                <label>Shelf:</label>
+                <span>{{ object.shelf.name }}</span>
+            </div>
+            <div class="detail-field">
+                <label>Device:</label>
+                <span>{{ object.shelf.device.name }}</span>
+            </div>
+            <div class="detail-field">
+                <label>Description:</label>
+                <span>{{ object.description|default:"No description" }}</span>
+            </div>
+            <div class="detail-field">
+                <label>Access Level:</label>
+                <span class="access-level-badge access-level-{{ object.access_level }}">
+                    <i class="material-icons-round">
+                        {% if object.access_level == 'admins_only' %}admin_panel_settings
+                        {% elif object.access_level == 'admins_managers' %}supervisor_account
+                        {% else %}group{% endif %}
+                    </i>
+                    {{ object.get_access_level_display }}
+                </span>
+            </div>
         {% elif model_type == 'shelf' %}
             <div class="detail-field">
                 <label>Device:</label>
                 <span>{{ object.device.name }}</span>
             </div>
             <div class="detail-field">
-                <label>Site:</label>
-                <span>{{ object.device.site.name }}</span>
+                <label>Description:</label>
+                <span>{{ object.description|default:"No description" }}</span>
+            </div>
+            <div class="detail-field">
+                <label>Access Level:</label>
+                <span class="access-level-badge access-level-{{ object.access_level }}">
+                    <i class="material-icons-round">
+                        {% if object.access_level == 'admins_only' %}admin_panel_settings
+                        {% elif object.access_level == 'admins_managers' %}supervisor_account
+                        {% else %}group{% endif %}
+                    </i>
+                    {{ object.get_access_level_display }}
+                </span>
             </div>
         {% elif model_type == 'device' %}
             <div class="detail-field">
                 <label>Site:</label>
                 <span>{{ object.site.name }}</span>
             </div>
+            <div class="detail-field">
+                <label>Description:</label>
+                <span>{{ object.description|default:"No description" }}</span>
+            </div>
+            <div class="detail-field">
+                <label>Auto-Store:</label>
+                <span>{% if object.auto_store_enabled %}Enabled{% else %}Disabled{% endif %}</span>
+            </div>
+            <div class="detail-field">
+                <label>Access Level:</label>
+                <span class="access-level-badge access-level-{{ object.access_level }}">
+                    <i class="material-icons-round">
+                        {% if object.access_level == 'admins_only' %}admin_panel_settings
+                        {% elif object.access_level == 'admins_managers' %}supervisor_account
+                        {% else %}group{% endif %}
+                    </i>
+                    {{ object.get_access_level_display }}
+                </span>
+            </div>
+        {% else %}
+            <div class="detail-field">
+                <label>Description:</label>
+                <span>{{ object.description|default:"No description" }}</span>
+            </div>
         {% endif %}
-        <div class="detail-field">
-            <label>Description:</label>
-            <span>{{ object.description }}</span>
-        </div>
     </div>
 
     <div class="detail-form hidden" id="editMode">
@@ -178,6 +244,37 @@
         </form>
     </div>
 </div>
+
+<style>
+.access-level-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-weight: 500;
+}
+
+.access-level-badge i {
+    font-size: 16px;
+}
+
+.access-level-admins_only {
+    background-color: #dc3545;
+    color: white;
+}
+
+.access-level-admins_managers {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.access-level-all_members {
+    background-color: #28a745;
+    color: white;
+}
+</style>
 
 <script>
 function toggleEdit() {
