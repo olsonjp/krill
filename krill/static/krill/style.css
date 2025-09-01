@@ -1484,33 +1484,33 @@ main table tbody tr:last-child td{
 }
 
 .status-badge.admin {
-    background: var(--color-danger);
-    color: var(--color-white);
+    background: #f5c6cb;
+    color: #721c24;
 }
 
 .status-badge.manager {
-    background: var(--color-warning);
-    color: var(--color-dark);
+    background: #fff3cd;
+    color: #856404;
 }
 
 .status-badge.member {
-    background: var(--color-success);
-    color: var(--color-white);
+    background: #d4edda;
+    color: #155724;
 }
 
 .status-badge.viewer {
-    background: var(--color-info-dark);
-    color: var(--color-white);
+    background: #e2e3e5;
+    color: #383d41;
 }
 
 .status-badge.active {
-    background: var(--color-success);
-    color: var(--color-white);
+    background: #d4edda;
+    color: #155724;
 }
 
 .status-badge.inactive {
-    background: var(--color-danger);
-    color: var(--color-white);
+    background: #f5c6cb;
+    color: #721c24;
 }
 
 .status-badge.success {
