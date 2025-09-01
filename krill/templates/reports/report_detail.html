@@ -1,21 +1,85 @@
 {% extends 'base/layout.html' %}
 {% load static %}
 
+{% block title %}{{ report.name }} - Krill{% endblock %}
+
 {% block content %}
-<div class="report-detail-container">
-    <div class="report-header">
-        <div class="header-content">
-            <h1>{{ report.name }}</h1>
-            <p class="report-description">{{ report.description|default:"No description provided" }}</p>
+<div class="home-container">
+    <!-- Welcome Section -->
+    <div class="welcome-section">
+        <h1>{{ report.name }}</h1>
+        <p class="subtitle">{{ report.description|default:"Report details and information" }}</p>
+    </div>
+
+    <!-- Report Status -->
+    <div class="stats-container">
+        <div class="stat-card">
+            <span class="material-icons-round">
+                {% if report.status == 'complete' %}
+                    check_circle
+                {% elif report.status == 'pending' %}
+                    schedule
+                {% elif report.status == 'processing' %}
+                    refresh
+                {% elif report.status == 'failed' %}
+                    error
+                {% else %}
+                    description
+                {% endif %}
+            </span>
+            <div class="stat-info">
+                <h3>Status</h3>
+                <p>{{ report.get_status_display }}</p>
+            </div>
         </div>
-        <div class="header-actions">
+        <div class="stat-card">
+            <span class="material-icons-round">description</span>
+            <div class="stat-info">
+                <h3>Format</h3>
+                <p>{{ report.get_format_display }}</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <span class="material-icons-round">person</span>
+            <div class="stat-info">
+                <h3>Created By</h3>
+                <p>{{ report.created_by.username }}</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <span class="material-icons-round">schedule</span>
+            <div class="stat-info">
+                <h3>Created</h3>
+                <p>{{ report.created_at|date:"M d, Y" }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="quick-actions">
+        <h2>Actions</h2>
+        <div class="action-grid">
             {% if report.status == 'complete' %}
-                <button class="btn btn-secondary" onclick="downloadReport({{ report.id }})">
+                <button class="action-btn" onclick="downloadReport({{ report.id }})">
                     <span class="material-icons-round">download</span>
-                    Download
+                    Download Report
+                </button>
+                <button class="action-btn" onclick="shareReport({{ report.id }})">
+                    <span class="material-icons-round">share</span>
+                    Share Report
                 </button>
             {% endif %}
-            <button class="btn btn-primary" onclick="goBack()">
+            {% if report.status == 'failed' %}
+                <button class="action-btn" onclick="retryReport({{ report.id }})">
+                    <span class="material-icons-round">refresh</span>
+                    Retry Generation
+                </button>
+            {% endif %}
+            <button class="action-btn" onclick="duplicateReport({{ report.id }})">
+                <span class="material-icons-round">content_copy</span>
+                Duplicate Report
+            </button>
+            <button class="action-btn" onclick="goBack()">
                 <span class="material-icons-round">arrow_back</span>
                 Back to Reports
             </button>
@@ -23,123 +87,119 @@
     </div>
 
     <!-- Report Information -->
-    <div class="report-info">
-        <div class="info-grid">
-            <div class="info-card">
-                <h3>Status</h3>
-                <span class="status-badge status-{{ report.status }}">{{ report.get_status_display }}</span>
+    <div class="recent-activity">
+        <div class="section-header">
+            <h2>Report Information</h2>
+        </div>
+        <div class="activity-list">
+            <div class="info-item">
+                <span class="material-icons-round">description</span>
+                <div class="info-content">
+                    <p><strong>Template:</strong> {{ report.template.name }}</p>
+                    <small>{{ report.template.description|default:"No description available" }}</small>
+                </div>
             </div>
-            <div class="info-card">
-                <h3>Format</h3>
-                <p>{{ report.get_format_display }}</p>
+            
+            <div class="info-item">
+                <span class="material-icons-round">schedule</span>
+                <div class="info-content">
+                    <p><strong>Created:</strong> {{ report.created_at|date:"F d, Y \a\t H:i" }}</p>
+                    {% if report.completed_at %}
+                        <small><strong>Completed:</strong> {{ report.completed_at|date:"F d, Y \a\t H:i" }}</small>
+                    {% endif %}
+                </div>
             </div>
-            <div class="info-card">
-                <h3>Template</h3>
-                <p>{{ report.template.name }}</p>
-            </div>
-            <div class="info-card">
-                <h3>Created By</h3>
-                <p>{{ report.created_by.username }}</p>
-            </div>
-            <div class="info-card">
-                <h3>Created At</h3>
-                <p>{{ report.created_at|date:"M d, Y H:i" }}</p>
-            </div>
-            {% if report.completed_at %}
-            <div class="info-card">
-                <h3>Completed At</h3>
-                <p>{{ report.completed_at|date:"M d, Y H:i" }}</p>
+            
+            {% if report.file_size %}
+            <div class="info-item">
+                <span class="material-icons-round">storage</span>
+                <div class="info-content">
+                    <p><strong>File Size:</strong> 
+                        {% if report.file_size < 1024 %}
+                            {{ report.file_size }} B
+                        {% elif report.file_size < 1048576 %}
+                            {{ report.file_size|floatformat:1 }} KB
+                        {% else %}
+                            {{ report.file_size|floatformat:1 }} MB
+                        {% endif %}
+                    </p>
+                    {% if report.file_path %}
+                        <small><strong>Path:</strong> {{ report.file_path }}</small>
+                    {% endif %}
+                </div>
             </div>
             {% endif %}
         </div>
     </div>
 
     <!-- Report Content -->
-    <div class="report-content">
-        <h2>Report Content</h2>
-        
-        {% if report.status == 'complete' %}
-            {% if report.format == 'csv' or report.format == 'json' %}
-                <div class="data-preview">
-                    <h3>Data Preview</h3>
-                    <pre class="data-content">{{ report.result_data|pprint }}</pre>
+    <div class="recent-activity">
+        <div class="section-header">
+            <h2>Report Content</h2>
+        </div>
+        <div class="activity-list">
+            {% if report.status == 'complete' %}
+                {% if report.format == 'csv' or report.format == 'json' %}
+                    <div class="info-item">
+                        <span class="material-icons-round">data_object</span>
+                        <div class="info-content">
+                            <p><strong>Data Preview</strong></p>
+                            <div class="data-preview">
+                                <pre class="data-content">{{ report.result_data|pprint }}</pre>
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="info-item">
+                        <span class="material-icons-round">description</span>
+                        <div class="info-content">
+                            <p><strong>Generated File</strong></p>
+                            <small>This report has been generated as a {{ report.get_format_display }} file.</small>
+                            {% if report.file_path %}
+                                <p><strong>File Path:</strong> {{ report.file_path }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endif %}
+            {% elif report.status == 'failed' %}
+                <div class="info-item error">
+                    <span class="material-icons-round">error</span>
+                    <div class="info-content">
+                        <p><strong>Report Generation Failed</strong></p>
+                        <small>{{ report.error_message|default:"Unknown error occurred during report generation" }}</small>
+                    </div>
                 </div>
             {% else %}
-                <div class="file-info">
-                    <h3>Generated File</h3>
-                    <p><strong>File Path:</strong> {{ report.file_path|default:"Not available" }}</p>
-                    <p><strong>File Size:</strong> 
-                        {% if report.file_size %}
-                            {% if report.file_size < 1024 %}
-                                {{ report.file_size }} B
-                            {% elif report.file_size < 1024|add:1024 %}
-                                {{ report.file_size|add:1024|floatformat:1 }} KB
-                            {% else %}
-                                {{ report.file_size|add:1024|add:1024|floatformat:1 }} MB
-                            {% endif %}
-                        {% else %}
-                            Not available
-                        {% endif %}
-                    </p>
+                <div class="info-item processing">
+                    <span class="material-icons-round rotating">refresh</span>
+                    <div class="info-content">
+                        <p><strong>Report Status: {{ report.get_status_display }}</strong></p>
+                        <small>This report is currently being processed. Please check back later.</small>
+                    </div>
                 </div>
             {% endif %}
-        {% elif report.status == 'failed' %}
-            <div class="error-info">
-                <h3>Report Generation Failed</h3>
-                <p class="error-message">{{ report.result_data.error|default:"Unknown error occurred" }}</p>
-            </div>
-        {% else %}
-            <div class="pending-info">
-                <h3>Report Status: {{ report.get_status_display }}</h3>
-                <p>This report is currently being processed. Please check back later.</p>
-                <div class="loading-spinner">
-                    <span class="material-icons-round rotating">refresh</span>
-                    Processing...
-                </div>
-            </div>
-        {% endif %}
+        </div>
     </div>
 
     <!-- Report Parameters -->
     {% if report.parameters %}
-    <div class="report-parameters">
-        <h2>Report Parameters</h2>
-        <div class="parameters-content">
-            <pre class="parameters-json">{{ report.parameters|pprint }}</pre>
+    <div class="recent-activity">
+        <div class="section-header">
+            <h2>Report Parameters</h2>
+        </div>
+        <div class="activity-list">
+            <div class="info-item">
+                <span class="material-icons-round">settings</span>
+                <div class="info-content">
+                    <p><strong>Parameters Used</strong></p>
+                    <div class="parameters-preview">
+                        <pre class="parameters-json">{{ report.parameters|pprint }}</pre>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     {% endif %}
-
-    <!-- Actions -->
-    <div class="report-actions">
-        <h2>Actions</h2>
-        <div class="action-buttons">
-            {% if report.status == 'complete' %}
-                <button class="btn btn-secondary" onclick="downloadReport({{ report.id }})">
-                    <span class="material-icons-round">download</span>
-                    Download Report
-                </button>
-                <button class="btn btn-outline" onclick="shareReport({{ report.id }})">
-                    <span class="material-icons-round">share</span>
-                    Share Report
-                </button>
-            {% endif %}
-            {% if report.status == 'failed' %}
-                <button class="btn btn-warning" onclick="retryReport({{ report.id }})">
-                    <span class="material-icons-round">refresh</span>
-                    Retry Generation
-                </button>
-            {% endif %}
-            <button class="btn btn-outline" onclick="duplicateReport({{ report.id }})">
-                <span class="material-icons-round">content_copy</span>
-                Duplicate Report
-            </button>
-            <button class="btn btn-danger" onclick="deleteReport({{ report.id }})">
-                <span class="material-icons-round">delete</span>
-                Delete Report
-            </button>
-        </div>
-    </div>
 </div>
 
 <script>
@@ -152,338 +212,119 @@ function goBack() {
 }
 
 function shareReport(reportId) {
-    // TODO: Implement report sharing
     alert('Report sharing coming soon!');
 }
 
 function retryReport(reportId) {
     if (confirm('Are you sure you want to retry generating this report?')) {
-        // TODO: Implement report retry
         alert('Report retry coming soon!');
     }
 }
 
 function duplicateReport(reportId) {
     if (confirm('Are you sure you want to duplicate this report?')) {
-        // TODO: Implement report duplication
         alert('Report duplication coming soon!');
     }
 }
 
-function deleteReport(reportId) {
-    if (confirm('Are you sure you want to delete this report? This action cannot be undone.')) {
-        // TODO: Implement report deletion
-        alert('Report deletion coming soon!');
-    }
-}
-
 // Auto-refresh for pending reports
-{% if report.status == 'pending' or report.status == 'generating' %}
+{% if report.status == 'pending' or report.status == 'processing' %}
 setInterval(function() {
     location.reload();
 }, 10000); // Refresh every 10 seconds
 {% endif %}
+
+// Rotating animation for loading
+const style = document.createElement('style');
+style.textContent = `
+    .rotating {
+        animation: rotate 2s linear infinite;
+    }
+    
+    @keyframes rotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+`;
+document.head.appendChild(style);
 </script>
 
 <style>
-.report-detail-container {
-    padding: 20px;
-    max-width: 1200px;
-    margin: 0 auto;
-}
-
-.report-header {
+.info-item {
     display: flex;
-    justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 30px;
-    gap: 20px;
-}
-
-.header-content h1 {
-    margin: 0 0 10px 0;
-    color: #333;
-    font-size: 2.5rem;
-}
-
-.report-description {
-    color: #666;
-    font-size: 1.1rem;
-    margin: 0;
-}
-
-.header-actions {
-    display: flex;
-    gap: 10px;
-    flex-shrink: 0;
-}
-
-.report-info {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    padding: 25px;
-    margin-bottom: 30px;
-}
-
-.info-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 20px;
-}
-
-.info-card h3 {
-    margin: 0 0 10px 0;
-    color: #666;
-    font-size: 0.9rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.info-card p {
-    margin: 0;
-    color: #333;
-    font-size: 1.1rem;
-    font-weight: 500;
-}
-
-.status-badge {
-    padding: 8px 16px;
-    border-radius: 20px;
-    font-size: 0.9rem;
-    font-weight: 500;
-    display: inline-block;
-}
-
-.status-pending { background: #fff3cd; color: #856404; }
-.status-generating { background: #cce5ff; color: #004085; }
-.status-complete { background: #d4edda; color: #155724; }
-.status-failed { background: #f8d7da; color: #721c24; }
-
-.report-content {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    padding: 25px;
-    margin-bottom: 30px;
-}
-
-.report-content h2 {
-    margin: 0 0 20px 0;
-    color: #333;
-    font-size: 1.5rem;
-}
-
-.data-preview, .file-info, .error-info, .pending-info {
-    background: #f8f9fa;
-    border-radius: 8px;
+    gap: 15px;
     padding: 20px;
+    background: var(--color-white);
+    border-radius: var(--border-radius-1);
+    border: 1px solid var(--color-light);
+    margin-bottom: 15px;
 }
 
-.data-preview h3, .file-info h3, .error-info h3, .pending-info h3 {
-    margin: 0 0 15px 0;
-    color: #333;
-    font-size: 1.2rem;
+.info-item.error {
+    background: #f8d7da;
+    border-color: #f5c6cb;
 }
 
-.data-content {
-    background: white;
-    border: 1px solid #e9ecef;
-    border-radius: 6px;
+.info-item.processing {
+    background: #cce5ff;
+    border-color: #b3d7ff;
+}
+
+.info-item .material-icons-round {
+    color: var(--color-primary);
+    font-size: 1.5rem;
+    margin-top: 2px;
+}
+
+.info-item.error .material-icons-round {
+    color: var(--color-danger);
+}
+
+.info-item.processing .material-icons-round {
+    color: var(--color-primary);
+}
+
+.info-content p {
+    margin: 0 0 8px 0;
+    color: var(--color-dark);
+}
+
+.info-content small {
+    color: var(--color-dark-variant);
+    line-height: 1.4;
+}
+
+.data-preview, .parameters-preview {
+    background: var(--color-background);
+    border-radius: var(--border-radius-1);
+    padding: 15px;
+    margin-top: 10px;
+}
+
+.data-content, .parameters-json {
+    background: var(--color-white);
+    border: 1px solid var(--color-light);
+    border-radius: var(--border-radius-1);
     padding: 15px;
     overflow-x: auto;
     font-family: 'Courier New', monospace;
     font-size: 0.9rem;
-    color: #333;
+    color: var(--color-dark);
     max-height: 400px;
     overflow-y: auto;
-}
-
-.file-info p, .error-info p, .pending-info p {
-    margin: 8px 0;
-    color: #666;
-}
-
-.error-message {
-    color: #721c24 !important;
-    font-weight: 500;
-}
-
-.loading-spinner {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    color: #007bff;
-    font-weight: 500;
-    margin-top: 15px;
-}
-
-.rotating {
-    animation: rotate 2s linear infinite;
-}
-
-@keyframes rotate {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-
-.report-parameters {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    padding: 25px;
-    margin-bottom: 30px;
-}
-
-.report-parameters h2 {
-    margin: 0 0 20px 0;
-    color: #333;
-    font-size: 1.5rem;
-}
-
-.parameters-content {
-    background: #f8f9fa;
-    border-radius: 8px;
-    padding: 20px;
-}
-
-.parameters-json {
-    background: white;
-    border: 1px solid #e9ecef;
-    border-radius: 6px;
-    padding: 15px;
-    overflow-x: auto;
-    font-family: 'Courier New', monospace;
-    font-size: 0.9rem;
-    color: #333;
     margin: 0;
-}
-
-.report-actions {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    padding: 25px;
-}
-
-.report-actions h2 {
-    margin: 0 0 20px 0;
-    color: #333;
-    font-size: 1.5rem;
-}
-
-.action-buttons {
-    display: flex;
-    gap: 15px;
-    flex-wrap: wrap;
-}
-
-.btn {
-    padding: 12px 24px;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.9rem;
-    font-weight: 500;
-    transition: all 0.3s ease;
-    text-decoration: none;
-}
-
-.btn-primary {
-    background: #007bff;
-    color: white;
-}
-
-.btn-primary:hover {
-    background: #0056b3;
-    transform: translateY(-2px);
-}
-
-.btn-secondary {
-    background: #6c757d;
-    color: white;
-}
-
-.btn-secondary:hover {
-    background: #545b62;
-    transform: translateY(-2px);
-}
-
-.btn-warning {
-    background: #ffc107;
-    color: #212529;
-}
-
-.btn-warning:hover {
-    background: #e0a800;
-    transform: translateY(-2px);
-}
-
-.btn-danger {
-    background: #dc3545;
-    color: white;
-}
-
-.btn-danger:hover {
-    background: #c82333;
-    transform: translateY(-2px);
-}
-
-.btn-outline {
-    background: transparent;
-    color: #007bff;
-    border: 2px solid #007bff;
-}
-
-.btn-outline:hover {
-    background: #007bff;
-    color: white;
-    transform: translateY(-2px);
-}
-
-.btn .material-icons-round {
-    font-size: 1.1rem;
 }
 
 @media (max-width: 768px) {
-    .report-header {
+    .info-item {
         flex-direction: column;
-        align-items: flex-start;
+        gap: 10px;
     }
     
-    .header-actions {
-        width: 100%;
-        justify-content: flex-start;
-    }
-    
-    .info-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .action-buttons {
-        flex-direction: column;
-    }
-    
-    .btn {
-        width: 100%;
-        justify-content: center;
-    }
-}
-
-@media (max-width: 480px) {
-    .report-header h1 {
-        font-size: 2rem;
-    }
-    
-    .report-detail-container {
-        padding: 15px;
-    }
-    
-    .report-info, .report-content, .report-parameters, .report-actions {
-        padding: 20px;
+    .data-content, .parameters-json {
+        font-size: 0.8rem;
+        padding: 10px;
     }
 }
 </style>

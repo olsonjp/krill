@@ -1,20 +1,18 @@
 {% extends 'base/layout.html' %}
 {% load static %}
 
+{% block title %}Reports List - Krill{% endblock %}
+
 {% block content %}
-<div class="reports-container">
-    <div class="reports-header">
+<div class="home-container">
+    <!-- Welcome Section -->
+    <div class="welcome-section">
         <h1>Reports</h1>
-        <div class="header-actions">
-            <button class="btn btn-primary" onclick="showGenerateReportModal()">
-                <span class="material-icons-round">add_circle</span>
-                Generate Report
-            </button>
-        </div>
+        <p class="subtitle">Browse and manage generated reports</p>
     </div>
 
-    <!-- Reports Statistics -->
-    <div class="reports-stats">
+    <!-- Quick Stats -->
+    <div class="stats-container">
         <div class="stat-card">
             <span class="material-icons-round">description</span>
             <div class="stat-info">
@@ -36,81 +34,136 @@
                 <p>{{ completed_reports }}</p>
             </div>
         </div>
+        <div class="stat-card">
+            <span class="material-icons-round">add_circle</span>
+            <div class="stat-info">
+                <h3>Generate New</h3>
+                <p>Available</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="quick-actions">
+        <h2>Quick Actions</h2>
+        <div class="action-grid">
+            <button class="action-btn" onclick="showGenerateReportModal()">
+                <span class="material-icons-round">add_circle</span>
+                Generate Report
+            </button>
+            <button class="action-btn" onclick="filterReports('')">
+                <span class="material-icons-round">refresh</span>
+                Show All
+            </button>
+            <button class="action-btn" onclick="filterReports('complete')">
+                <span class="material-icons-round">check_circle</span>
+                Completed Only
+            </button>
+            <button class="action-btn" onclick="filterReports('pending')">
+                <span class="material-icons-round">pending_actions</span>
+                Pending Only
+            </button>
+        </div>
     </div>
 
     <!-- Reports List -->
-    <div class="reports-list">
-        <div class="list-header">
+    <div class="recent-activity">
+        <div class="section-header">
             <h2>Recent Reports</h2>
-            <div class="list-filters">
-                <select class="form-control" onchange="filterReports(this.value)">
+            <div class="header-actions">
+                <select class="form-control" onchange="filterReports(this.value)" style="width: auto;">
                     <option value="">All Status</option>
                     <option value="pending">Pending</option>
-                    <option value="generating">Generating</option>
+                    <option value="processing">Processing</option>
                     <option value="complete">Complete</option>
                     <option value="failed">Failed</option>
                 </select>
             </div>
         </div>
-
-        {% if reports %}
-            <div class="reports-grid">
+        <div class="activity-list">
+            {% if reports %}
                 {% for report in reports %}
-                <div class="report-item" data-status="{{ report.status }}">
-                    <div class="report-header">
-                        <h3>{{ report.name }}</h3>
-                        <span class="status-badge status-{{ report.status }}">{{ report.get_status_display }}</span>
-                    </div>
-                    <div class="report-meta">
-                        <p><strong>Template:</strong> {{ report.template.name }}</p>
-                        <p><strong>Format:</strong> {{ report.get_format_display }}</p>
-                        <p><strong>Created:</strong> {{ report.created_at|date:"M d, Y H:i" }}</p>
-                        {% if report.completed_at %}
-                            <p><strong>Completed:</strong> {{ report.completed_at|date:"M d, Y H:i" }}</p>
-                        {% endif %}
-                    </div>
-                    <div class="report-actions">
+                <div class="activity-item report-item" data-status="{{ report.status }}">
+                    <span class="material-icons-round">
                         {% if report.status == 'complete' %}
-                            <button class="btn btn-secondary" onclick="downloadReport({{ report.id }})">
-                                <span class="material-icons-round">download</span>
-                                Download
-                            </button>
+                            check_circle
+                        {% elif report.status == 'pending' %}
+                            schedule
+                        {% elif report.status == 'processing' %}
+                            refresh
+                        {% elif report.status == 'failed' %}
+                            error
+                        {% else %}
+                            description
                         {% endif %}
-                        <button class="btn btn-primary" onclick="viewReport({{ report.id }})">
-                            <span class="material-icons-round">visibility</span>
-                            View
-                        </button>
+                    </span>
+                    <div class="activity-info">
+                        <div class="report-header">
+                            <h3>{{ report.name }}</h3>
+                            <span class="status-badge status-{{ report.status }}">{{ report.get_status_display }}</span>
+                        </div>
+                        <div class="report-meta">
+                            <p><strong>Template:</strong> {{ report.template.name }}</p>
+                            <p><strong>Format:</strong> {{ report.get_format_display }}</p>
+                            <p><strong>Created:</strong> {{ report.created_at|date:"M d, Y H:i" }}</p>
+                            {% if report.completed_at %}
+                                <p><strong>Completed:</strong> {{ report.completed_at|date:"M d, Y H:i" }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="report-actions">
+                            {% if report.status == 'complete' %}
+                                <button class="btn btn-secondary" onclick="downloadReport({{ report.id }})">
+                                    <span class="material-icons-round">download</span>
+                                    Download
+                                </button>
+                            {% endif %}
+                            <button class="btn btn-primary" onclick="viewReport({{ report.id }})">
+                                <span class="material-icons-round">visibility</span>
+                                View
+                            </button>
+                        </div>
                     </div>
                 </div>
                 {% endfor %}
-            </div>
 
-            <!-- Pagination -->
-            {% if reports.has_other_pages %}
-            <div class="pagination">
-                {% if reports.has_previous %}
-                    <a href="?page={{ reports.previous_page_number }}" class="page-link">&laquo; Previous</a>
+                <!-- Pagination -->
+                {% if reports.has_other_pages %}
+                <div class="pagination">
+                    {% if reports.has_previous %}
+                        <a href="?page={{ reports.previous_page_number }}" class="page-link">
+                            <span class="material-icons-round">chevron_left</span>
+                            Previous
+                        </a>
+                    {% endif %}
+                    
+                    <span class="current-page">
+                        Page {{ reports.number }} of {{ reports.paginator.num_pages }}
+                    </span>
+                    
+                    {% if reports.has_next %}
+                        <a href="?page={{ reports.next_page_number }}" class="page-link">
+                            Next
+                            <span class="material-icons-round">chevron_right</span>
+                        </a>
+                    {% endif %}
+                </div>
                 {% endif %}
-                
-                <span class="current-page">
-                    Page {{ reports.number }} of {{ reports.paginator.num_pages }}
-                </span>
-                
-                {% if reports.has_next %}
-                    <a href="?page={{ reports.next_page_number }}" class="page-link">Next &raquo;</a>
-                {% endif %}
-            </div>
+            {% else %}
+                <div class="activity-item">
+                    <span class="material-icons-round">description</span>
+                    <div class="activity-info">
+                        <p><strong>No reports found</strong></p>
+                        <small>Generate your first report to get started.</small>
+                        <div class="report-actions" style="margin-top: 15px;">
+                            <button class="btn btn-primary" onclick="showGenerateReportModal()">
+                                <span class="material-icons-round">add_circle</span>
+                                Generate Report
+                            </button>
+                        </div>
+                    </div>
+                </div>
             {% endif %}
-        {% else %}
-            <div class="no-reports">
-                <span class="material-icons-round">description</span>
-                <h3>No reports found</h3>
-                <p>Generate your first report to get started.</p>
-                <button class="btn btn-primary" onclick="showGenerateReportModal()">
-                    Generate Report
-                </button>
-            </div>
-        {% endif %}
+        </div>
     </div>
 </div>
 
@@ -215,7 +268,7 @@ function filterReports(status) {
     const reportItems = document.querySelectorAll('.report-item');
     reportItems.forEach(item => {
         if (status === '' || item.dataset.status === status) {
-            item.style.display = 'block';
+            item.style.display = 'flex';
         } else {
             item.style.display = 'none';
         }
@@ -247,94 +300,17 @@ window.onclick = function(event) {
 </script>
 
 <style>
-.reports-container {
-    padding: 20px;
-    max-width: 1200px;
-    margin: 0 auto;
-}
-
-.reports-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 30px;
-}
-
-.header-actions {
-    display: flex;
-    gap: 10px;
-}
-
-.reports-stats {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 20px;
-    margin-bottom: 30px;
-}
-
-.stat-card {
-    background: white;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    display: flex;
-    align-items: center;
-    gap: 15px;
-}
-
-.stat-card .material-icons-round {
-    font-size: 2.5rem;
-    color: #007bff;
-}
-
-.stat-info h3 {
-    margin: 0;
-    font-size: 0.9rem;
-    color: #666;
-}
-
-.stat-info p {
-    margin: 5px 0 0 0;
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: #333;
-}
-
-.reports-list {
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    overflow: hidden;
-}
-
-.list-header {
-    padding: 20px;
-    border-bottom: 1px solid #eee;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.list-filters select {
-    min-width: 150px;
-}
-
-.reports-grid {
-    padding: 20px;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: 20px;
-}
-
 .report-item {
-    border: 1px solid #eee;
-    border-radius: 8px;
+    background: var(--color-white);
+    border: 1px solid var(--color-light);
+    border-radius: var(--border-radius-1);
     padding: 20px;
+    margin-bottom: 15px;
     transition: all 0.3s ease;
 }
 
 .report-item:hover {
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    box-shadow: var(--box-shadow);
     transform: translateY(-2px);
 }
 
@@ -343,81 +319,77 @@ window.onclick = function(event) {
     justify-content: space-between;
     align-items: flex-start;
     margin-bottom: 15px;
+    gap: 15px;
 }
 
 .report-header h3 {
     margin: 0;
+    color: var(--color-dark);
     font-size: 1.1rem;
-    color: #333;
+    flex: 1;
 }
 
 .status-badge {
-    padding: 4px 8px;
-    border-radius: 12px;
+    padding: 4px 12px;
+    border-radius: 20px;
     font-size: 0.8rem;
     font-weight: 500;
+    white-space: nowrap;
 }
 
 .status-pending { background: #fff3cd; color: #856404; }
-.status-generating { background: #cce5ff; color: #004085; }
+.status-processing { background: #cce5ff; color: #004085; }
 .status-complete { background: #d4edda; color: #155724; }
 .status-failed { background: #f8d7da; color: #721c24; }
 
 .report-meta {
-    margin-bottom: 20px;
+    margin-bottom: 15px;
 }
 
 .report-meta p {
     margin: 5px 0;
     font-size: 0.9rem;
-    color: #666;
+    color: var(--color-dark-variant);
 }
 
 .report-actions {
     display: flex;
     gap: 10px;
+    flex-wrap: wrap;
 }
 
 .btn {
     padding: 8px 16px;
     border: none;
-    border-radius: 4px;
+    border-radius: var(--border-radius-1);
     cursor: pointer;
     display: flex;
     align-items: center;
     gap: 5px;
     font-size: 0.9rem;
+    font-weight: 500;
     transition: all 0.3s ease;
+    text-decoration: none;
 }
 
 .btn-primary {
-    background: #007bff;
-    color: white;
+    background: var(--color-primary);
+    color: var(--color-white);
 }
 
 .btn-primary:hover {
-    background: #0056b3;
+    opacity: 0.9;
+    transform: translateY(-1px);
 }
 
 .btn-secondary {
-    background: #6c757d;
-    color: white;
+    background: var(--color-dark-variant);
+    color: var(--color-white);
 }
 
 .btn-secondary:hover {
-    background: #545b62;
-}
-
-.no-reports {
-    text-align: center;
-    padding: 60px 20px;
-    color: #666;
-}
-
-.no-reports .material-icons-round {
-    font-size: 4rem;
-    color: #ddd;
-    margin-bottom: 20px;
+    opacity: 0.9;
+    transform: translateY(-1px);
 }
 
 .pagination {
@@ -425,26 +397,29 @@ window.onclick = function(event) {
     justify-content: center;
     align-items: center;
     gap: 15px;
-    padding: 20px;
-    border-top: 1px solid #eee;
+    padding: 20px 0;
+    margin-top: 20px;
 }
 
 .page-link {
     padding: 8px 12px;
     text-decoration: none;
-    color: #007bff;
-    border: 1px solid #007bff;
-    border-radius: 4px;
+    color: var(--color-primary);
+    border: 1px solid var(--color-primary);
+    border-radius: var(--border-radius-1);
     transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 5px;
 }
 
 .page-link:hover {
-    background: #007bff;
-    color: white;
+    background: var(--color-primary);
+    color: var(--color-white);
 }
 
 .current-page {
-    color: #666;
+    color: var(--color-dark-variant);
     font-weight: 500;
 }
 
@@ -461,18 +436,18 @@ window.onclick = function(event) {
 }
 
 .modal-content {
-    background-color: white;
+    background-color: var(--color-white);
     margin: 5% auto;
     padding: 0;
-    border-radius: 8px;
+    border-radius: var(--border-radius-2);
     width: 90%;
     max-width: 500px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    box-shadow: var(--box-shadow);
 }
 
 .modal-header {
     padding: 20px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--color-light);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -481,17 +456,18 @@ window.onclick = function(event) {
 .modal-header h2 {
     margin: 0;
     font-size: 1.3rem;
+    color: var(--color-dark);
 }
 
 .close {
-    color: #aaa;
+    color: var(--color-info-dark);
     font-size: 28px;
     font-weight: bold;
     cursor: pointer;
 }
 
 .close:hover {
-    color: #000;
+    color: var(--color-dark);
 }
 
 .modal-body {
@@ -500,7 +476,7 @@ window.onclick = function(event) {
 
 .modal-footer {
     padding: 20px;
-    border-top: 1px solid #eee;
+    border-top: 1px solid var(--color-light);
     display: flex;
     justify-content: flex-end;
     gap: 10px;
@@ -514,21 +490,45 @@ window.onclick = function(event) {
     display: block;
     margin-bottom: 5px;
     font-weight: 500;
-    color: #333;
+    color: var(--color-dark);
 }
 
 .form-control {
     width: 100%;
     padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+    border: 1px solid var(--color-light);
+    border-radius: var(--border-radius-1);
     font-size: 0.9rem;
+    background: var(--color-white);
+    color: var(--color-dark);
 }
 
 .form-control:focus {
     outline: none;
-    border-color: #007bff;
-    box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(108, 155, 207, 0.25);
+}
+
+@media (max-width: 768px) {
+    .report-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .report-actions {
+        flex-direction: column;
+    }
+    
+    .btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .pagination {
+        flex-direction: column;
+        gap: 10px;
+    }
 }
 </style>
 {% endblock %}
