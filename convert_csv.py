@@ -6,18 +6,15 @@ from collections import defaultdict
 def convert_csv_to_fixtures(csv_file):
     fixtures = []
     pk_counter = defaultdict(lambda: 1)
-    
     # Mapping dictionaries to track created objects
     sources = {}
     samples = {}
     storage = {'sites': {}, 'devices': {}, 'shelves': {}, 'racks': {}, 'boxes': {}}
     aliquot_types = {}
     dispositions = {}
-    
     # Read CSV file
     with open(csv_file, 'r') as f:
         reader = csv.DictReader(f, delimiter=';')
-        
         for row in reader:
             # Create Source if not exists
             source_name = row['Source'] or 'Unknown'
@@ -32,11 +29,9 @@ def convert_csv_to_fixtures(csv_file):
                     }
                 })
                 pk_counter['source'] += 1
-            
             # Create Sample if not exists
             sample_key = row['Cell Line']
             current_notes = row['Sample Notes'] or ''
-            
             if sample_key not in samples:
                 samples[sample_key] = pk_counter['sample']
                 fixtures.append({
@@ -58,7 +53,6 @@ def convert_csv_to_fixtures(csv_file):
                         existing_sample['fields']['notes'] = existing_notes + '\n' + current_notes
                     else:
                         existing_sample['fields']['notes'] = current_notes
-            
             # Create Storage hierarchy
             site_name = 'Sikora Lab'
             freezer_name = row['Freezer Name']
@@ -87,7 +81,6 @@ def convert_csv_to_fixtures(csv_file):
                         }
                     })
                     pk_counter['device'] += 1
-                    
             if shelf_name and rack_name and box_name:
                 # Create Shelf if not exists
                 if shelf_name not in storage['shelves']:
@@ -102,7 +95,6 @@ def convert_csv_to_fixtures(csv_file):
                         }
                     })
                     pk_counter['shelf'] += 1
-                
                 if rack_name:
                     # Create Rack if not exists
                     if rack_name not in storage['racks']:
@@ -116,7 +108,6 @@ def convert_csv_to_fixtures(csv_file):
                         }
                         })
                         pk_counter['rack'] += 1
-                        
                     # Create Box if not exists
                     box_key = f"{shelf_name}_{rack_name}_{box_name}"
                     if box_key not in storage['boxes']:
@@ -133,7 +124,6 @@ def convert_csv_to_fixtures(csv_file):
                         }
                     })
                     pk_counter['box'] += 1
-            
             # Create AliquotType if not exists
             aliquot_type = row['Aliquot Type'] or 'Unknown'
             if aliquot_type not in aliquot_types:
@@ -147,7 +137,6 @@ def convert_csv_to_fixtures(csv_file):
                     }
                 })
                 pk_counter['aliquot_type'] += 1
-            
             # Map disposition
             disposition_map = {
                 'In Storage': 'stored',
@@ -156,7 +145,6 @@ def convert_csv_to_fixtures(csv_file):
             }
             disposition = row['Disposition'] or 'In Storage'
             disp_type = disposition_map.get(disposition, 'stored')
-            
             if disposition not in dispositions:
                 dispositions[disposition] = pk_counter['disposition']
                 fixtures.append({
@@ -169,7 +157,6 @@ def convert_csv_to_fixtures(csv_file):
                     }
                 })
                 pk_counter['disposition'] += 1
-            
             # Create Aliquot
             aliquot_pk = pk_counter['aliquot']
             fixtures.append({
@@ -187,7 +174,6 @@ def convert_csv_to_fixtures(csv_file):
                 }
             })
             pk_counter['aliquot'] += 1
-            
             # Create AliquotLocation if box exists
             if box_key in storage['boxes'] and row['Position 3'] and row['Position 4']:
                 fixtures.append({
@@ -201,7 +187,6 @@ def convert_csv_to_fixtures(csv_file):
                     }
                 })
                 pk_counter['location'] += 1
-    
     # Write fixtures to file
     with open('sample_fixtures.json', 'w') as f:
         json.dump(fixtures, f, indent=2)

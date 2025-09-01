@@ -11,7 +11,6 @@ from ..forms import (
 class SampleFormView(View):
     template_name = 'forms/model_form.html'
     success_url = 'sample:list'
-    
     def get_form_class(self):
         form_types = {
             'sample': SampleForm,
@@ -21,10 +20,8 @@ class SampleFormView(View):
             'aliquot-disposition': AliquotDispositionForm,
         }
         return form_types.get(self.kwargs.get('type'))
-    
     def get_success_url(self):
         return reverse(self.success_url)
-    
     def get_title(self):
         titles = {
             'sample': 'New Sample',
@@ -34,7 +31,6 @@ class SampleFormView(View):
             'aliquot-disposition': 'New Disposition',
         }
         return titles.get(self.kwargs.get('type'), 'New Item')
-    
     def get_description(self):
         descriptions = {
             'sample': 'Create a new sample',
@@ -50,7 +46,6 @@ class SampleFormView(View):
         if not form_class:
             messages.error(request, 'Invalid form type')
             return redirect(self.get_success_url())
-            
         form = form_class()
         context = {
             'form': form,
@@ -64,13 +59,11 @@ class SampleFormView(View):
         if not form_class:
             messages.error(request, 'Invalid form type')
             return redirect(self.get_success_url())
-            
         form = form_class(request.POST)
         if form.is_valid():
             form.save()
             messages.success(request, f'{self.get_title()} created successfully!')
             return redirect(self.get_success_url())
-        
         context = {
             'form': form,
             'form_title': self.get_title(),

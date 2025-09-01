@@ -16,24 +16,20 @@ if (darkMode) {
                     'Content-Type': 'application/json',
                 },
             });
-            
             if (!response.ok) {
                 throw new Error('Network response was not ok');
             }
 
             const data = await response.json();
-            
             // Update body class based on the server response
             if (data.dark_mode) {
                 document.body.classList.add('dark-mode-variables');
             } else {
                 document.body.classList.remove('dark-mode-variables');
             }
-            
             // Toggle the active class on the icons
             const lightIcon = darkMode.querySelector('span:nth-child(1)');
             const darkIcon = darkMode.querySelector('span:nth-child(2)');
-            
             if (data.dark_mode) {
                 lightIcon.classList.remove('active');
                 darkIcon.classList.add('active');

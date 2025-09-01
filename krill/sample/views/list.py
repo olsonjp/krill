@@ -9,11 +9,9 @@ from ..models.source import Source
 @method_decorator(login_required, name='dispatch')
 class SampleListView(ListView):
     template_name = 'sample/list.html'
-    
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         model_type = self.request.GET.get('type', 'sample')
-        
         if model_type == 'aliquot':
             context['items'] = Aliquot.objects.select_related(
                 'sample', 
@@ -31,7 +29,6 @@ class SampleListView(ListView):
         else:  # default to samples
             context['items'] = Sample.objects.all()
             context['model_name'] = 'Samples'
-            
         return context
 
     def get_queryset(self):

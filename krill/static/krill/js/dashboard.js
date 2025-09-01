@@ -6,7 +6,6 @@ async function updateDashboardStats() {
             throw new Error('Network response was not ok');
         }
         const data = await response.json();
-        
         // Update Active Samples
         const sampleCard = Array.from(document.querySelectorAll('.stat-card')).find(card => 
             card.querySelector('.material-icons-round').textContent.trim() === 'science'
@@ -17,7 +16,6 @@ async function updateDashboardStats() {
                 sampleElement.textContent = data.active_samples || 0;
             }
         }
-        
         // Update Storage Usage
         const storageCard = Array.from(document.querySelectorAll('.stat-card')).find(card => 
             card.querySelector('.material-icons-round').textContent.trim() === 'inventory_2'
@@ -28,7 +26,6 @@ async function updateDashboardStats() {
                 percentageElement.textContent = `${data.storage_usage || 0}%`;
             }
         }
-        
         // Update Reports
         const reportCard = Array.from(document.querySelectorAll('.stat-card')).find(card => 
             card.querySelector('.material-icons-round').textContent.trim() === 'description'
@@ -39,7 +36,6 @@ async function updateDashboardStats() {
                 reportElement.textContent = `${data.recent_reports || 0} Recent`;
             }
         }
-        
         // Update Alerts
         const alertCard = Array.from(document.querySelectorAll('.stat-card')).find(card => 
             card.querySelector('.material-icons-round').textContent.trim() === 'warning'
@@ -63,16 +59,13 @@ async function updateStorageUsage() {
             throw new Error('Network response was not ok');
         }
         const data = await response.json();
-        
         // Calculate percentage used
         const percentageUsed = Math.round((data.used_slots / data.total_slots) * 100) || 0;
-        
         // Find the storage usage stat card
         const storageCards = document.querySelectorAll('.stat-card');
         const storageCard = Array.from(storageCards).find(card => 
             card.querySelector('.material-icons-round').textContent.trim() === 'inventory_2'
         );
-        
         if (storageCard) {
             const percentageElement = storageCard.querySelector('.stat-info p');
             if (percentageElement) {

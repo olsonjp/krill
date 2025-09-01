@@ -12,7 +12,6 @@
 
             <form method="post" class="login-form">
                 {% csrf_token %}
-                
                 {% if form.errors %}
                 <div class="error-message">
                     Invalid username or password.
@@ -38,7 +37,6 @@
                 </div>
 
                 <input type="hidden" name="next" value="{{ next }}">
-                
                 <button type="submit" class="login-btn">Log In</button>
             </form>
         </div>

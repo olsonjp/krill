@@ -10,7 +10,6 @@
                 </span>
                 <h3>Dashboard</h3>
             </a>
-            
             <!-- Sample app section -->
             <div class="sidebar-section">
                 <a href="{% url 'sample:list' %}" class="sidebar-toggle {% if 'sample' in request.path %}active{% endif %}">
@@ -81,7 +80,6 @@
                 </span>
                 <h3>Settings</h3>
             </a>
-            
             <!-- User Management section -->
             <div class="sidebar-section">
                 <a href="{% url 'person:user_list' %}" class="sidebar-toggle {% if 'users' in request.path %}active{% endif %}">

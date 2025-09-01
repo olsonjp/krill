@@ -14,12 +14,10 @@ def create_aliquot_tubes(sender, instance, created, **kwargs):
     """
     if not AUTO_CREATE_TUBES:
         return
-        
     if created and not hasattr(instance, '_tubes_created'):
         # Get the default disposition (usually "Stored")
         from .models.aliquot import AliquotDisposition
         default_disposition = AliquotDisposition.objects.get(dispositionType='stored')
-        
         # Create individual tube instances
         for tube_number in range(1, instance.quantity + 1):
             AliquotTube.objects.create(
@@ -27,7 +25,6 @@ def create_aliquot_tubes(sender, instance, created, **kwargs):
                 tube_number=tube_number,
                 disposition=default_disposition
             )
-        
         # Mark as processed to prevent infinite loops
         instance._tubes_created = True
 
@@ -39,23 +36,18 @@ def auto_store_aliquot_tube(sender, instance, created, **kwargs):
     """
     if not AUTO_STORE_TUBES:
         return
-        
     if created and not hasattr(instance, '_auto_store_processed'):
         # Only auto-store if disposition is "Stored"
         if instance.disposition.dispositionType != 'stored':
             return
-            
         # Check if tube already has a storage location (using the old model structure)
         if AliquotLocation.objects.filter(aliquot=instance.aliquot, tube_number=instance.tube_number).exists():
             return
-        
         # Find available auto-store boxes
         from storage.models import Box
-        
         auto_store_boxes = Box.objects.filter(
             rack__shelf__device__auto_store_enabled=True
         ).order_by('id')
-        
         for box in auto_store_boxes:
             available_slots = box.get_available_slots()
             if available_slots:
@@ -69,7 +61,6 @@ def auto_store_aliquot_tube(sender, instance, created, **kwargs):
                     tube_number=instance.tube_number
                 )
                 break
-        
         # Mark as processed to prevent infinite loops
         instance._auto_store_processed = True
 
@@ -93,7 +84,6 @@ def handle_tube_disposition_change(sender, instance, created, **kwargs):
     if not created and hasattr(instance, '_old_disposition'):
         old_disposition = instance._old_disposition
         new_disposition = instance.disposition.dispositionType
-        
         # If disposition changed from "Stored" to something else, remove storage location
         if old_disposition == 'stored' and new_disposition != 'stored':
             # Remove storage location for this tube (using the old model structure)

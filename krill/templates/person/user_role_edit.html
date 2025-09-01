@@ -8,11 +8,9 @@
         <h1>Edit Role: {{ user_role.user.username }}</h1>
         <p class="form-description">Update the role and organizational information for this user</p>
     </div>
-    
     <div class="form-content">
         <form method="post" class="detail-form">
             {% csrf_token %}
-            
             <div class="detail-field">
                 <label for="{{ form.role.id_for_label }}">Role</label>
                 {{ form.role }}
@@ -78,7 +76,6 @@
         <h2>Role Information</h2>
         <p class="form-description">Overview of available roles and their permissions</p>
     </div>
-    
     <div class="role-info-grid">
         <div class="role-card">
             <h3>Lab Administrator</h3>
@@ -89,7 +86,6 @@
                 <li>✓ Audit logs access</li>
             </ul>
         </div>
-        
         <div class="role-card">
             <h3>Lab Manager</h3>
             <ul>
@@ -99,7 +95,6 @@
                 <li>✓ Reports and audit access</li>
             </ul>
         </div>
-        
         <div class="role-card">
             <h3>Lab Member</h3>
             <ul>
@@ -109,7 +104,6 @@
                 <li>✓ View reports</li>
             </ul>
         </div>
-        
         <div class="role-card">
             <h3>Viewer</h3>
             <ul>

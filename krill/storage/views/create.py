@@ -10,10 +10,8 @@ from ..forms import BoxForm, ShelfForm, DeviceForm, SiteForm
 @method_decorator(login_required, name='dispatch')
 class StorageCreateView(CreateView):
     template_name = 'storage/create.html'
-    
     def get_form_class(self):
         model_type = self.request.GET.get('type', 'site')
-        
         if model_type == 'box':
             return BoxForm
         elif model_type == 'shelf':
@@ -22,7 +20,6 @@ class StorageCreateView(CreateView):
             return DeviceForm
         else:
             return SiteForm
-    
     def get_success_url(self):
         model_type = self.request.GET.get('type', 'site')
         return f"{reverse_lazy('storage:list')}?type={model_type}"

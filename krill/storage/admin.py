@@ -30,7 +30,6 @@ class BoxAdmin(admin.ModelAdmin):
     list_filter = ['rack__shelf__device__auto_store_enabled']
     search_fields = ['name', 'description']
     readonly_fields = ['auto_store_enabled']
-    
     def auto_store_enabled(self, obj):
         return obj.auto_store_enabled
     auto_store_enabled.boolean = True

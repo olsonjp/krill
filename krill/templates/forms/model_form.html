@@ -9,11 +9,9 @@
         <p class="form-description">{{ form_description }}</p>
         {% endif %}
     </div>
-    
     <div class="form-content">
         <form method="post" class="detail-form">
             {% csrf_token %}
-            
             {% for field in form %}
             <div class="detail-field">
                 <label for="{{ field.id_for_label }}">{{ field.label }}</label>
