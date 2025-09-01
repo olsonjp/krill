@@ -7,58 +7,35 @@
     <div class="storage-overview">
         <h1>Sample Storage Management</h1>
         <div class="storage-stats">
-            <div class="stat-card">
+            <a href="{% url 'storage:device_list' %}" class="stat-card clickable">
                 <span class="material-icons-round">ac_unit</span>
                 <div class="stat-info">
                     <h3>Freezers</h3>
-                    <p>4 Active Units</p>
+                    <p id="freezerCount">Loading...</p>
                 </div>
-            </div>
-            <div class="stat-card">
+            </a>
+            <a href="{% url 'storage:box_list' %}" class="stat-card clickable">
                 <span class="material-icons-round">inventory_2</span>
                 <div class="stat-info">
                     <h3>Storage Boxes</h3>
-                    <p>156 / 200 Available</p>
+                    <p id="boxCount">Loading...</p>
                 </div>
-            </div>
-            <div class="stat-card">
+            </a>
+            <a href="{% url 'sample:sample_list' %}" class="stat-card clickable">
                 <span class="material-icons-round">science</span>
                 <div class="stat-info">
                     <h3>Total Samples</h3>
-                    <p>1,248 Stored</p>
+                    <p id="sampleCount">Loading...</p>
                 </div>
-            </div>
+            </a>
         </div>
     </div>
 
     <!-- Freezer Navigation -->
     <div class="freezer-nav">
         <h2>Freezer Units</h2>
-        <div class="freezer-grid">
-            <div class="freezer-unit">
-                <h3>Freezer A</h3>
-                <div class="temp-status">-80°C</div>
-                <div class="capacity">85% Full</div>
-                <button class="view-details">View Contents</button>
-            </div>
-            <div class="freezer-unit">
-                <h3>Freezer B</h3>
-                <div class="temp-status">-80°C</div>
-                <div class="capacity">62% Full</div>
-                <button class="view-details">View Contents</button>
-            </div>
-            <div class="freezer-unit">
-                <h3>Freezer C</h3>
-                <div class="temp-status">-20°C</div>
-                <div class="capacity">45% Full</div>
-                <button class="view-details">View Contents</button>
-            </div>
-            <div class="freezer-unit">
-                <h3>Freezer D</h3>
-                <div class="temp-status">-20°C</div>
-                <div class="capacity">33% Full</div>
-                <button class="view-details">View Contents</button>
-            </div>
+        <div class="freezer-grid" id="freezerGrid">
+            <!-- Freezer units will be loaded dynamically -->
         </div>
     </div>
 
@@ -66,22 +43,22 @@
     <div class="quick-actions">
         <h2>Quick Actions</h2>
         <div class="action-buttons">
-            <button class="action-btn">
+            <a href="{% url 'sample:sample_create' %}?type=aliquot" class="action-btn">
                 <span class="material-icons-round">add_circle</span>
-                Store New Sample
-            </button>
-            <button class="action-btn">
+                Store New Aliquot
+            </a>
+            <a href="{% url 'sample:sample_search' %}" class="action-btn">
                 <span class="material-icons-round">search</span>
-                Find Sample
-            </button>
-            <button class="action-btn">
+                Find Aliquot
+            </a>
+            <a href="{% url 'storage:device_list' %}" class="action-btn">
                 <span class="material-icons-round">edit</span>
                 Edit Storage
-            </button>
-            <button class="action-btn">
+            </a>
+            <a href="{% url 'reports:alert_list' %}" class="action-btn">
                 <span class="material-icons-round">warning</span>
                 Report Issue
-            </button>
+            </a>
         </div>
     </div>
 </div>
@@ -185,5 +162,225 @@
         background: var(--color-primary);
         color: white;
     }
+    
+    /* Clickable card styles */
+    .stat-card.clickable {
+        text-decoration: none;
+        color: inherit;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    
+    .stat-card.clickable:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .action-btn {
+        text-decoration: none;
+        color: inherit;
+        transition: all 0.2s ease;
+    }
+    
+    .action-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* Loading and error states */
+    .loading {
+        opacity: 0.6;
+        animation: pulse 1.5s ease-in-out infinite;
+    }
+    
+    .error {
+        color: #dc3545;
+        font-weight: 500;
+    }
+    
+    @keyframes pulse {
+        0% { opacity: 0.6; }
+        50% { opacity: 1; }
+        100% { opacity: 0.6; }
+    }
+    
+    /* Enhanced hover effects */
+    .stat-card.clickable:hover .material-icons-round {
+        transform: scale(1.1);
+        transition: transform 0.2s ease;
+    }
+    
+    .action-btn:hover .material-icons-round {
+        transform: scale(1.1);
+        transition: transform 0.2s ease;
+    }
+    
+    .freezer-unit.clickable {
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .freezer-unit.clickable:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
 </style>
+
+<script>
+// Load storage dashboard data
+async function loadStorageData() {
+    // Show loading state
+    showStorageLoadingState();
+    
+    try {
+        const response = await fetch('{% url "reports:storage_dashboard" %}');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        
+        // Update stat cards
+        const freezerCount = document.getElementById('freezerCount');
+        const boxCount = document.getElementById('boxCount');
+        const sampleCount = document.getElementById('sampleCount');
+        
+        if (freezerCount) {
+            freezerCount.textContent = `${data.active_devices} Active Units`;
+            freezerCount.classList.remove('loading');
+        }
+        
+        if (boxCount) {
+            boxCount.textContent = `${data.used_boxes} / ${data.total_boxes} Available`;
+            boxCount.classList.remove('loading');
+        }
+        
+        if (sampleCount) {
+            sampleCount.textContent = `${data.stored_aliquots} Stored`;
+            sampleCount.classList.remove('loading');
+        }
+        
+        // Update freezer grid
+        const freezerGrid = document.getElementById('freezerGrid');
+        if (freezerGrid) {
+            if (data.freezer_status && data.freezer_status.length > 0) {
+                freezerGrid.innerHTML = data.freezer_status.map(freezer => `
+                    <div class="freezer-unit clickable" onclick="viewFreezerDetails('${freezer.name}')">
+                        <h3>${freezer.name}</h3>
+                        <div class="temp-status">${freezer.temperature}°C</div>
+                        <div class="capacity">${freezer.usage_percent}% Full</div>
+                        <button class="view-details">View Contents</button>
+                    </div>
+                `).join('');
+            } else {
+                freezerGrid.innerHTML = '<p>No freezer units found</p>';
+            }
+        }
+        
+        // Hide loading state
+        hideStorageLoadingState();
+        
+    } catch (error) {
+        console.error('Error loading storage data:', error);
+        showStorageErrorState();
+    }
+}
+
+// Show loading state for storage
+function showStorageLoadingState() {
+    const elements = ['freezerCount', 'boxCount', 'sampleCount'];
+    elements.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.classList.add('loading');
+            element.textContent = 'Loading...';
+        }
+    });
+}
+
+// Hide loading state for storage
+function hideStorageLoadingState() {
+    const loadingElements = document.querySelectorAll('.loading');
+    loadingElements.forEach(element => {
+        element.classList.remove('loading');
+    });
+}
+
+// Show error state for storage
+function showStorageErrorState() {
+    const elements = ['freezerCount', 'boxCount', 'sampleCount'];
+    elements.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.classList.add('error');
+            element.textContent = 'Error';
+        }
+    });
+    
+    // Show error notification
+    showStorageNotification('Failed to load storage data. Please refresh the page.', 'error');
+}
+
+// Show notification for storage
+function showStorageNotification(message, type = 'info') {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.textContent = message;
+    
+    // Add styles
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 20px;
+        border-radius: 4px;
+        color: white;
+        font-weight: 500;
+        z-index: 1000;
+        opacity: 0;
+        transform: translateX(100%);
+        transition: all 0.3s ease;
+    `;
+    
+    // Set background color based on type
+    if (type === 'error') {
+        notification.style.backgroundColor = '#dc3545';
+    } else if (type === 'success') {
+        notification.style.backgroundColor = '#28a745';
+    } else {
+        notification.style.backgroundColor = '#007bff';
+    }
+    
+    // Add to page
+    document.body.appendChild(notification);
+    
+    // Animate in
+    setTimeout(() => {
+        notification.style.opacity = '1';
+        notification.style.transform = 'translateX(0)';
+    }, 100);
+    
+    // Remove after 5 seconds
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        notification.style.transform = 'translateX(100%)';
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
+    }, 5000);
+}
+
+// View freezer details
+function viewFreezerDetails(freezerName) {
+    // Navigate to device list filtered by freezer name
+    window.location.href = `{% url 'storage:device_list' %}?search=${encodeURIComponent(freezerName)}`;
+}
+
+// Initialize when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    loadStorageData();
+});
+</script>
 {% endblock %} 

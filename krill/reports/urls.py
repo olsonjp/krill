@@ -25,8 +25,7 @@ urlpatterns = [
     
 
     
-    # Sample Search
-    path('samples/search/', views.search_samples, name='search_samples'),
+
     
     # Storage Dashboard
     path('storage/dashboard/', views.storage_dashboard, name='storage_dashboard'),

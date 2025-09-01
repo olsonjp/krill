@@ -1,79 +1,134 @@
 {% extends 'base/layout.html' %}
+{% load static %}
 
 {% block content %}
-<div class="list-container">
+<div class="storage-list-container">
     <div class="list-header">
         <h1>{{ model_name }}</h1>
-        <button class="create-button" onclick="window.location.href='{% url 'storage:create' %}?type={{ request.GET.type|default:'site' }}'">
-            <span class="material-icons-round">add</span>
-            Create New {{ model_name|slice:":-1" }}
-        </button>
+        <p>Browse and manage {{ model_name|lower }}</p>
     </div>
-    <div class="search-box">
-        <span class="material-icons-round">search</span>
-        <input type="text" id="searchInput" placeholder="Search {{ model_name|lower }}...">
-    </div>
-    <div class="table-container">
-        <table class="items-table">
-            <thead>
-                {% if model_name == 'Boxes' %}
-                    <tr>
-                        <th data-sort="name">Name ↕</th>
-                        <th data-sort="rack">Rack ↕</th>
-                        <th data-sort="shelf">Shelf ↕</th>
-                        <th data-sort="device">Device ↕</th>
-                        <th data-sort="description">Description ↕</th>
-                    </tr>
-                {% elif model_name == 'Shelves' %}
-                    <tr>
-                        <th data-sort="name">Name ↕</th>
-                        <th data-sort="device">Device ↕</th>
-                        <th data-sort="site">Site ↕</th>
-                        <th data-sort="description">Description ↕</th>
-                    </tr>
-                {% elif model_name == 'Devices' %}
-                    <tr>
-                        <th data-sort="name">Name ↕</th>
-                        <th data-sort="site">Site ↕</th>
-                        <th data-sort="description">Description ↕</th>
-                    </tr>
-                {% else %}
-                    <tr>
-                        <th data-sort="name">Name ↕</th>
-                        <th data-sort="description">Description ↕</th>
-                    </tr>
-                {% endif %}
-            </thead>
-            <tbody>
-                {% for item in items %}
-                    <tr class="searchable" data-id="{{ item.id }}">
+
+    <!-- Search and Filter Form -->
+    <div class="search-form-container">
+        <form id="storageListForm" class="search-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="searchInput">Search</label>
+                    <input type="text" id="searchInput" name="q" class="form-control" 
+                           placeholder="Search {{ model_name|lower }}...">
+                </div>
+                <div class="form-group">
+                    <label for="sortBy">Sort By</label>
+                    <select id="sortBy" name="sort" class="form-control">
+                        <option value="name">Name</option>
                         {% if model_name == 'Boxes' %}
-                            <td>{{ item.name }}</td>
-                            <td>{{ item.rack.name }}</td>
-                            <td>{{ item.rack.shelf.name }}</td>
-                            <td>{{ item.rack.shelf.device.name }}</td>
-                            <td>{{ item.description }}</td>
+                            <option value="device">Device</option>
+                            <option value="shelf">Shelf</option>
                         {% elif model_name == 'Shelves' %}
-                            <td>{{ item.name }}</td>
-                            <td>{{ item.device.name }}</td>
-                            <td>{{ item.device.site.name }}</td>
-                            <td>{{ item.description }}</td>
+                            <option value="device">Device</option>
+                            <option value="site">Site</option>
                         {% elif model_name == 'Devices' %}
-                            <td>{{ item.name }}</td>
-                            <td>{{ item.site.name }}</td>
-                            <td>{{ item.description }}</td>
-                        {% else %}
-                            <td>{{ item.name }}</td>
-                            <td>{{ item.description }}</td>
+                            <option value="site">Site</option>
                         {% endif %}
-                    </tr>
-                {% empty %}
-                    <tr>
-                        <td colspan="5" class="no-results">No {{ model_name|lower }} found.</td>
-                    </tr>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="sortOrder">Order</label>
+                    <select id="sortOrder" name="order" class="form-control">
+                        <option value="asc">Ascending</option>
+                        <option value="desc">Descending</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-primary" onclick="performSearch()">
+                    <span class="material-icons-round">search</span>
+                    Search
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="clearSearch()">
+                    <span class="material-icons-round">clear</span>
+                    Clear
+                </button>
+                <button type="button" class="btn btn-success" onclick="window.location.href='{% url 'storage:create' %}?type={{ request.GET.type|default:'site' }}'">
+                    <span class="material-icons-round">add</span>
+                    Create New {{ model_name|slice:":-1" }}
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Results -->
+    <div class="search-results">
+        <div class="results-header">
+            <h2>{{ model_name }}</h2>
+            <div class="results-info">
+                <span class="result-count">{{ items|length }} {{ model_name|lower }} found</span>
+            </div>
+        </div>
+
+        {% if items %}
+            <div class="results-grid">
+                {% for item in items %}
+                <div class="sample-card searchable" data-id="{{ item.id }}">
+                    <div class="sample-header">
+                        <h3>{{ item.name }}</h3>
+                        <span class="sample-type">
+                            {% if model_name == 'Boxes' %}
+                                Box
+                            {% elif model_name == 'Shelves' %}
+                                Shelf
+                            {% elif model_name == 'Devices' %}
+                                Device
+                            {% else %}
+                                Site
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="sample-meta">
+                        {% if model_name == 'Boxes' %}
+                            <p><strong>Device:</strong> {{ item.rack.shelf.device.name|default:"Unknown" }}</p>
+                            <p><strong>Shelf:</strong> {{ item.rack.shelf.name|default:"Unknown" }}</p>
+                            <p><strong>Rack:</strong> {{ item.rack.name|default:"Unknown" }}</p>
+                            <p><strong>Description:</strong> {{ item.description|truncatechars:100|default:"No description" }}</p>
+                        {% elif model_name == 'Shelves' %}
+                            <p><strong>Device:</strong> {{ item.device.name|default:"Unknown" }}</p>
+                            <p><strong>Site:</strong> {{ item.device.site.name|default:"Unknown" }}</p>
+                            <p><strong>Description:</strong> {{ item.description|truncatechars:100|default:"No description" }}</p>
+                        {% elif model_name == 'Devices' %}
+                            <p><strong>Site:</strong> {{ item.site.name|default:"Unknown" }}</p>
+                            <p><strong>Description:</strong> {{ item.description|truncatechars:100|default:"No description" }}</p>
+                        {% else %}
+                            <p><strong>Description:</strong> {{ item.description|truncatechars:100|default:"No description" }}</p>
+                        {% endif %}
+                        {% if item.created_at %}
+                            <p><strong>Created:</strong> {{ item.created_at|date:"M d, Y" }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="sample-actions">
+                        <button class="btn btn-primary" onclick="viewItem({{ item.id }})">
+                            <span class="material-icons-round">visibility</span>
+                            View
+                        </button>
+                        {% if model_name == 'Boxes' %}
+                            <button class="btn btn-secondary" onclick="viewContents({{ item.id }})">
+                                <span class="material-icons-round">inventory_2</span>
+                                Contents
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
                 {% endfor %}
-            </tbody>
-        </table>
+            </div>
+        {% else %}
+            <div class="no-results">
+                <span class="material-icons-round">search_off</span>
+                <h3>No {{ model_name|lower }} found</h3>
+                <p>Try adjusting your search criteria or create a new {{ model_name|slice:":-1"|lower }}.</p>
+                <button class="btn btn-primary" onclick="window.location.href='{% url 'storage:create' %}?type={{ request.GET.type|default:'site' }}'">
+                    Create New {{ model_name|slice:":-1" }}
+                </button>
+            </div>
+        {% endif %}
     </div>
 </div>
 
@@ -81,47 +136,95 @@
 // Search functionality
 document.getElementById('searchInput').addEventListener('input', function(e) {
     const searchText = e.target.value.toLowerCase();
-    const rows = document.querySelectorAll('.searchable');
-    rows.forEach(row => {
-        const text = row.textContent.toLowerCase();
-        row.style.display = text.includes(searchText) ? '' : 'none';
+    const cards = document.querySelectorAll('.searchable');
+    cards.forEach(card => {
+        const text = card.textContent.toLowerCase();
+        card.style.display = text.includes(searchText) ? '' : 'none';
     });
+    
+    // Update result count
+    const visibleCards = document.querySelectorAll('.searchable[style=""], .searchable:not([style])');
+    const resultCount = document.querySelector('.result-count');
+    if (resultCount) {
+        resultCount.textContent = `${visibleCards.length} {{ model_name|lower }} found`;
+    }
 });
 
-// Sorting functionality
-document.querySelectorAll('th[data-sort]').forEach(th => {
-    th.addEventListener('click', function() {
-        const table = th.closest('table');
-        const tbody = table.querySelector('tbody');
-        const rows = Array.from(tbody.querySelectorAll('tr'));
-        const column = Array.from(th.parentNode.children).indexOf(th);
-        // Toggle sort direction
-        const ascending = !th.classList.contains('sort-asc');
-        document.querySelectorAll('th').forEach(header => {
-            header.classList.remove('sort-asc', 'sort-desc');
-        });
-        th.classList.toggle('sort-asc', ascending);
-        th.classList.toggle('sort-desc', !ascending);
-        // Sort rows
-        rows.sort((a, b) => {
-            const aText = a.children[column]?.textContent.toLowerCase() || '';
-            const bText = b.children[column]?.textContent.toLowerCase() || '';
-            return ascending ? 
-                aText.localeCompare(bText) : 
-                bText.localeCompare(aText);
-        });
-        // Reorder rows
-        rows.forEach(row => tbody.appendChild(row));
-    });
-});
+function performSearch() {
+    const searchInput = document.getElementById('searchInput');
+    const sortBy = document.getElementById('sortBy');
+    const sortOrder = document.getElementById('sortOrder');
+    
+    const params = new URLSearchParams();
+    if (searchInput.value) params.set('q', searchInput.value);
+    if (sortBy.value) params.set('sort', sortBy.value);
+    if (sortOrder.value) params.set('order', sortOrder.value);
+    
+    // Update URL with search parameters
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    window.history.pushState({}, '', newUrl);
+    
+    // Reload page with search parameters
+    window.location.reload();
+}
 
-// Row click functionality
-document.querySelectorAll('.searchable').forEach(row => {
-    row.addEventListener('click', function() {
-        const id = this.dataset.id;
-        const type = new URLSearchParams(window.location.search).get('type') || 'site';
-        window.location.href = `{% url 'storage:list' %}../detail/${type}/${id}/`;
+function clearSearch() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('sortBy').value = 'name';
+    document.getElementById('sortOrder').value = 'asc';
+    
+    // Show all cards
+    const cards = document.querySelectorAll('.searchable');
+    cards.forEach(card => {
+        card.style.display = '';
     });
-});
+    
+    // Update result count
+    const resultCount = document.querySelector('.result-count');
+    if (resultCount) {
+        resultCount.textContent = `${cards.length} {{ model_name|lower }} found`;
+    }
+    
+    // Clear URL parameters
+    window.history.pushState({}, '', window.location.pathname);
+}
+
+function viewItem(itemId) {
+    const type = new URLSearchParams(window.location.search).get('type') || 'site';
+    window.location.href = `{% url 'storage:storage_list' %}../detail/${type}/${itemId}/`;
+}
+
+function viewContents(boxId) {
+    window.location.href = `{% url 'storage:storage_list' %}../detail/box/${boxId}/`;
+}
+
+// Auto-search on input change (with debouncing)
+let searchTimeout;
+function setupAutoSearch() {
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                const searchText = this.value.toLowerCase();
+                const cards = document.querySelectorAll('.searchable');
+                cards.forEach(card => {
+                    const text = card.textContent.toLowerCase();
+                    card.style.display = text.includes(searchText) ? '' : 'none';
+                });
+                
+                // Update result count
+                const visibleCards = document.querySelectorAll('.searchable[style=""], .searchable:not([style])');
+                const resultCount = document.querySelector('.result-count');
+                if (resultCount) {
+                    resultCount.textContent = `${visibleCards.length} {{ model_name|lower }} found`;
+                }
+            }, 300);
+        });
+    }
+}
+
+// Initialize auto-search
+document.addEventListener('DOMContentLoaded', setupAutoSearch);
 </script>
 {% endblock %}
