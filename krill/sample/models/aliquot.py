@@ -156,6 +156,17 @@ class Aliquot(models.Model):
     def stored_tubes_count(self):
         """Get the number of test tubes currently stored for this aliquot."""
         return self.aliquottube_set.filter(disposition__dispositionType='stored').count()
+    
+    @property
+    def in_use_tubes_count(self):
+        """Get the number of test tubes currently in use for this aliquot."""
+        return self.aliquottube_set.filter(disposition__dispositionType='in_use').count()
+    
+    @property
+    def exhausted_tubes_count(self):
+        """Get the number of test tubes currently exhausted for this aliquot."""
+        return self.aliquottube_set.filter(disposition__dispositionType='exhausted').count()
+    
     @property
     def unstored_tubes_count(self):
         """Get the number of test tubes not yet stored for this aliquot."""

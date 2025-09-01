@@ -8,11 +8,11 @@
     <div class="detail-header">
         <h1><i class="material-icons-round">science</i> Tube Detail</h1>
         <div class="header-actions">
-            <button class="edit-button" onclick="toggleEdit()">
+            <button class="btn btn-primary" id="editButton" onclick="toggleEdit()">
                 <span class="material-icons-round">edit</span>
                 Edit
             </button>
-            <button class="move-button" onclick="toggleMove()">
+            <button class="btn btn-warning" id="moveButton" onclick="toggleMove()">
                 <span class="material-icons-round">move_to_inbox</span>
                 Move
             </button>
@@ -137,11 +137,11 @@
             </div>
             {% endfor %}
             <div class="form-buttons">
-                <button type="submit" class="save-button">
+                <button type="submit" class="btn btn-success">
                     <span class="material-icons-round">save</span>
                     Save
                 </button>
-                <button type="button" class="cancel-button" onclick="toggleEdit()">
+                <button type="button" class="btn btn-danger" onclick="toggleEdit()">
                     <span class="material-icons-round">close</span>
                     Cancel
                 </button>
@@ -170,11 +170,11 @@
             </div>
             {% endfor %}
             <div class="form-buttons">
-                <button type="submit" class="save-button">
+                <button type="submit" class="btn btn-success">
                     <span class="material-icons-round">move_to_inbox</span>
                     Move Tube
                 </button>
-                <button type="button" class="cancel-button" onclick="toggleMove()">
+                <button type="button" class="btn btn-danger" onclick="toggleMove()">
                     <span class="material-icons-round">close</span>
                     Cancel
                 </button>
@@ -188,8 +188,8 @@ function toggleEdit() {
     const viewMode = document.getElementById('viewMode');
     const editMode = document.getElementById('editMode');
     const moveMode = document.getElementById('moveMode');
-    const editButton = document.querySelector('.edit-button');
-    const moveButton = document.querySelector('.move-button');
+    const editButton = document.getElementById('editButton');
+    const moveButton = document.getElementById('moveButton');
     
     viewMode.classList.toggle('hidden');
     editMode.classList.toggle('hidden');
@@ -202,8 +202,8 @@ function toggleMove() {
     const viewMode = document.getElementById('viewMode');
     const editMode = document.getElementById('editMode');
     const moveMode = document.getElementById('moveMode');
-    const editButton = document.querySelector('.edit-button');
-    const moveButton = document.querySelector('.move-button');
+    const editButton = document.getElementById('editButton');
+    const moveButton = document.getElementById('moveButton');
     
     viewMode.classList.toggle('hidden');
     moveMode.classList.toggle('hidden');
