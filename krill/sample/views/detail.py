@@ -43,7 +43,7 @@ class ModelDetailView(DetailView):
             tubes = AliquotTube.objects.filter(aliquot=self.object).select_related('disposition')
             context['tubes'] = tubes
             # Get storage locations for stored tubes
-            stored_tubes = tubes.filter(disposition__dispositionType='stored')
+            stored_tubes = tubes.filter(disposition__disposition_type='stored')
             if stored_tubes.exists():
                 locations = AliquotLocation.objects.filter(
                     aliquot=self.object,
@@ -88,7 +88,7 @@ class TubeDetailView(DetailView):
         context['form'] = AliquotTubeForm(instance=tube)
         context['move_form'] = AliquotTubeMoveForm()
         # Get storage location if tube is stored
-        if tube.disposition.dispositionType == 'stored':
+        if tube.disposition.disposition_type == 'stored':
             try:
                 location = AliquotLocation.objects.get(
                     aliquot=tube.aliquot,
@@ -124,7 +124,7 @@ class TubeDetailView(DetailView):
             old_disposition = self.object.disposition
             form.save()
             # If changing from stored to non-stored, remove storage location
-            if old_disposition.dispositionType == 'stored' and form.cleaned_data['disposition'].dispositionType != 'stored':
+            if old_disposition.disposition_type == 'stored' and form.cleaned_data['disposition'].disposition_type != 'stored':
                 AliquotLocation.objects.filter(
                     aliquot=self.object.aliquot,
                     tube_number=self.object.tube_number
@@ -141,7 +141,7 @@ class TubeDetailView(DetailView):
         move_form = AliquotTubeMoveForm(request.POST)
         if move_form.is_valid():
             # Ensure tube is in stored disposition
-            stored_disposition = AliquotDisposition.objects.get(dispositionType='stored')
+            stored_disposition = AliquotDisposition.objects.get(disposition_type='stored')
             if self.object.disposition != stored_disposition:
                 self.object.disposition = stored_disposition
                 self.object.save()

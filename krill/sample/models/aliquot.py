@@ -74,6 +74,16 @@ class Aliquot(models.Model):
     def unstored_tubes_count(self):
         """Count of tubes that are not 'stored'"""
         return self.tubes.exclude(disposition__disposition_type='stored').count()
+    
+    @property
+    def in_use_tubes_count(self):
+        """Count of tubes with 'in_use' disposition"""
+        return self.tubes.filter(disposition__disposition_type='in_use').count()
+    
+    @property
+    def exhausted_tubes_count(self):
+        """Count of tubes with 'exhausted' disposition"""
+        return self.tubes.filter(disposition__disposition_type='exhausted').count()
 
     def create_tubes(self, auto_store=True):
         """Create individual tubes for this aliquot"""
