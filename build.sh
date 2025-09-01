@@ -39,6 +39,28 @@ build_target() {
     
     if [ $? -eq 0 ]; then
         print_success "Successfully built ${tag}"
+        
+        # For production builds, also tag with DigitalOcean registry
+        if [ "$target" = "production" ]; then
+            local registry="registry.digitalocean.com/krill/krill"
+            local image_hash=$(docker images --quiet ${tag})
+            
+            if [ -n "$image_hash" ]; then
+                print_status "Tagging production image with DigitalOcean registry..."
+                
+                # Tag with image hash
+                docker tag ${tag} ${registry}:${image_hash}
+                print_success "Tagged as ${registry}:${image_hash}"
+                
+                # Tag with latest
+                docker tag ${tag} ${registry}:latest
+                print_success "Tagged as ${registry}:latest"
+                
+                print_success "Production image tagged for DigitalOcean registry"
+            else
+                print_warning "Could not determine image hash for tagging"
+            fi
+        fi
     else
         print_error "Failed to build ${tag}"
         exit 1
@@ -51,9 +73,28 @@ run_tests() {
     docker run --rm krill:testing
 }
 
+# Function to push production image to DigitalOcean registry
+push_to_registry() {
+    local registry="registry.digitalocean.com/krill/krill"
+    local image_hash=$(docker images --quiet krill:production)
+    
+    if [ -n "$image_hash" ]; then
+        print_status "Pushing production image to DigitalOcean registry..."
+        
+        # Push both tags
+        docker push ${registry}:${image_hash}
+        docker push ${registry}:latest
+        
+        print_success "Production image pushed to DigitalOcean registry"
+    else
+        print_error "Production image not found. Build it first with: $0 production"
+        exit 1
+    fi
+}
+
 # Function to show usage
 show_usage() {
-    echo "Usage: $0 [development|testing|production|all|test]"
+    echo "Usage: $0 [development|testing|production|all|test|push]"
     echo ""
     echo "Targets:"
     echo "  development  - Build development image with debug tools"
@@ -61,11 +102,13 @@ show_usage() {
     echo "  production   - Build production image with security optimizations"
     echo "  all          - Build all images"
     echo "  test         - Build testing image and run tests"
+    echo "  push         - Push production image to DigitalOcean registry"
     echo ""
     echo "Examples:"
     echo "  $0 development    # Build development image"
     echo "  $0 all           # Build all images"
     echo "  $0 test          # Build and run tests"
+    echo "  $0 push          # Push production image to registry"
 }
 
 # Check if Docker is running
@@ -87,6 +130,7 @@ case "${1:-all}" in
     production)
         build_target "production"
         print_success "Production image ready. Run with: docker run -p 8000:8000 krill:production"
+        print_success "Image also tagged for DigitalOcean registry: registry.digitalocean.com/krill/krill"
         ;;
     all)
         print_status "Building all images..."
@@ -98,6 +142,9 @@ case "${1:-all}" in
     test)
         build_target "testing"
         run_tests
+        ;;
+    push)
+        push_to_registry
         ;;
     help|--help|-h)
         show_usage
