@@ -36,7 +36,6 @@
                 <label>Notes:</label>
                 <span>{{ object.notes }}</span>
             </div>
-            
             <!-- Tube Information -->
             <div class="detail-section">
                 <h3><i class="material-icons-round">science</i> Individual Tubes</h3>
@@ -45,7 +44,6 @@
                         <label>Total Tubes:</label>
                         <span>{{ object.quantity }} ({{ object.stored_tubes_count }} stored, {{ object.in_use_tubes_count }} in use, {{ object.exhausted_tubes_count }} exhausted)</span>
                     </div>
-                    
                     <!-- Tube Status Summary -->
                     <div class="tube-summary">
                         <div class="tube-status-item stored">
@@ -61,7 +59,6 @@
                             <span class="status-label">Exhausted</span>
                         </div>
                     </div>
-                    
                     <!-- Individual Tube List -->
                     <div class="tubes-list">
                         <h4>Tube Details:</h4>
@@ -106,7 +103,6 @@
     <div class="detail-form hidden" id="editMode">
         <form method="post" class="detail-form">
             {% csrf_token %}
-            
             {% for field in form %}
             <div class="detail-field">
                 <label for="{{ field.id_for_label }}">{{ field.label }}</label>
@@ -123,7 +119,6 @@
                 {% endif %}
             </div>
             {% endfor %}
-            
             <div class="form-buttons">
                 <button type="submit" class="save-button">
                     <span class="material-icons-round">save</span>
@@ -143,7 +138,6 @@ function toggleEdit() {
     const viewMode = document.getElementById('viewMode');
     const editMode = document.getElementById('editMode');
     const editButton = document.querySelector('.edit-button');
-    
     viewMode.classList.toggle('hidden');
     editMode.classList.toggle('hidden');
     editButton.classList.toggle('hidden');

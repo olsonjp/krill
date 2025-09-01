@@ -12,17 +12,14 @@ from .forms import CustomUserCreationForm, CustomUserChangeForm
 class CustomUserAdmin(UserAdmin):
     add_form = CustomUserCreationForm
     form = CustomUserChangeForm
-    
     list_display = ('username', 'email', 'first_name', 'last_name', 'role_display', 'is_active', 'date_joined')
     list_filter = ('is_active', 'is_staff', 'is_superuser', 'date_joined', 'role__role')
     search_fields = ('username', 'first_name', 'last_name', 'email')
     ordering = ('username',)
-    
     fieldsets = UserAdmin.fieldsets + (
         ('Additional Info', {'fields': ('role_display',)}),
     )
     readonly_fields = ('role_display',)
-    
     def role_display(self, obj):
         if hasattr(obj, 'role'):
             role_colors = {
@@ -55,7 +52,6 @@ class UserRoleAdmin(admin.ModelAdmin):
     list_filter = ('role', 'department', 'lab_unit', 'created_at')
     search_fields = ('user__username', 'user__email', 'department', 'lab_unit')
     readonly_fields = ('created_at', 'updated_at')
-    
     fieldsets = (
         ('User Information', {
             'fields': ('user', 'role')
@@ -68,7 +64,6 @@ class UserRoleAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
-    
     def get_queryset(self, request):
         return super().get_queryset(request).select_related('user')
 
@@ -80,7 +75,6 @@ class PermissionAdmin(admin.ModelAdmin):
     search_fields = ('user__username', 'user__email', 'granted_by__username')
     readonly_fields = ('granted_at', 'is_valid')
     date_hierarchy = 'granted_at'
-    
     fieldsets = (
         ('Permission Details', {
             'fields': ('user', 'permission_type', 'content_type', 'object_id')
@@ -92,12 +86,10 @@ class PermissionAdmin(admin.ModelAdmin):
             'fields': ('is_valid',)
         }),
     )
-    
     def is_valid(self, obj):
         return obj.is_valid()
     is_valid.boolean = True
     is_valid.short_description = 'Valid'
-    
     def get_queryset(self, request):
         return super().get_queryset(request).select_related('user', 'granted_by', 'content_type')
 
@@ -110,7 +102,6 @@ class UserAuditLogAdmin(admin.ModelAdmin):
     readonly_fields = ('user', 'action', 'target_type', 'target_id', 'target_name', 'details', 'ip_address', 'user_agent', 'timestamp')
     date_hierarchy = 'timestamp'
     ordering = ('-timestamp',)
-    
     fieldsets = (
         ('User Information', {
             'fields': ('user', 'action', 'timestamp')
@@ -127,19 +118,14 @@ class UserAuditLogAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
-    
     def has_add_permission(self, request):
         return False
-    
     def has_change_permission(self, request, obj=None):
         return False
-    
     def has_delete_permission(self, request, obj=None):
         return request.user.is_superuser
-    
     def get_queryset(self, request):
         return super().get_queryset(request).select_related('user')
-    
     def details_formatted(self, obj):
         if obj.details:
             formatted = []

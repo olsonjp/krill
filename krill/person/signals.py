@@ -17,7 +17,6 @@ def create_user_role(sender, instance, created, **kwargs):
             role = 'lab_manager'
         else:
             role = 'viewer'
-        
         UserRole.objects.create(
             user=instance,
             role=role,
@@ -56,7 +55,6 @@ def update_user_role_on_superuser_change(sender, instance, **kwargs):
                 role = 'lab_manager'
             else:
                 role = 'viewer'
-            
             UserRole.objects.create(
                 user=instance,
                 role=role,

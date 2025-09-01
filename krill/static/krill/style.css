@@ -2209,54 +2209,43 @@ main table tbody tr:last-child td{
     .search-fields {
         grid-template-columns: 1fr;
     }
-    
     .search-actions {
         flex-direction: column;
         align-items: stretch;
     }
-    
     .action-buttons {
         flex-direction: column;
         gap: 0.25rem;
     }
-    
     .pagination {
         flex-wrap: wrap;
         justify-content: center;
     }
-    
     .modal-content {
         width: 95%;
         margin: 10% auto;
     }
-    
     .storage-stats {
         grid-template-columns: repeat(2, 1fr);
     }
-    
     .storage-info {
         grid-template-columns: 1fr;
     }
-    
     .box-container {
         max-width: 100%;
         padding: 0.5rem;
     }
-    
     .test-tube-slot {
         width: 25px;
         height: 40px;
     }
-    
     .tube-body {
         width: 16px;
         height: 28px;
     }
-    
     .sample-label {
         font-size: 0.5rem;
     }
-    
     .aliquot-details {
         flex-direction: column;
         gap: 0.5rem;

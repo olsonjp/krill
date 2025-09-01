@@ -12,7 +12,6 @@ class Device(models.Model):
         default=False, 
         help_text="Enable auto-store for all boxes in this device"
     )
-    
     def __str__(self):
         return self.name
 
@@ -67,15 +66,12 @@ class Box(models.Model):
         """Get all aliquots in this box."""
         from sample.models.aliquot import AliquotLocation
         return AliquotLocation.objects.filter(box=self)
-    
     def get_available_slots(self):
         """Get available slots in this box for auto-storage."""
         from sample.models.aliquot import AliquotLocation
-        
         # Get all occupied slots
         occupied_slots = AliquotLocation.objects.filter(box=self).values_list('row', 'column')
         occupied_set = set(occupied_slots)
-        
         # Find available slots
         available_slots = []
         for row in range(1, self.rows + 1):
@@ -85,9 +81,7 @@ class Box(models.Model):
                         'row': row,
                         'column': col
                     })
-        
         return available_slots
-    
     def has_available_slots(self):
         """Check if this box has any available slots."""
         return len(self.get_available_slots()) > 0

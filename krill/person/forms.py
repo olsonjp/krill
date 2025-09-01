@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.models import ContentType
 from .models import UserRole, Permission, UserPreference, UserAuditLog
 
 User = get_user_model()
@@ -26,7 +27,6 @@ class CreateUserForm(UserCreationForm):
         widget=forms.TextInput(attrs={'class': 'form-control'}),
         help_text='Specific laboratory unit'
     )
-    
     class Meta(UserCreationForm.Meta):
         model = User
         fields = ('username', 'email', 'first_name', 'last_name', 'password1', 'password2', 'role', 'department', 'lab_unit')
@@ -36,29 +36,21 @@ class CreateUserForm(UserCreationForm):
             'first_name': forms.TextInput(attrs={'class': 'form-control'}),
             'last_name': forms.TextInput(attrs={'class': 'form-control'}),
         }
-    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Style the password fields
         self.fields['password1'].widget.attrs.update({'class': 'form-control'})
         self.fields['password2'].widget.attrs.update({'class': 'form-control'})
-    
     def save(self, commit=True):
         user = super().save(commit=False)
         if commit:
             user.save()
-            # Create user role
-            UserRole.objects.create(
-                user=user,
-                role=self.cleaned_data['role'],
-                department=self.cleaned_data['department'],
-                lab_unit=self.cleaned_data['lab_unit']
-            )
-            # Create user preference
-            UserPreference.objects.create(
-                user=user,
-                dark_mode=False
-            )
+            # Update the automatically created user role
+            user_role = user.role
+            user_role.role = self.cleaned_data['role']
+            user_role.department = self.cleaned_data['department']
+            user_role.lab_unit = self.cleaned_data['lab_unit']
+            user_role.save()
         return user
 
 
@@ -79,22 +71,19 @@ class CustomUserCreationForm(UserCreationForm):
         required=False,
         help_text='Specific laboratory unit'
     )
-    
     class Meta(UserCreationForm.Meta):
         model = User
         fields = ('username', 'email', 'first_name', 'last_name', 'role', 'department', 'lab_unit')
-    
     def save(self, commit=True):
         user = super().save(commit=False)
         if commit:
             user.save()
-            # Create user role
-            UserRole.objects.create(
-                user=user,
-                role=self.cleaned_data['role'],
-                department=self.cleaned_data['department'],
-                lab_unit=self.cleaned_data['lab_unit']
-            )
+            # Update the automatically created user role
+            user_role = user.role
+            user_role.role = self.cleaned_data['role']
+            user_role.department = self.cleaned_data['department']
+            user_role.lab_unit = self.cleaned_data['lab_unit']
+            user_role.save()
         return user
 
 
@@ -115,18 +104,15 @@ class CustomUserChangeForm(UserChangeForm):
         required=False,
         help_text='Specific laboratory unit'
     )
-    
     class Meta(UserChangeForm.Meta):
         model = User
         fields = ('username', 'email', 'first_name', 'last_name', 'role', 'department', 'lab_unit')
-    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.instance.pk and hasattr(self.instance, 'role'):
             self.fields['role'].initial = self.instance.role.role
             self.fields['department'].initial = self.instance.role.department
             self.fields['lab_unit'].initial = self.instance.role.lab_unit
-    
     def save(self, commit=True):
         user = super().save(commit=False)
         if commit:
@@ -172,21 +158,27 @@ class PermissionForm(forms.ModelForm):
         widget=forms.Select(attrs={'class': 'form-control'}),
         help_text='Type of permission to grant'
     )
+    content_type = forms.ModelChoiceField(
+        queryset=ContentType.objects.all(),
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text='Select the content type'
+    )
+    object_id = forms.IntegerField(
+        widget=forms.NumberInput(attrs={'class': 'form-control'}),
+        help_text='Enter the object ID'
+    )
     expires_at = forms.DateTimeField(
         required=False,
         widget=forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
         help_text='Optional expiration date (leave blank for permanent)'
     )
-    
     class Meta:
         model = Permission
-        fields = ['user', 'permission_type', 'expires_at']
-    
+        fields = ['user', 'permission_type', 'content_type', 'object_id', 'expires_at']
     def __init__(self, *args, **kwargs):
         self.content_type = kwargs.pop('content_type', None)
         self.object_id = kwargs.pop('object_id', None)
         super().__init__(*args, **kwargs)
-    
     def save(self, commit=True, granted_by=None):
         permission = super().save(commit=False)
         if self.content_type:
@@ -195,7 +187,6 @@ class PermissionForm(forms.ModelForm):
             permission.object_id = self.object_id
         if granted_by:
             permission.granted_by = granted_by
-        
         if commit:
             permission.save()
         return permission
@@ -222,6 +213,15 @@ class BulkPermissionForm(forms.Form):
         choices=Permission.PERMISSION_TYPES,
         widget=forms.Select(attrs={'class': 'form-control'}),
         help_text='Type of permission to grant'
+    )
+    content_type = forms.ModelChoiceField(
+        queryset=ContentType.objects.all(),
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text='Select the content type'
+    )
+    object_id = forms.IntegerField(
+        widget=forms.NumberInput(attrs={'class': 'form-control'}),
+        help_text='Enter the object ID'
     )
     expires_at = forms.DateTimeField(
         required=False,

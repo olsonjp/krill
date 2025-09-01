@@ -8,14 +8,11 @@
         <h1>Create New User</h1>
         <p class="form-description">Add a new user to the system with appropriate role and permissions</p>
     </div>
-    
     <div class="form-content">
         <form method="post" class="detail-form">
             {% csrf_token %}
-            
             <div class="form-section">
                 <h3>Basic Information</h3>
-                
                 <div class="detail-field">
                     <label for="{{ form.username.id_for_label }}">Username *</label>
                     {{ form.username }}
@@ -79,7 +76,6 @@
 
             <div class="form-section">
                 <h3>Role & Organization</h3>
-                
                 <div class="detail-field">
                     <label for="{{ form.role.id_for_label }}">Role *</label>
                     {{ form.role }}
@@ -128,7 +124,6 @@
 
             <div class="form-section">
                 <h3>Account Settings</h3>
-                
                 <div class="detail-field">
                     <label for="{{ form.password1.id_for_label }}">Password *</label>
                     {{ form.password1 }}

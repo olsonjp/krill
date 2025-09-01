@@ -11,11 +11,9 @@ def toggle_theme(request):
         user=request.user,
         defaults={'dark_mode': False}
     )
-    
     # Toggle the dark mode setting
     preference.dark_mode = not preference.dark_mode
     preference.save()
-    
     return JsonResponse({
         'dark_mode': preference.dark_mode,
         'success': True
