@@ -32,6 +32,11 @@
     --color-gray-medium: #e9ecef;
     --color-gray-border: #dee2e6;
     
+    /* Additional status badge colors */
+    --color-danger-lighter: #fce4e4;
+    --color-danger-darker: #cc0000;
+    --color-warning-darker: #cc8800;
+    
     /* Softer button colors for better UX */
     --color-success-soft: #4CAF50;
     --color-danger-soft: #E91E63;
@@ -76,6 +81,11 @@
     --color-gray-light: #2d2d2d;
     --color-gray-medium: #404040;
     --color-gray-border: #555555;
+    
+    /* Dark mode additional status badge colors */
+    --color-danger-lighter: #2d1b1e;
+    --color-danger-darker: #f5c6cb;
+    --color-warning-darker: #fff3cd;
     
     /* Dark mode softer button colors */
     --color-success-soft: #66BB6A;
