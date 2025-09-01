@@ -220,8 +220,7 @@ class BoxModelTest(TestCase):
         aliquot = Aliquot.objects.create(
             sample=sample,
             quantity=2,
-            aliquotType=aliquot_type,
-            disposition=disposition
+            aliquotType=aliquot_type
         )
         
         # Occupy slot (1, 1)
@@ -360,8 +359,7 @@ class BoxModelTest(TestCase):
         aliquot = Aliquot.objects.create(
             sample=sample,
             quantity=2,
-            aliquotType=aliquot_type,
-            disposition=disposition
+            aliquotType=aliquot_type
         )
         
         # Create storage locations

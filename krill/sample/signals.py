@@ -2,11 +2,19 @@ from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from .models.aliquot import Aliquot, AliquotLocation, AliquotTube
 
+# Global flag to control automatic behavior
+AUTO_CREATE_TUBES = False
+AUTO_STORE_TUBES = False
+
 @receiver(post_save, sender=Aliquot)
 def create_aliquot_tubes(sender, instance, created, **kwargs):
     """
     Create individual tube instances when an aliquot is created.
+    Only runs if AUTO_CREATE_TUBES is True.
     """
+    if not AUTO_CREATE_TUBES:
+        return
+        
     if created and not hasattr(instance, '_tubes_created'):
         # Get the default disposition (usually "Stored")
         from .models.aliquot import AliquotDisposition
@@ -27,8 +35,11 @@ def create_aliquot_tubes(sender, instance, created, **kwargs):
 def auto_store_aliquot_tube(sender, instance, created, **kwargs):
     """
     Automatically store individual tubes in auto-store enabled boxes.
-    Only stores tubes with "Stored" disposition.
+    Only stores tubes with "Stored" disposition and only if AUTO_STORE_TUBES is True.
     """
+    if not AUTO_STORE_TUBES:
+        return
+        
     if created and not hasattr(instance, '_auto_store_processed'):
         # Only auto-store if disposition is "Stored"
         if instance.disposition.dispositionType != 'stored':
