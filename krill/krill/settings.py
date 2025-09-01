@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'sample',
     'storage',
     'person',
+    'reports',
 ]
 
 AUTH_USER_MODEL = 'person.User'

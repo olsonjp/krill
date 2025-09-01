@@ -1,0 +1,534 @@
+{% extends 'base/layout.html' %}
+{% load static %}
+
+{% block content %}
+<div class="sample-search-container">
+    <div class="search-header">
+        <h1>Sample Search</h1>
+        <p>Find samples by name, type, disposition, or other criteria</p>
+    </div>
+
+    <!-- Search Form -->
+    <div class="search-form-container">
+        <form id="sampleSearchForm" class="search-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="searchQuery">Search Query</label>
+                    <input type="text" id="searchQuery" name="q" class="form-control" 
+                           value="{{ query }}" placeholder="Search by name, description, or type...">
+                </div>
+                <div class="form-group">
+                    <label for="sampleType">Sample Type</label>
+                    <input type="text" id="sampleType" name="type" class="form-control" 
+                           value="{{ sample_type }}" placeholder="Filter by sample type">
+                </div>
+                <div class="form-group">
+                    <label for="disposition">Disposition</label>
+                    <select id="disposition" name="disposition" class="form-control">
+                        <option value="">All dispositions</option>
+                        <option value="stored" {% if disposition == 'stored' %}selected{% endif %}>Stored</option>
+                        <option value="in_use" {% if disposition == 'in_use' %}selected{% endif %}>In Use</option>
+                        <option value="exhausted" {% if disposition == 'exhausted' %}selected{% endif %}>Exhausted</option>
+                        <option value="disposed" {% if disposition == 'disposed' %}selected{% endif %}>Disposed</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    <span class="material-icons-round">search</span>
+                    Search
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="clearSearch()">
+                    <span class="material-icons-round">clear</span>
+                    Clear
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Search Results -->
+    <div class="search-results">
+        <div class="results-header">
+            <h2>Search Results</h2>
+            <div class="results-info">
+                <span class="result-count">{{ total_count }} samples found</span>
+                {% if samples.has_other_pages %}
+                    <span class="page-info">Page {{ samples.number }} of {{ samples.paginator.num_pages }}</span>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if samples %}
+            <div class="results-grid">
+                {% for sample in samples %}
+                <div class="sample-card">
+                    <div class="sample-header">
+                        <h3>{{ sample.name }}</h3>
+                        <span class="sample-type">{{ sample.sample_type|default:"Unknown Type" }}</span>
+                    </div>
+                    <div class="sample-meta">
+                        <p><strong>Disposition:</strong> 
+                            <span class="disposition-badge disposition-{{ sample.disposition }}">
+                                {{ sample.get_disposition_display|default:"Unknown" }}
+                            </span>
+                        </p>
+                        {% if sample.description %}
+                            <p><strong>Description:</strong> {{ sample.description|truncatechars:100 }}</p>
+                        {% endif %}
+                        <p><strong>Created:</strong> {{ sample.created_at|date:"M d, Y"|default:"Unknown" }}</p>
+                        {% if sample.access_level %}
+                            <p><strong>Access Level:</strong> 
+                                <span class="access-level-badge access-{{ sample.access_level }}">
+                                    {{ sample.get_access_level_display }}
+                                </span>
+                            </p>
+                        {% endif %}
+                    </div>
+                    <div class="sample-actions">
+                        <button class="btn btn-primary" onclick="viewSample({{ sample.id }})">
+                            <span class="material-icons-round">visibility</span>
+                            View
+                        </button>
+                        <button class="btn btn-secondary" onclick="viewAliquots({{ sample.id }})">
+                            <span class="material-icons-round">list</span>
+                            Aliquots
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Pagination -->
+            {% if samples.has_other_pages %}
+            <div class="pagination">
+                {% if samples.has_previous %}
+                    <a href="?q={{ query }}&type={{ sample_type }}&disposition={{ disposition }}&page={{ samples.previous_page_number }}" 
+                       class="page-link">&laquo; Previous</a>
+                {% endif %}
+                
+                <span class="current-page">
+                    Page {{ samples.number }} of {{ samples.paginator.num_pages }}
+                </span>
+                
+                {% if samples.has_next %}
+                    <a href="?q={{ query }}&type={{ sample_type }}&disposition={{ disposition }}&page={{ samples.next_page_number }}" 
+                       class="page-link">Next &raquo;</a>
+                {% endif %}
+            </div>
+            {% endif %}
+        {% else %}
+            <div class="no-results">
+                <span class="material-icons-round">search_off</span>
+                <h3>No samples found</h3>
+                <p>Try adjusting your search criteria or browse all samples.</p>
+                <button class="btn btn-primary" onclick="browseAllSamples()">
+                    Browse All Samples
+                </button>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="quick-actions">
+        <h3>Quick Actions</h3>
+        <div class="action-buttons">
+            <button class="btn btn-outline" onclick="exportResults()">
+                <span class="material-icons-round">download</span>
+                Export Results
+            </button>
+            <button class="btn btn-outline" onclick="createSample()">
+                <span class="material-icons-round">add_circle</span>
+                Create Sample
+            </button>
+            <button class="btn btn-outline" onclick="bulkOperations()">
+                <span class="material-icons-round">settings</span>
+                Bulk Operations
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('sampleSearchForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    performSearch();
+});
+
+function performSearch() {
+    const form = document.getElementById('sampleSearchForm');
+    const formData = new FormData(form);
+    const params = new URLSearchParams(formData);
+    
+    // Update URL with search parameters
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    window.history.pushState({}, '', newUrl);
+    
+    // Reload page with search parameters
+    window.location.reload();
+}
+
+function clearSearch() {
+    document.getElementById('searchQuery').value = '';
+    document.getElementById('sampleType').value = '';
+    document.getElementById('disposition').value = '';
+    window.location.href = window.location.pathname;
+}
+
+function viewSample(sampleId) {
+    window.location.href = `/samples/${sampleId}/`;
+}
+
+function viewAliquots(sampleId) {
+    window.location.href = `/samples/${sampleId}/aliquots/`;
+}
+
+function browseAllSamples() {
+    window.location.href = '/samples/';
+}
+
+function exportResults() {
+    const query = document.getElementById('searchQuery').value;
+    const type = document.getElementById('sampleType').value;
+    const disposition = document.getElementById('disposition').value;
+    
+    const params = new URLSearchParams({
+        q: query,
+        type: type,
+        disposition: disposition,
+        format: 'csv'
+    });
+    
+    window.location.href = `/reports/samples/search/?${params.toString()}`;
+}
+
+function createSample() {
+    window.location.href = '/samples/create/';
+}
+
+function bulkOperations() {
+    // TODO: Implement bulk operations modal
+    alert('Bulk operations coming soon!');
+}
+
+// Auto-search on input change (with debouncing)
+let searchTimeout;
+function setupAutoSearch() {
+    const inputs = ['searchQuery', 'sampleType', 'disposition'];
+    inputs.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(performSearch, 500);
+            });
+        }
+    });
+}
+
+// Initialize auto-search
+document.addEventListener('DOMContentLoaded', setupAutoSearch);
+</script>
+
+<style>
+.sample-search-container {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.search-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.search-header h1 {
+    margin: 0 0 10px 0;
+    color: #333;
+}
+
+.search-header p {
+    color: #666;
+    font-size: 1.1rem;
+}
+
+.search-form-container {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 25px;
+    margin-bottom: 30px;
+}
+
+.search-form .form-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #333;
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+}
+
+.form-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    text-decoration: none;
+}
+
+.btn-primary {
+    background: #007bff;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #0056b3;
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #545b62;
+    transform: translateY(-1px);
+}
+
+.btn-outline {
+    background: transparent;
+    color: #007bff;
+    border: 2px solid #007bff;
+}
+
+.btn-outline:hover {
+    background: #007bff;
+    color: white;
+}
+
+.search-results {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    overflow: hidden;
+    margin-bottom: 30px;
+}
+
+.results-header {
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.results-header h2 {
+    margin: 0;
+    color: #333;
+}
+
+.results-info {
+    display: flex;
+    gap: 20px;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.results-grid {
+    padding: 20px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    gap: 20px;
+}
+
+.sample-card {
+    border: 1px solid #eee;
+    border-radius: 8px;
+    padding: 20px;
+    transition: all 0.3s ease;
+}
+
+.sample-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+
+.sample-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+}
+
+.sample-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #333;
+}
+
+.sample-type {
+    background: #e9ecef;
+    color: #495057;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.sample-meta {
+    margin-bottom: 20px;
+}
+
+.sample-meta p {
+    margin: 8px 0;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.disposition-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.disposition-stored { background: #d4edda; color: #155724; }
+.disposition-in_use { background: #cce5ff; color: #004085; }
+.disposition-exhausted { background: #f8d7da; color: #721c24; }
+.disposition-disposed { background: #e2e3e5; color: #383d41; }
+
+.access-level-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.access-admins_only { background: #f8d7da; color: #721c24; }
+.access-admins_managers { background: #fff3cd; color: #856404; }
+.access-all_members { background: #d4edda; color: #155724; }
+
+.sample-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.no-results {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+}
+
+.no-results .material-icons-round {
+    font-size: 4rem;
+    color: #ddd;
+    margin-bottom: 20px;
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    padding: 20px;
+    border-top: 1px solid #eee;
+}
+
+.page-link {
+    padding: 8px 16px;
+    text-decoration: none;
+    color: #007bff;
+    border: 1px solid #007bff;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+}
+
+.page-link:hover {
+    background: #007bff;
+    color: white;
+}
+
+.current-page {
+    color: #666;
+    font-weight: 500;
+}
+
+.quick-actions {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 25px;
+    text-align: center;
+}
+
+.quick-actions h3 {
+    margin: 0 0 20px 0;
+    color: #333;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+    .search-form .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .results-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .results-header {
+        flex-direction: column;
+        gap: 15px;
+        align-items: flex-start;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+        align-items: center;
+    }
+}
+</style>
+{% endblock %}
