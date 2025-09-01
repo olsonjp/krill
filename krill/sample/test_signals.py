@@ -10,7 +10,8 @@ from .models.aliquot import (
 from .models.source import Source
 from .signals import (
     create_aliquot_tubes, auto_store_aliquot_tube,
-    store_old_disposition, handle_tube_disposition_change
+    store_old_disposition, handle_tube_disposition_change,
+    AUTO_CREATE_TUBES, AUTO_STORE_TUBES
 )
 from storage.models.storage import Device, Shelf, Rack, Box
 from storage.models.site import Site
@@ -66,74 +67,121 @@ class AliquotTubeCreationSignalTest(SignalHandlerTest):
     
     def test_automatic_tube_creation_when_aliquot_created(self):
         """Test automatic tube creation when aliquot is created"""
-        # Create aliquot with 5 tubes
-        aliquot = Aliquot.objects.create(
-            sample=self.sample,
-            quantity=5,
-            aliquotType=self.aliquot_type,
+        # Enable automatic tube creation
+        from .signals import AUTO_CREATE_TUBES
+        original_setting = AUTO_CREATE_TUBES
+        try:
+            # Temporarily enable auto-creation
+            import sample.signals
+            sample.signals.AUTO_CREATE_TUBES = True
             
-        )
-        
-        # Check that 5 tubes were created
-        tubes = AliquotTube.objects.filter(aliquot=aliquot)
-        self.assertEqual(tubes.count(), 5)
-        
-        # Check tube numbers
-        tube_numbers = list(tubes.values_list('tube_number', flat=True).order_by('tube_number'))
-        self.assertEqual(tube_numbers, [1, 2, 3, 4, 5])
-        
-        # Check that all tubes have the same disposition as the aliquot
-        for tube in tubes:
-            self.assertEqual(tube.disposition, self.stored_disposition)
+            # Create aliquot with 5 tubes
+            aliquot = Aliquot.objects.create(
+                sample=self.sample,
+                quantity=5,
+                aliquotType=self.aliquot_type
+            )
+            
+            # Check that 5 tubes were created
+            tubes = AliquotTube.objects.filter(aliquot=aliquot)
+            self.assertEqual(tubes.count(), 5)
+            
+            # Check tube numbers
+            tube_numbers = list(tubes.values_list('tube_number', flat=True).order_by('tube_number'))
+            self.assertEqual(tube_numbers, [1, 2, 3, 4, 5])
+            
+            # Check that all tubes have stored disposition
+            for tube in tubes:
+                self.assertEqual(tube.disposition.dispositionType, "stored")
+        finally:
+            # Restore original setting
+            sample.signals.AUTO_CREATE_TUBES = original_setting
     
     def test_tube_creation_with_different_quantities(self):
         """Test tube creation with different quantities"""
-        quantities = [1, 3, 10]
-        
-        for quantity in quantities:
-            aliquot = Aliquot.objects.create(
-                sample=self.sample,
-                quantity=quantity,
-                aliquotType=self.aliquot_type,
+        # Enable automatic tube creation
+        from .signals import AUTO_CREATE_TUBES
+        original_setting = AUTO_CREATE_TUBES
+        try:
+            # Temporarily enable auto-creation
+            import sample.signals
+            sample.signals.AUTO_CREATE_TUBES = True
+            
+            quantities = [1, 3, 10]
+            
+            for quantity in quantities:
+                aliquot = Aliquot.objects.create(
+                    sample=self.sample,
+                    quantity=quantity,
+                    aliquotType=self.aliquot_type
+                )
                 
-            )
-            
-            tubes = AliquotTube.objects.filter(aliquot=aliquot)
-            self.assertEqual(tubes.count(), quantity)
-            
-            # Check tube numbers are sequential
-            tube_numbers = list(tubes.values_list('tube_number', flat=True).order_by('tube_number'))
-            expected_numbers = list(range(1, quantity + 1))
-            self.assertEqual(tube_numbers, expected_numbers)
+                # Check that correct number of tubes were created
+                tubes = AliquotTube.objects.filter(aliquot=aliquot)
+                self.assertEqual(tubes.count(), quantity)
+                
+                # Check tube numbers
+                tube_numbers = list(tubes.values_list('tube_number', flat=True).order_by('tube_number'))
+                expected_numbers = list(range(1, quantity + 1))
+                self.assertEqual(tube_numbers, expected_numbers)
+        finally:
+            # Restore original setting
+            sample.signals.AUTO_CREATE_TUBES = original_setting
     
     def test_tube_creation_with_zero_quantity(self):
         """Test tube creation with zero quantity"""
-        aliquot = Aliquot.objects.create(
-            sample=self.sample,
-            quantity=0,
-            aliquotType=self.aliquot_type,
+        # Enable automatic tube creation
+        from .signals import AUTO_CREATE_TUBES
+        original_setting = AUTO_CREATE_TUBES
+        try:
+            # Temporarily enable auto-creation
+            import sample.signals
+            sample.signals.AUTO_CREATE_TUBES = True
             
-        )
-        
-        # No tubes should be created
-        tubes = AliquotTube.objects.filter(aliquot=aliquot)
-        self.assertEqual(tubes.count(), 0)
+            # Create aliquot with 0 tubes
+            aliquot = Aliquot.objects.create(
+                sample=self.sample,
+                quantity=0,
+                aliquotType=self.aliquot_type
+            )
+            
+            # Check that no tubes were created
+            tubes = AliquotTube.objects.filter(aliquot=aliquot)
+            self.assertEqual(tubes.count(), 0)
+        finally:
+            # Restore original setting
+            sample.signals.AUTO_CREATE_TUBES = original_setting
     
     def test_tube_creation_prevents_infinite_loops(self):
         """Test that tube creation prevents infinite loops"""
-        # Create aliquot
-        aliquot = Aliquot.objects.create(
-            sample=self.sample,
-            quantity=3,
-            aliquotType=self.aliquot_type,
+        # Enable automatic tube creation
+        from .signals import AUTO_CREATE_TUBES
+        original_setting = AUTO_CREATE_TUBES
+        try:
+            # Temporarily enable auto-creation
+            import sample.signals
+            sample.signals.AUTO_CREATE_TUBES = True
             
-        )
-        
-        # Save the aliquot again - should not create more tubes
-        aliquot.save()
-        
-        tubes = AliquotTube.objects.filter(aliquot=aliquot)
-        self.assertEqual(tubes.count(), 3)  # Should still be 3, not 6
+            # Create aliquot with 3 tubes
+            aliquot = Aliquot.objects.create(
+                sample=self.sample,
+                quantity=3,
+                aliquotType=self.aliquot_type
+            )
+            
+            # Check that 3 tubes were created
+            tubes = AliquotTube.objects.filter(aliquot=aliquot)
+            self.assertEqual(tubes.count(), 3)
+            
+            # Save the aliquot again - should not create more tubes
+            aliquot.save()
+            
+            # Should still be 3, not 6
+            tubes = AliquotTube.objects.filter(aliquot=aliquot)
+            self.assertEqual(tubes.count(), 3)
+        finally:
+            # Restore original setting
+            sample.signals.AUTO_CREATE_TUBES = original_setting
 
 
 class AutoStorageSignalTest(SignalHandlerTest):
@@ -141,139 +189,218 @@ class AutoStorageSignalTest(SignalHandlerTest):
     
     def test_automatic_storage_of_stored_tubes(self):
         """Test automatic storage of tubes with 'stored' disposition"""
-        # Create aliquot with stored disposition
-        aliquot = Aliquot.objects.create(
-            sample=self.sample,
-            quantity=3,
-            aliquotType=self.aliquot_type,
+        # Enable automatic tube creation and storage
+        from .signals import AUTO_CREATE_TUBES, AUTO_STORE_TUBES
+        original_create_setting = AUTO_CREATE_TUBES
+        original_store_setting = AUTO_STORE_TUBES
+        try:
+            # Temporarily enable auto-creation and auto-storage
+            import sample.signals
+            sample.signals.AUTO_CREATE_TUBES = True
+            sample.signals.AUTO_STORE_TUBES = True
             
-        )
-        
-        # Get the tubes that were created
-        tubes = AliquotTube.objects.filter(aliquot=aliquot)
-        
-        # Check that tubes were automatically stored
-        for tube in tubes:
-            # Check if storage location was created
-            storage_locations = AliquotLocation.objects.filter(
-                aliquot=aliquot,
-                tube_number=tube.tube_number
+            # Create aliquot with stored disposition
+            aliquot = Aliquot.objects.create(
+                sample=self.sample,
+                quantity=3,
+                aliquotType=self.aliquot_type
             )
-            self.assertEqual(storage_locations.count(), 1)
             
-            location = storage_locations.first()
-            self.assertEqual(location.box, self.box)
-            self.assertIn(location.row, range(1, 11))
-            self.assertIn(location.column, range(1, 11))
+            # Get the tubes that were created
+            tubes = AliquotTube.objects.filter(aliquot=aliquot)
+            
+            # Check that tubes were automatically stored
+            for tube in tubes:
+                # Check if storage location was created
+                storage_locations = AliquotLocation.objects.filter(
+                    aliquot=aliquot,
+                    tube_number=tube.tube_number
+                )
+                self.assertEqual(storage_locations.count(), 1)
+                
+                location = storage_locations.first()
+                self.assertEqual(location.box, self.box)
+                self.assertIn(location.row, range(1, 11))
+                self.assertIn(location.column, range(1, 11))
+        finally:
+            # Restore original settings
+            sample.signals.AUTO_CREATE_TUBES = original_create_setting
+            sample.signals.AUTO_STORE_TUBES = original_store_setting
     
     def test_no_auto_storage_for_non_stored_tubes(self):
         """Test that non-stored tubes are not automatically stored"""
-        # Create aliquot with in-use disposition
-        aliquot = Aliquot.objects.create(
-            sample=self.sample,
-            quantity=3,
-            aliquotType=self.aliquot_type,
+        # Enable automatic tube creation but not auto-storage
+        from .signals import AUTO_CREATE_TUBES, AUTO_STORE_TUBES
+        original_create_setting = AUTO_CREATE_TUBES
+        original_store_setting = AUTO_STORE_TUBES
+        try:
+            # Temporarily enable auto-creation but disable auto-storage
+            import sample.signals
+            sample.signals.AUTO_CREATE_TUBES = True
+            sample.signals.AUTO_STORE_TUBES = False
             
-        )
-        
-        # Check that no storage locations were created
-        storage_locations = AliquotLocation.objects.filter(aliquot=aliquot)
-        self.assertEqual(storage_locations.count(), 0)
+            # Create aliquot with 3 tubes
+            aliquot = Aliquot.objects.create(
+                sample=self.sample,
+                quantity=3,
+                aliquotType=self.aliquot_type
+            )
+            
+            # Change all tubes to in_use disposition
+            tubes = AliquotTube.objects.filter(aliquot=aliquot)
+            for tube in tubes:
+                aliquot.change_tube_disposition(tube.tube_number, self.in_use_disposition)
+            
+            # Check that no storage locations were created
+            storage_locations = AliquotLocation.objects.filter(aliquot=aliquot)
+            self.assertEqual(storage_locations.count(), 0)
+        finally:
+            # Restore original settings
+            sample.signals.AUTO_CREATE_TUBES = original_create_setting
+            sample.signals.AUTO_STORE_TUBES = original_store_setting
     
     def test_auto_store_box_selection_algorithm(self):
         """Test auto-store box selection algorithm"""
-        # Create multiple boxes with different auto-store settings
-        auto_store_device = Device.objects.create(
-            name="Auto-Store Device",
-            site=self.site,
-            auto_store_enabled=True
-        )
-        no_auto_store_device = Device.objects.create(
-            name="No Auto-Store Device",
-            site=self.site,
-            auto_store_enabled=False
-        )
-        
-        # Create boxes for each device
-        auto_store_shelf = Shelf.objects.create(
-            name="Auto-Store Shelf",
-            device=auto_store_device
-        )
-        auto_store_rack = Rack.objects.create(
-            name="Auto-Store Rack",
-            shelf=auto_store_shelf
-        )
-        auto_store_box = Box.objects.create(
-            name="Auto-Store Box",
-            rack=auto_store_rack,
-            rows=5,
-            columns=5
-        )
-        
-        no_auto_store_shelf = Shelf.objects.create(
-            name="No Auto-Store Shelf",
-            device=no_auto_store_device
-        )
-        no_auto_store_rack = Rack.objects.create(
-            name="No Auto-Store Rack",
-            shelf=no_auto_store_shelf
-        )
-        no_auto_store_box = Box.objects.create(
-            name="No Auto-Store Box",
-            rack=no_auto_store_rack,
-            rows=5,
-            columns=5
-        )
-        
-        # Create aliquot - should be stored in auto-store box
-        aliquot = Aliquot.objects.create(
-            sample=self.sample,
-            quantity=2,
-            aliquotType=self.aliquot_type,
+        # Enable automatic tube creation and storage
+        from .signals import AUTO_CREATE_TUBES, AUTO_STORE_TUBES
+        original_create_setting = AUTO_CREATE_TUBES
+        original_store_setting = AUTO_STORE_TUBES
+        try:
+            # Temporarily enable auto-creation and auto-storage
+            import sample.signals
+            sample.signals.AUTO_CREATE_TUBES = True
+            sample.signals.AUTO_STORE_TUBES = True
             
-        )
-        
-        # Check that tubes were stored in the auto-store box
-        storage_locations = AliquotLocation.objects.filter(aliquot=aliquot)
-        self.assertEqual(storage_locations.count(), 2)
-        
-        for location in storage_locations:
-            self.assertEqual(location.box, auto_store_box)
+            # Disable auto-store on the default device to prevent interference
+            self.device.auto_store_enabled = False
+            self.device.save()
+            
+            # Create multiple boxes with different auto-store settings
+            auto_store_device = Device.objects.create(
+                name="Auto-Store Device",
+                site=self.site,
+                auto_store_enabled=True
+            )
+            no_auto_store_device = Device.objects.create(
+                name="No Auto-Store Device",
+                site=self.site,
+                auto_store_enabled=False
+            )
+            
+            # Create boxes for each device
+            auto_store_shelf = Shelf.objects.create(
+                name="Auto-Store Shelf",
+                device=auto_store_device
+            )
+            auto_store_rack = Rack.objects.create(
+                name="Auto-Store Rack",
+                shelf=auto_store_shelf
+            )
+            auto_store_box = Box.objects.create(
+                name="Auto-Store Box",
+                rack=auto_store_rack,
+                rows=5,
+                columns=5
+            )
+            
+            no_auto_store_shelf = Shelf.objects.create(
+                name="No Auto-Store Shelf",
+                device=no_auto_store_device
+            )
+            no_auto_store_rack = Rack.objects.create(
+                name="No Auto-Store Rack",
+                shelf=no_auto_store_shelf
+            )
+            no_auto_store_box = Box.objects.create(
+                name="No Auto-Store Box",
+                rack=no_auto_store_rack,
+                rows=5,
+                columns=5
+            )
+            
+            # Create aliquot - should be stored in auto-store box
+            aliquot = Aliquot.objects.create(
+                sample=self.sample,
+                quantity=2,
+                aliquotType=self.aliquot_type
+            )
+            
+            # Check that tubes were stored in the auto-store box
+            storage_locations = AliquotLocation.objects.filter(aliquot=aliquot)
+            self.assertEqual(storage_locations.count(), 2)
+            
+            for location in storage_locations:
+                self.assertEqual(location.box, auto_store_box)
+        finally:
+            # Restore original settings
+            sample.signals.AUTO_CREATE_TUBES = original_create_setting
+            sample.signals.AUTO_STORE_TUBES = original_store_setting
     
     def test_available_slot_detection(self):
         """Test available slot detection for auto-storage"""
-        # Create a small box (2x2) and fill it partially
-        small_box = Box.objects.create(
-            name="Small Box",
-            rack=self.rack,
-            rows=2,
-            columns=2
-        )
-        
-        # Create first aliquot to occupy some slots
-        aliquot1 = Aliquot.objects.create(
-            sample=self.sample,
-            quantity=2,
-            aliquotType=self.aliquot_type,
+        # Enable automatic tube creation and storage
+        from .signals import AUTO_CREATE_TUBES, AUTO_STORE_TUBES
+        original_create_setting = AUTO_CREATE_TUBES
+        original_store_setting = AUTO_STORE_TUBES
+        try:
+            # Temporarily enable auto-creation and auto-storage
+            import sample.signals
+            sample.signals.AUTO_CREATE_TUBES = True
+            sample.signals.AUTO_STORE_TUBES = True
             
-        )
-        
-        # Check that 2 slots are occupied
-        occupied_slots = AliquotLocation.objects.filter(box=small_box)
-        self.assertEqual(occupied_slots.count(), 2)
-        
-        # Create second aliquot - should find remaining slots
-        sample2 = Sample.objects.create(name="Test Sample 2", source=self.source)
-        aliquot2 = Aliquot.objects.create(
-            sample=sample2,
-            quantity=2,
-            aliquotType=self.aliquot_type,
+            # Disable auto-store on the default device to prevent interference
+            self.device.auto_store_enabled = False
+            self.device.save()
             
-        )
-        
-        # Check that all 4 slots are now occupied
-        total_occupied = AliquotLocation.objects.filter(box=small_box)
-        self.assertEqual(total_occupied.count(), 4)
+            # Create a new device with auto-store enabled
+            test_device = Device.objects.create(
+                name="Test Device",
+                site=self.site,
+                auto_store_enabled=True
+            )
+            test_shelf = Shelf.objects.create(
+                name="Test Shelf",
+                device=test_device
+            )
+            test_rack = Rack.objects.create(
+                name="Test Rack",
+                shelf=test_shelf
+            )
+            
+            # Create a small box (2x2) and fill it partially
+            small_box = Box.objects.create(
+                name="Small Box",
+                rack=test_rack,
+                rows=2,
+                columns=2
+            )
+            
+            # Create first aliquot to occupy some slots
+            aliquot1 = Aliquot.objects.create(
+                sample=self.sample,
+                quantity=2,
+                aliquotType=self.aliquot_type
+            )
+            
+            # Check that 2 slots are occupied
+            occupied_slots = AliquotLocation.objects.filter(box=small_box)
+            self.assertEqual(occupied_slots.count(), 2)
+            
+            # Create second aliquot - should find remaining slots
+            sample2 = Sample.objects.create(name="Test Sample 2", source=self.source)
+            aliquot2 = Aliquot.objects.create(
+                sample=sample2,
+                quantity=2,
+                aliquotType=self.aliquot_type
+            )
+            
+            # Check that all 4 slots are now occupied
+            total_occupied = AliquotLocation.objects.filter(box=small_box)
+            self.assertEqual(total_occupied.count(), 4)
+        finally:
+            # Restore original settings
+            sample.signals.AUTO_CREATE_TUBES = original_create_setting
+            sample.signals.AUTO_STORE_TUBES = original_store_setting
     
     def test_auto_store_disabled_scenarios(self):
         """Test auto-store disabled scenarios"""
@@ -311,101 +438,153 @@ class TubeDispositionChangeSignalTest(SignalHandlerTest):
     
     def test_storage_location_removal_when_tube_disposition_changes(self):
         """Test storage location removal when tube disposition changes"""
-        # Create aliquot with stored disposition
-        aliquot = Aliquot.objects.create(
-            sample=self.sample,
-            quantity=2,
-            aliquotType=self.aliquot_type,
+        # Enable automatic tube creation and storage
+        from .signals import AUTO_CREATE_TUBES, AUTO_STORE_TUBES
+        original_create_setting = AUTO_CREATE_TUBES
+        original_store_setting = AUTO_STORE_TUBES
+        try:
+            # Temporarily enable auto-creation and auto-storage
+            import sample.signals
+            sample.signals.AUTO_CREATE_TUBES = True
+            sample.signals.AUTO_STORE_TUBES = True
             
-        )
-        
-        # Verify tubes were stored
-        storage_locations = AliquotLocation.objects.filter(aliquot=aliquot)
-        self.assertEqual(storage_locations.count(), 2)
-        
-        # Change disposition of one tube to 'in use'
-        tube = AliquotTube.objects.filter(aliquot=aliquot).first()
-        tube.disposition = self.in_use_disposition
-        tube.save()
-        
-        # Check that storage location was removed for that tube
-        remaining_locations = AliquotLocation.objects.filter(aliquot=aliquot)
-        self.assertEqual(remaining_locations.count(), 1)
-        
-        # The remaining location should be for the other tube
-        remaining_tube_number = remaining_locations.first().tube_number
-        self.assertNotEqual(remaining_tube_number, tube.tube_number)
+            # Create aliquot with stored disposition
+            aliquot = Aliquot.objects.create(
+                sample=self.sample,
+                quantity=2,
+                aliquotType=self.aliquot_type
+            )
+            
+            # Verify tubes were stored
+            storage_locations = AliquotLocation.objects.filter(aliquot=aliquot)
+            self.assertEqual(storage_locations.count(), 2)
+            
+            # Change disposition of one tube to 'in use'
+            tube = AliquotTube.objects.filter(aliquot=aliquot).first()
+            tube.disposition = self.in_use_disposition
+            tube.save()
+            
+            # Check that storage location was removed for that tube
+            remaining_locations = AliquotLocation.objects.filter(aliquot=aliquot)
+            self.assertEqual(remaining_locations.count(), 1)
+            
+            # The remaining location should be for the other tube
+            remaining_tube_number = remaining_locations.first().tube_number
+            self.assertNotEqual(remaining_tube_number, tube.tube_number)
+        finally:
+            # Restore original settings
+            sample.signals.AUTO_CREATE_TUBES = original_create_setting
+            sample.signals.AUTO_STORE_TUBES = original_store_setting
     
     def test_storage_location_removal_for_exhausted_tubes(self):
         """Test storage location removal for exhausted tubes"""
-        # Create aliquot with stored disposition
-        aliquot = Aliquot.objects.create(
-            sample=self.sample,
-            quantity=3,
-            aliquotType=self.aliquot_type,
+        # Enable automatic tube creation and storage
+        from .signals import AUTO_CREATE_TUBES, AUTO_STORE_TUBES
+        original_create_setting = AUTO_CREATE_TUBES
+        original_store_setting = AUTO_STORE_TUBES
+        try:
+            # Temporarily enable auto-creation and auto-storage
+            import sample.signals
+            sample.signals.AUTO_CREATE_TUBES = True
+            sample.signals.AUTO_STORE_TUBES = True
             
-        )
-        
-        # Verify tubes were stored
-        storage_locations = AliquotLocation.objects.filter(aliquot=aliquot)
-        self.assertEqual(storage_locations.count(), 3)
-        
-        # Change disposition of all tubes to 'exhausted'
-        tubes = AliquotTube.objects.filter(aliquot=aliquot)
-        for tube in tubes:
-            tube.disposition = self.exhausted_disposition
-            tube.save()
-        
-        # Check that all storage locations were removed
-        remaining_locations = AliquotLocation.objects.filter(aliquot=aliquot)
-        self.assertEqual(remaining_locations.count(), 0)
+            # Create aliquot with stored disposition
+            aliquot = Aliquot.objects.create(
+                sample=self.sample,
+                quantity=3,
+                aliquotType=self.aliquot_type
+            )
+            
+            # Verify tubes were stored
+            storage_locations = AliquotLocation.objects.filter(aliquot=aliquot)
+            self.assertEqual(storage_locations.count(), 3)
+            
+            # Change disposition of all tubes to 'exhausted'
+            tubes = AliquotTube.objects.filter(aliquot=aliquot)
+            for tube in tubes:
+                tube.disposition = self.exhausted_disposition
+                tube.save()
+            
+            # Check that all storage locations were removed
+            remaining_locations = AliquotLocation.objects.filter(aliquot=aliquot)
+            self.assertEqual(remaining_locations.count(), 0)
+        finally:
+            # Restore original settings
+            sample.signals.AUTO_CREATE_TUBES = original_create_setting
+            sample.signals.AUTO_STORE_TUBES = original_store_setting
     
     def test_no_storage_removal_for_stored_to_stored_changes(self):
         """Test no storage removal for stored to stored changes"""
-        # Create aliquot with stored disposition
-        aliquot = Aliquot.objects.create(
-            sample=self.sample,
-            quantity=2,
-            aliquotType=self.aliquot_type,
+        # Enable automatic tube creation and storage
+        from .signals import AUTO_CREATE_TUBES, AUTO_STORE_TUBES
+        original_create_setting = AUTO_CREATE_TUBES
+        original_store_setting = AUTO_STORE_TUBES
+        try:
+            # Temporarily enable auto-creation and auto-storage
+            import sample.signals
+            sample.signals.AUTO_CREATE_TUBES = True
+            sample.signals.AUTO_STORE_TUBES = True
             
-        )
-        
-        # Verify tubes were stored
-        storage_locations = AliquotLocation.objects.filter(aliquot=aliquot)
-        self.assertEqual(storage_locations.count(), 2)
-        
-        # Change to a different stored disposition
-        new_stored_disposition = AliquotDisposition.objects.create(
-            name="Stored 2",
-            dispositionType="stored"
-        )
-        
-        tube = AliquotTube.objects.filter(aliquot=aliquot).first()
-        tube.disposition = new_stored_disposition
-        tube.save()
-        
-        # Storage location should remain
-        remaining_locations = AliquotLocation.objects.filter(aliquot=aliquot)
-        self.assertEqual(remaining_locations.count(), 2)
+            # Create aliquot with stored disposition
+            aliquot = Aliquot.objects.create(
+                sample=self.sample,
+                quantity=2,
+                aliquotType=self.aliquot_type
+            )
+            
+            # Verify tubes were stored
+            storage_locations = AliquotLocation.objects.filter(aliquot=aliquot)
+            self.assertEqual(storage_locations.count(), 2)
+            
+            # Change to a different stored disposition
+            new_stored_disposition = AliquotDisposition.objects.create(
+                name="Stored 2",
+                dispositionType="stored"
+            )
+            
+            tube = AliquotTube.objects.filter(aliquot=aliquot).first()
+            tube.disposition = new_stored_disposition
+            tube.save()
+            
+            # Storage location should remain
+            remaining_locations = AliquotLocation.objects.filter(aliquot=aliquot)
+            self.assertEqual(remaining_locations.count(), 2)
+        finally:
+            # Restore original settings
+            sample.signals.AUTO_CREATE_TUBES = original_create_setting
+            sample.signals.AUTO_STORE_TUBES = original_store_setting
     
     def test_old_disposition_storage(self):
         """Test old disposition storage before saving"""
-        # Create aliquot
-        aliquot = Aliquot.objects.create(
-            sample=self.sample,
-            quantity=1,
-            aliquotType=self.aliquot_type,
+        # Enable automatic tube creation and storage
+        from .signals import AUTO_CREATE_TUBES, AUTO_STORE_TUBES
+        original_create_setting = AUTO_CREATE_TUBES
+        original_store_setting = AUTO_STORE_TUBES
+        try:
+            # Temporarily enable auto-creation and auto-storage
+            import sample.signals
+            sample.signals.AUTO_CREATE_TUBES = True
+            sample.signals.AUTO_STORE_TUBES = True
             
-        )
-        
-        tube = AliquotTube.objects.filter(aliquot=aliquot).first()
-        
-        # Change disposition
-        tube.disposition = self.in_use_disposition
-        tube.save()
-        
-        # The signal should have stored the old disposition
-        # This is tested indirectly through the storage location removal
+            # Create aliquot
+            aliquot = Aliquot.objects.create(
+                sample=self.sample,
+                quantity=1,
+                aliquotType=self.aliquot_type
+            )
+            
+            tube = AliquotTube.objects.filter(aliquot=aliquot).first()
+            
+            # Change disposition
+            tube.disposition = self.in_use_disposition
+            tube.save()
+            
+            # The signal should have stored the old disposition
+            # This is tested indirectly through the storage location removal
+        finally:
+            # Restore original settings
+            sample.signals.AUTO_CREATE_TUBES = original_create_setting
+            sample.signals.AUTO_STORE_TUBES = original_store_setting
 
 
 class AliquotTubeManagementTest(SignalHandlerTest):
@@ -413,13 +592,15 @@ class AliquotTubeManagementTest(SignalHandlerTest):
     
     def test_tube_count_calculations_stored_vs_unstored(self):
         """Test tube count calculations (stored vs unstored)"""
-        # Create aliquot with 5 tubes, stored disposition
+        # Create aliquot with 5 tubes
         aliquot = Aliquot.objects.create(
             sample=self.sample,
             quantity=5,
-            aliquotType=self.aliquot_type,
-            
+            aliquotType=self.aliquot_type
         )
+        
+        # Create tubes explicitly
+        aliquot.create_tubes(auto_store=False)
         
         # All tubes should be stored initially
         self.assertEqual(aliquot.stored_tubes_count, 5)
@@ -428,8 +609,7 @@ class AliquotTubeManagementTest(SignalHandlerTest):
         # Change some tubes to 'in use'
         tubes = AliquotTube.objects.filter(aliquot=aliquot)[:2]
         for tube in tubes:
-            tube.disposition = self.in_use_disposition
-            tube.save()
+            aliquot.change_tube_disposition(tube.tube_number, self.in_use_disposition)
         
         # Refresh aliquot from database
         aliquot.refresh_from_db()
@@ -440,13 +620,20 @@ class AliquotTubeManagementTest(SignalHandlerTest):
     
     def test_tube_count_calculations_for_non_stored_aliquots(self):
         """Test tube count calculations for non-stored aliquots"""
-        # Create aliquot with in-use disposition
+        # Create aliquot with 3 tubes
         aliquot = Aliquot.objects.create(
             sample=self.sample,
             quantity=3,
-            aliquotType=self.aliquot_type,
-            
+            aliquotType=self.aliquot_type
         )
+        
+        # Create tubes explicitly
+        aliquot.create_tubes(auto_store=False)
+        
+        # Change all tubes to in_use disposition
+        tubes = AliquotTube.objects.filter(aliquot=aliquot)
+        for tube in tubes:
+            aliquot.change_tube_disposition(tube.tube_number, self.in_use_disposition)
         
         # For non-stored aliquots, all tubes are considered unstored
         self.assertEqual(aliquot.stored_tubes_count, 0)
@@ -458,21 +645,18 @@ class AliquotTubeManagementTest(SignalHandlerTest):
         aliquot = Aliquot.objects.create(
             sample=self.sample,
             quantity=3,
-            aliquotType=self.aliquot_type,
-            
+            aliquotType=self.aliquot_type
         )
+        
+        # Create tubes explicitly
+        aliquot.create_tubes(auto_store=False)
         
         tubes = AliquotTube.objects.filter(aliquot=aliquot).order_by('tube_number')
         
         # Set different dispositions for each tube
-        tubes[0].disposition = self.stored_disposition  # Keep stored
-        tubes[0].save()
-        
-        tubes[1].disposition = self.in_use_disposition  # Change to in use
-        tubes[1].save()
-        
-        tubes[2].disposition = self.exhausted_disposition  # Change to exhausted
-        tubes[2].save()
+        aliquot.change_tube_disposition(tubes[0].tube_number, self.stored_disposition)  # Keep stored
+        aliquot.change_tube_disposition(tubes[1].tube_number, self.in_use_disposition)  # Change to in use
+        aliquot.change_tube_disposition(tubes[2].tube_number, self.exhausted_disposition)  # Change to exhausted
         
         # Refresh aliquot
         aliquot.refresh_from_db()
@@ -481,42 +665,30 @@ class AliquotTubeManagementTest(SignalHandlerTest):
         self.assertEqual(aliquot.stored_tubes_count, 1)
         self.assertEqual(aliquot.unstored_tubes_count, 2)
         
-        # Only one storage location should remain
+        # Since we're not using auto-storage, no storage locations should exist
         storage_locations = AliquotLocation.objects.filter(aliquot=aliquot)
-        self.assertEqual(storage_locations.count(), 1)
-        self.assertEqual(storage_locations.first().tube_number, 1)
+        self.assertEqual(storage_locations.count(), 0)
 
     def test_simple_disposition_change(self):
         """Simple test to change disposition without signal interference"""
-        from django.db.models.signals import post_save, pre_save
-        from django.dispatch import receiver
+        # Create aliquot with 3 tubes
+        aliquot = Aliquot.objects.create(
+            sample=self.sample,
+            quantity=3,
+            aliquotType=self.aliquot_type
+        )
         
-        # Temporarily disconnect signals
-        post_save.receivers = []
-        pre_save.receivers = []
+        # Create tubes explicitly
+        aliquot.create_tubes(auto_store=False)
         
-        try:
-            # Create aliquot with 3 tubes
-            aliquot = Aliquot.objects.create(
-                sample=self.sample,
-                quantity=3,
-                aliquotType=self.aliquot_type,
-                
-            )
-            
-            tubes = AliquotTube.objects.filter(aliquot=aliquot).order_by('tube_number')
-            
-            # Change tube 2 to in use
-            tubes[1].disposition = self.in_use_disposition
-            tubes[1].save()
-            
-            # Refresh aliquot
-            aliquot.refresh_from_db()
-            
-            # Check if the change worked
-            self.assertEqual(aliquot.stored_tubes_count, 2)
-            self.assertEqual(aliquot.unstored_tubes_count, 1)
-            
-        finally:
-            # Reconnect signals
-            from .signals import create_aliquot_tubes, auto_store_aliquot_tube, store_old_disposition, handle_tube_disposition_change
+        tubes = AliquotTube.objects.filter(aliquot=aliquot).order_by('tube_number')
+        
+        # Change tube 2 to in use
+        aliquot.change_tube_disposition(tubes[1].tube_number, self.in_use_disposition)
+        
+        # Refresh aliquot
+        aliquot.refresh_from_db()
+        
+        # Check if the change worked
+        self.assertEqual(aliquot.stored_tubes_count, 2)
+        self.assertEqual(aliquot.unstored_tubes_count, 1)

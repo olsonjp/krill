@@ -318,8 +318,7 @@ class BoxModelTest(TestCase):
         aliquot = Aliquot.objects.create(
             sample=sample,
             quantity=4,
-            aliquotType=aliquot_type,
-            disposition=disposition
+            aliquotType=aliquot_type
         )
         
         # Occupy all slots
