@@ -15,27 +15,27 @@
                 <div class="form-group">
                     <label for="searchInput">Search</label>
                     <input type="text" id="searchInput" name="q" class="form-control" 
-                           placeholder="Search {{ model_name|lower }}...">
+                           placeholder="Search {{ model_name|lower }}..." value="{{ search_query }}">
                 </div>
                 <div class="form-group">
                     <label for="sortBy">Sort By</label>
                     <select id="sortBy" name="sort" class="form-control">
-                        <option value="name">Name</option>
+                        <option value="name" {% if sort_by == 'name' %}selected{% endif %}>Name</option>
                         {% if model_name == 'Aliquots' %}
-                            <option value="sample">Sample</option>
-                            <option value="type">Type</option>
-                            <option value="disposition">Disposition</option>
+                            <option value="sample" {% if sort_by == 'sample' %}selected{% endif %}>Sample</option>
+                            <option value="type" {% if sort_by == 'type' %}selected{% endif %}>Type</option>
+                            <option value="disposition" {% if sort_by == 'disposition' %}selected{% endif %}>Disposition</option>
                         {% elif model_name == 'Samples' %}
-                            <option value="source">Source</option>
-                            <option value="created_at">Created Date</option>
+                            <option value="source" {% if sort_by == 'source' %}selected{% endif %}>Source</option>
+                            <option value="created_at" {% if sort_by == 'created_at' %}selected{% endif %}>Created Date</option>
                         {% endif %}
                     </select>
                 </div>
                 <div class="form-group">
                     <label for="sortOrder">Order</label>
                     <select id="sortOrder" name="order" class="form-control">
-                        <option value="asc">Ascending</option>
-                        <option value="desc">Descending</option>
+                        <option value="asc" {% if sort_order == 'asc' %}selected{% endif %}>Ascending</option>
+                        <option value="desc" {% if sort_order == 'desc' %}selected{% endif %}>Descending</option>
                     </select>
                 </div>
             </div>
@@ -61,7 +61,10 @@
         <div class="results-header">
             <h2>{{ model_name }}</h2>
             <div class="results-info">
-                <span class="result-count">{{ items|length }} {{ model_name|lower }} found</span>
+                <span class="result-count">{{ paginator.count }} {{ model_name|lower }} found</span>
+                {% if search_query %}
+                    <span class="search-info">(filtered by "{{ search_query }}")</span>
+                {% endif %}
             </div>
         </div>
 
@@ -119,6 +122,29 @@
                 </div>
                 {% endfor %}
             </div>
+            
+            <!-- Pagination -->
+            {% if is_paginated %}
+            <div class="pagination">
+                {% if page_obj.has_previous %}
+                    <a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}{% if request.GET.sort %}sort={{ request.GET.sort }}&{% endif %}{% if request.GET.order %}order={{ request.GET.order }}&{% endif %}{% if request.GET.type %}type={{ request.GET.type }}&{% endif %}page={{ page_obj.previous_page_number }}" class="page-link">
+                        <span class="material-icons-round">chevron_left</span>
+                        Previous
+                    </a>
+                {% endif %}
+                
+                <span class="current-page">
+                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                </span>
+                
+                {% if page_obj.has_next %}
+                    <a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}{% if request.GET.sort %}sort={{ request.GET.sort }}&{% endif %}{% if request.GET.order %}order={{ request.GET.order }}&{% endif %}{% if request.GET.type %}type={{ request.GET.type }}&{% endif %}page={{ page_obj.next_page_number }}" class="page-link">
+                        Next
+                        <span class="material-icons-round">chevron_right</span>
+                    </a>
+                {% endif %}
+            </div>
+            {% endif %}
         {% else %}
             <div class="no-results">
                 <span class="material-icons-round">search_off</span>
@@ -133,23 +159,6 @@
 </div>
 
 <script>
-// Search functionality
-document.getElementById('searchInput').addEventListener('input', function(e) {
-    const searchText = e.target.value.toLowerCase();
-    const cards = document.querySelectorAll('.searchable');
-    cards.forEach(card => {
-        const text = card.textContent.toLowerCase();
-        card.style.display = text.includes(searchText) ? '' : 'none';
-    });
-    
-    // Update result count
-    const visibleCards = document.querySelectorAll('.searchable[style=""], .searchable:not([style])');
-    const resultCount = document.querySelector('.result-count');
-    if (resultCount) {
-        resultCount.textContent = `${visibleCards.length} {{ model_name|lower }} found`;
-    }
-});
-
 function performSearch() {
     const searchInput = document.getElementById('searchInput');
     const sortBy = document.getElementById('sortBy');
@@ -160,33 +169,24 @@ function performSearch() {
     if (sortBy.value) params.set('sort', sortBy.value);
     if (sortOrder.value) params.set('order', sortOrder.value);
     
-    // Update URL with search parameters
-    const newUrl = `${window.location.pathname}?${params.toString()}`;
-    window.history.pushState({}, '', newUrl);
+    // Preserve type parameter
+    const currentType = new URLSearchParams(window.location.search).get('type');
+    if (currentType) params.set('type', currentType);
     
-    // Reload page with search parameters
-    window.location.reload();
+    // Navigate to new URL with search parameters
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    window.location.href = newUrl;
 }
 
 function clearSearch() {
-    document.getElementById('searchInput').value = '';
-    document.getElementById('sortBy').value = 'name';
-    document.getElementById('sortOrder').value = 'asc';
+    // Preserve type parameter
+    const currentType = new URLSearchParams(window.location.search).get('type');
+    const params = new URLSearchParams();
+    if (currentType) params.set('type', currentType);
     
-    // Show all cards
-    const cards = document.querySelectorAll('.searchable');
-    cards.forEach(card => {
-        card.style.display = '';
-    });
-    
-    // Update result count
-    const resultCount = document.querySelector('.result-count');
-    if (resultCount) {
-        resultCount.textContent = `${cards.length} {{ model_name|lower }} found`;
-    }
-    
-    // Clear URL parameters
-    window.history.pushState({}, '', window.location.pathname);
+    // Navigate to URL without search parameters
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    window.location.href = newUrl;
 }
 
 function viewItem(itemId) {
@@ -197,35 +197,6 @@ function viewItem(itemId) {
 function viewSample(sampleId) {
     window.location.href = `{% url 'sample:sample_list' %}../detail/sample/${sampleId}/`;
 }
-
-// Auto-search on input change (with debouncing)
-let searchTimeout;
-function setupAutoSearch() {
-    const searchInput = document.getElementById('searchInput');
-    if (searchInput) {
-        searchInput.addEventListener('input', function() {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                const searchText = this.value.toLowerCase();
-                const cards = document.querySelectorAll('.searchable');
-                cards.forEach(card => {
-                    const text = card.textContent.toLowerCase();
-                    card.style.display = text.includes(searchText) ? '' : 'none';
-                });
-                
-                // Update result count
-                const visibleCards = document.querySelectorAll('.searchable[style=""], .searchable:not([style])');
-                const resultCount = document.querySelector('.result-count');
-                if (resultCount) {
-                    resultCount.textContent = `${visibleCards.length} {{ model_name|lower }} found`;
-                }
-            }, 300);
-        });
-    }
-}
-
-// Initialize auto-search
-document.addEventListener('DOMContentLoaded', setupAutoSearch);
 </script>
 
 <style>
@@ -504,6 +475,44 @@ document.addEventListener('DOMContentLoaded', setupAutoSearch);
         flex-direction: column;
         align-items: center;
     }
+}
+
+/* Pagination Styles */
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    padding: 20px 0;
+    margin-top: 20px;
+}
+
+.page-link {
+    padding: 8px 12px;
+    text-decoration: none;
+    color: var(--color-primary);
+    border: 1px solid var(--color-primary);
+    border-radius: var(--border-radius-1);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.page-link:hover {
+    background: var(--color-primary);
+    color: var(--color-white);
+}
+
+.current-page {
+    color: var(--color-dark-variant);
+    font-weight: 500;
+}
+
+.search-info {
+    color: var(--color-info-dark);
+    font-style: italic;
+    margin-left: 10px;
 }
 </style>
 {% endblock %} 

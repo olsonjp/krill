@@ -15,28 +15,28 @@
                 <div class="form-group">
                     <label for="searchInput">Search</label>
                     <input type="text" id="searchInput" name="q" class="form-control" 
-                           placeholder="Search {{ model_name|lower }}...">
+                           placeholder="Search {{ model_name|lower }}..." value="{{ search_query }}">
                 </div>
                 <div class="form-group">
                     <label for="sortBy">Sort By</label>
                     <select id="sortBy" name="sort" class="form-control">
-                        <option value="name">Name</option>
+                        <option value="name" {% if sort_by == 'name' %}selected{% endif %}>Name</option>
                         {% if model_name == 'Boxes' %}
-                            <option value="device">Device</option>
-                            <option value="shelf">Shelf</option>
+                            <option value="device" {% if sort_by == 'device' %}selected{% endif %}>Device</option>
+                            <option value="shelf" {% if sort_by == 'shelf' %}selected{% endif %}>Shelf</option>
                         {% elif model_name == 'Shelves' %}
-                            <option value="device">Device</option>
-                            <option value="site">Site</option>
+                            <option value="device" {% if sort_by == 'device' %}selected{% endif %}>Device</option>
+                            <option value="site" {% if sort_by == 'site' %}selected{% endif %}>Site</option>
                         {% elif model_name == 'Devices' %}
-                            <option value="site">Site</option>
+                            <option value="site" {% if sort_by == 'site' %}selected{% endif %}>Site</option>
                         {% endif %}
                     </select>
                 </div>
                 <div class="form-group">
                     <label for="sortOrder">Order</label>
                     <select id="sortOrder" name="order" class="form-control">
-                        <option value="asc">Ascending</option>
-                        <option value="desc">Descending</option>
+                        <option value="asc" {% if sort_order == 'asc' %}selected{% endif %}>Ascending</option>
+                        <option value="desc" {% if sort_order == 'desc' %}selected{% endif %}>Descending</option>
                     </select>
                 </div>
             </div>
@@ -62,7 +62,10 @@
         <div class="results-header">
             <h2>{{ model_name }}</h2>
             <div class="results-info">
-                <span class="result-count">{{ items|length }} {{ model_name|lower }} found</span>
+                <span class="result-count">{{ paginator.count }} {{ model_name|lower }} found</span>
+                {% if search_query %}
+                    <span class="search-info">(filtered by "{{ search_query }}")</span>
+                {% endif %}
             </div>
         </div>
 
@@ -119,6 +122,29 @@
                 </div>
                 {% endfor %}
             </div>
+            
+            <!-- Pagination -->
+            {% if is_paginated %}
+            <div class="pagination">
+                {% if page_obj.has_previous %}
+                    <a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}{% if request.GET.sort %}sort={{ request.GET.sort }}&{% endif %}{% if request.GET.order %}order={{ request.GET.order }}&{% endif %}{% if request.GET.type %}type={{ request.GET.type }}&{% endif %}page={{ page_obj.previous_page_number }}" class="page-link">
+                        <span class="material-icons-round">chevron_left</span>
+                        Previous
+                    </a>
+                {% endif %}
+                
+                <span class="current-page">
+                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                </span>
+                
+                {% if page_obj.has_next %}
+                    <a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}{% if request.GET.sort %}sort={{ request.GET.sort }}&{% endif %}{% if request.GET.order %}order={{ request.GET.order }}&{% endif %}{% if request.GET.type %}type={{ request.GET.type }}&{% endif %}page={{ page_obj.next_page_number }}" class="page-link">
+                        Next
+                        <span class="material-icons-round">chevron_right</span>
+                    </a>
+                {% endif %}
+            </div>
+            {% endif %}
         {% else %}
             <div class="no-results">
                 <span class="material-icons-round">search_off</span>
@@ -133,23 +159,6 @@
 </div>
 
 <script>
-// Search functionality
-document.getElementById('searchInput').addEventListener('input', function(e) {
-    const searchText = e.target.value.toLowerCase();
-    const cards = document.querySelectorAll('.searchable');
-    cards.forEach(card => {
-        const text = card.textContent.toLowerCase();
-        card.style.display = text.includes(searchText) ? '' : 'none';
-    });
-    
-    // Update result count
-    const visibleCards = document.querySelectorAll('.searchable[style=""], .searchable:not([style])');
-    const resultCount = document.querySelector('.result-count');
-    if (resultCount) {
-        resultCount.textContent = `${visibleCards.length} {{ model_name|lower }} found`;
-    }
-});
-
 function performSearch() {
     const searchInput = document.getElementById('searchInput');
     const sortBy = document.getElementById('sortBy');
@@ -160,33 +169,24 @@ function performSearch() {
     if (sortBy.value) params.set('sort', sortBy.value);
     if (sortOrder.value) params.set('order', sortOrder.value);
     
-    // Update URL with search parameters
-    const newUrl = `${window.location.pathname}?${params.toString()}`;
-    window.history.pushState({}, '', newUrl);
+    // Preserve type parameter
+    const currentType = new URLSearchParams(window.location.search).get('type');
+    if (currentType) params.set('type', currentType);
     
-    // Reload page with search parameters
-    window.location.reload();
+    // Navigate to new URL with search parameters
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    window.location.href = newUrl;
 }
 
 function clearSearch() {
-    document.getElementById('searchInput').value = '';
-    document.getElementById('sortBy').value = 'name';
-    document.getElementById('sortOrder').value = 'asc';
+    // Preserve type parameter
+    const currentType = new URLSearchParams(window.location.search).get('type');
+    const params = new URLSearchParams();
+    if (currentType) params.set('type', currentType);
     
-    // Show all cards
-    const cards = document.querySelectorAll('.searchable');
-    cards.forEach(card => {
-        card.style.display = '';
-    });
-    
-    // Update result count
-    const resultCount = document.querySelector('.result-count');
-    if (resultCount) {
-        resultCount.textContent = `${cards.length} {{ model_name|lower }} found`;
-    }
-    
-    // Clear URL parameters
-    window.history.pushState({}, '', window.location.pathname);
+    // Navigate to URL without search parameters
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    window.location.href = newUrl;
 }
 
 function viewItem(itemId) {
@@ -197,34 +197,272 @@ function viewItem(itemId) {
 function viewContents(boxId) {
     window.location.href = `{% url 'storage:storage_list' %}../detail/box/${boxId}/`;
 }
+</script>
 
-// Auto-search on input change (with debouncing)
-let searchTimeout;
-function setupAutoSearch() {
-    const searchInput = document.getElementById('searchInput');
-    if (searchInput) {
-        searchInput.addEventListener('input', function() {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                const searchText = this.value.toLowerCase();
-                const cards = document.querySelectorAll('.searchable');
-                cards.forEach(card => {
-                    const text = card.textContent.toLowerCase();
-                    card.style.display = text.includes(searchText) ? '' : 'none';
-                });
-                
-                // Update result count
-                const visibleCards = document.querySelectorAll('.searchable[style=""], .searchable:not([style])');
-                const resultCount = document.querySelector('.result-count');
-                if (resultCount) {
-                    resultCount.textContent = `${visibleCards.length} {{ model_name|lower }} found`;
-                }
-            }, 300);
-        });
+<style>
+.storage-list-container {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.list-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.list-header h1 {
+    margin: 0 0 10px 0;
+    color: var(--color-dark);
+}
+
+.list-header p {
+    color: var(--color-dark-variant);
+    font-size: 1.1rem;
+}
+
+.search-form-container {
+    background: var(--color-white);
+    border-radius: var(--border-radius-1);
+    box-shadow: var(--box-shadow);
+    padding: 25px;
+    margin-bottom: 30px;
+}
+
+.search-form .form-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: var(--color-dark);
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--color-light);
+    border-radius: var(--border-radius-1);
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    background: var(--color-white);
+    color: var(--color-dark);
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(108, 155, 207, 0.1);
+}
+
+.form-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: var(--border-radius-1);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    text-decoration: none;
+}
+
+.btn-primary {
+    background: var(--color-primary);
+    color: var(--color-white);
+}
+
+.btn-primary:hover {
+    background: var(--color-dark);
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: var(--color-info-dark);
+    color: var(--color-white);
+}
+
+.btn-secondary:hover {
+    background: var(--color-dark-variant);
+    transform: translateY(-1px);
+}
+
+.btn-success {
+    background: var(--color-success);
+    color: var(--color-white);
+}
+
+.btn-success:hover {
+    background: var(--color-dark);
+    transform: translateY(-1px);
+}
+
+.results-container {
+    background: var(--color-white);
+    border-radius: var(--border-radius-1);
+    box-shadow: var(--box-shadow);
+    overflow: hidden;
+    margin-bottom: 30px;
+}
+
+.results-header {
+    padding: 20px;
+    border-bottom: 1px solid var(--color-light);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.results-header h2 {
+    margin: 0;
+    color: var(--color-dark);
+}
+
+.results-info {
+    display: flex;
+    gap: 20px;
+    color: var(--color-dark-variant);
+    font-size: 0.9rem;
+}
+
+.results-grid {
+    padding: 20px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    gap: 20px;
+}
+
+.sample-card {
+    border: 1px solid var(--color-light);
+    border-radius: var(--border-radius-1);
+    padding: 20px;
+    transition: all 0.3s ease;
+    background: var(--color-white);
+}
+
+.sample-card:hover {
+    box-shadow: var(--box-shadow);
+    transform: translateY(-2px);
+}
+
+.sample-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+}
+
+.sample-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--color-dark);
+}
+
+.sample-type {
+    background: var(--color-light);
+    color: var(--color-dark-variant);
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.sample-meta {
+    margin-bottom: 20px;
+}
+
+.sample-meta p {
+    margin: 8px 0;
+    font-size: 0.9rem;
+    color: var(--color-dark-variant);
+}
+
+.sample-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.no-results {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--color-dark-variant);
+}
+
+.no-results .material-icons-round {
+    font-size: 4rem;
+    color: var(--color-light);
+    margin-bottom: 20px;
+}
+
+@media (max-width: 768px) {
+    .search-form .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .results-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .results-header {
+        flex-direction: column;
+        gap: 15px;
+        align-items: flex-start;
+    }
+    
+    .form-actions {
+        flex-direction: column;
     }
 }
 
-// Initialize auto-search
-document.addEventListener('DOMContentLoaded', setupAutoSearch);
-</script>
+/* Pagination Styles */
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    padding: 20px 0;
+    margin-top: 20px;
+}
+
+.page-link {
+    padding: 8px 12px;
+    text-decoration: none;
+    color: var(--color-primary);
+    border: 1px solid var(--color-primary);
+    border-radius: var(--border-radius-1);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.page-link:hover {
+    background: var(--color-primary);
+    color: var(--color-white);
+}
+
+.current-page {
+    color: var(--color-dark-variant);
+    font-weight: 500;
+}
+
+.search-info {
+    color: var(--color-info-dark);
+    font-style: italic;
+    margin-left: 10px;
+}
+</style>
 {% endblock %}
