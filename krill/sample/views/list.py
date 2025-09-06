@@ -8,14 +8,14 @@ class SampleListView(LoginRequiredMixin, ListView):
     template_name = 'sample/list.html'
     paginate_by = 20
     context_object_name = 'items'
-    
+
     def get_queryset(self):
         model_type = self.request.GET.get('type', 'sample')
-        
+
         # Get the queryset based on model type
         if model_type == 'aliquot':
             queryset = Aliquot.objects.select_related(
-                'sample', 
+                'sample',
                 'aliquot_type'
             ).prefetch_related(
                 'locations__box',
@@ -28,7 +28,7 @@ class SampleListView(LoginRequiredMixin, ListView):
             queryset = Source.objects.all()
         else:  # default to samples
             queryset = Sample.objects.select_related('source')
-        
+
         # Apply search filtering if provided
         search_query = self.request.GET.get('q', '')
         if search_query:
@@ -44,14 +44,14 @@ class SampleListView(LoginRequiredMixin, ListView):
                 queryset = queryset.filter(name__icontains=search_query)
             elif model_type == 'aliquot-type':
                 queryset = queryset.filter(name__icontains=search_query)
-        
+
         # Apply sorting
         sort_by = self.request.GET.get('sort', 'name')
         sort_order = self.request.GET.get('order', 'asc')
-        
+
         if sort_order == 'desc':
             sort_by = f'-{sort_by}'
-        
+
         # Apply sorting to queryset
         if hasattr(queryset.model, sort_by.replace('-', '')):
             queryset = queryset.order_by(sort_by)
@@ -63,13 +63,13 @@ class SampleListView(LoginRequiredMixin, ListView):
                 queryset = queryset.order_by('name', 'id')
             else:
                 queryset = queryset.order_by('id')
-        
+
         return queryset
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         model_type = self.request.GET.get('type', 'sample')
-        
+
         # Set model name
         if model_type == 'aliquot':
             context['model_name'] = 'Aliquots'
@@ -79,10 +79,10 @@ class SampleListView(LoginRequiredMixin, ListView):
             context['model_name'] = 'Sources'
         else:  # default to samples
             context['model_name'] = 'Samples'
-        
+
         # Add search and sort context
         context['search_query'] = self.request.GET.get('q', '')
         context['sort_by'] = self.request.GET.get('sort', 'name')
         context['sort_order'] = self.request.GET.get('order', 'asc')
-        
-        return context 
+
+        return context

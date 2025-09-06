@@ -110,11 +110,11 @@
                 {% if issues.has_previous %}
                     <a href="?page={{ issues.previous_page_number }}" class="page-link">&laquo; Previous</a>
                 {% endif %}
-                
+
                 <span class="current-page">
                     Page {{ issues.number }} of {{ issues.paginator.num_pages }}
                 </span>
-                
+
                 {% if issues.has_next %}
                     <a href="?page={{ issues.next_page_number }}" class="page-link">Next &raquo;</a>
                 {% endif %}
@@ -196,7 +196,7 @@ function closeReportIssueModal() {
 function reportIssue() {
     const form = document.getElementById('reportIssueForm');
     const formData = new FormData(form);
-    
+
     const data = {
         title: formData.get('title'),
         description: formData.get('description'),
@@ -204,7 +204,7 @@ function reportIssue() {
         issue_type: formData.get('issue_type'),
         assigned_to: formData.get('assigned_to') ? parseInt(formData.get('assigned_to')) : null,
     };
-    
+
     fetch('{% url "reports:report_issue" %}', {
         method: 'POST',
         headers: {
@@ -635,22 +635,22 @@ window.onclick = function(event) {
         gap: 15px;
         align-items: flex-start;
     }
-    
+
     .list-header {
         flex-direction: column;
         gap: 15px;
         align-items: flex-start;
     }
-    
+
     .list-filters {
         flex-direction: column;
         width: 100%;
     }
-    
+
     .issues-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .form-row {
         grid-template-columns: 1fr;
     }

@@ -12,7 +12,7 @@ class ReportTemplateAdmin(admin.ModelAdmin):
     search_fields = ['name', 'description']
     readonly_fields = ['created_at', 'updated_at']
     list_editable = ['is_active']
-    
+
     fieldsets = (
         ('Basic Information', {
             'fields': ('name', 'description', 'report_type', 'is_active')
@@ -34,7 +34,7 @@ class ReportAdmin(admin.ModelAdmin):
     search_fields = ['name', 'description', 'created_by__username']
     readonly_fields = ['created_at', 'completed_at', 'file_size_display']
     list_editable = ['status']
-    
+
     fieldsets = (
         ('Report Information', {
             'fields': ('name', 'description', 'template', 'status', 'format')
@@ -54,7 +54,7 @@ class ReportAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
-    
+
     def file_size_display(self, obj):
         if obj.file_size:
             if obj.file_size < 1024:
@@ -74,7 +74,7 @@ class ScheduledReportAdmin(admin.ModelAdmin):
     search_fields = ['name', 'description', 'created_by__username']
     readonly_fields = ['created_at', 'updated_at', 'last_run']
     list_editable = ['is_active']
-    
+
     fieldsets = (
         ('Schedule Information', {
             'fields': ('name', 'description', 'template', 'frequency', 'is_active')
@@ -100,7 +100,7 @@ class AlertAdmin(admin.ModelAdmin):
     search_fields = ['title', 'message', 'alert_type']
     readonly_fields = ['created_at', 'updated_at']
     list_editable = ['status']
-    
+
     fieldsets = (
         ('Alert Information', {
             'fields': ('title', 'message', 'severity', 'status', 'alert_type')
@@ -118,7 +118,7 @@ class AlertAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
-    
+
     def status_actions(self, obj):
         if obj.status == 'active':
             return format_html(
@@ -132,6 +132,3 @@ class AlertAdmin(admin.ModelAdmin):
             )
         return obj.get_status_display()
     status_actions.short_description = 'Actions'
-
-
-

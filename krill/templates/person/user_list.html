@@ -91,15 +91,15 @@
                         </td>
                         <td>
                             <div class="action-buttons">
-                                <a href="{% url 'person:user_detail' user_role.user.id %}" 
+                                <a href="{% url 'person:user_detail' user_role.user.id %}"
                                    class="action-button view">
                                     <span class="material-icons-round">visibility</span>
                                 </a>
-                                <a href="{% url 'person:user_role_edit' user_role.user.id %}" 
+                                <a href="{% url 'person:user_role_edit' user_role.user.id %}"
                                    class="action-button edit">
                                     <span class="material-icons-round">edit</span>
                                 </a>
-                                <a href="{% url 'admin:person_userrole_change' user_role.id %}" 
+                                <a href="{% url 'admin:person_userrole_change' user_role.id %}"
                                    class="action-button admin">
                                     <span class="material-icons-round">settings</span>
                                 </a>

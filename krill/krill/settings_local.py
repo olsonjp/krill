@@ -37,13 +37,13 @@ SECURE_HSTS_SECONDS = 0
 if DEBUG:
     INSTALLED_APPS += ['debug_toolbar']
     MIDDLEWARE += ['debug_toolbar.middleware.DebugToolbarMiddleware']
-    
+
     # Debug toolbar configuration
     INTERNAL_IPS = [
         '127.0.0.1',
         'localhost',
     ]
-    
+
     DEBUG_TOOLBAR_CONFIG = {
         'SHOW_TOOLBAR_CALLBACK': lambda request: DEBUG,
     }

@@ -99,7 +99,7 @@
                     <small>{{ report.template.description|default:"No description available" }}</small>
                 </div>
             </div>
-            
+
             <div class="info-item">
                 <span class="material-icons-round">schedule</span>
                 <div class="info-content">
@@ -109,12 +109,12 @@
                     {% endif %}
                 </div>
             </div>
-            
+
             {% if report.file_size %}
             <div class="info-item">
                 <span class="material-icons-round">storage</span>
                 <div class="info-content">
-                    <p><strong>File Size:</strong> 
+                    <p><strong>File Size:</strong>
                         {% if report.file_size < 1024 %}
                             {{ report.file_size }} B
                         {% elif report.file_size < 1048576 %}
@@ -240,7 +240,7 @@ style.textContent = `
     .rotating {
         animation: rotate 2s linear infinite;
     }
-    
+
     @keyframes rotate {
         from { transform: rotate(0deg); }
         to { transform: rotate(360deg); }
@@ -321,7 +321,7 @@ document.head.appendChild(style);
         flex-direction: column;
         gap: 10px;
     }
-    
+
     .data-content, .parameters-json {
         font-size: 0.8rem;
         padding: 10px;

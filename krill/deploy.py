@@ -57,19 +57,19 @@ def check_dependencies():
         'redis',
         'django-redis',
     ]
-    
+
     missing_packages = []
     for package in required_packages:
         try:
             __import__(package.replace('-', '_'))
         except ImportError:
             missing_packages.append(package)
-    
+
     if missing_packages:
         print(f"❌ Missing packages: {', '.join(missing_packages)}")
         print("Run: pip install -r requirements.txt")
         return False
-    
+
     print("✅ All dependencies are installed")
     return True
 
@@ -84,17 +84,17 @@ def check_environment_variables():
         'DB_HOST',
         'DB_PORT',
     ]
-    
+
     missing_vars = []
     for var in required_vars:
         if not os.environ.get(var):
             missing_vars.append(var)
-    
+
     if missing_vars:
         print(f"❌ Missing environment variables: {', '.join(missing_vars)}")
         print("Please set these variables in your .env file")
         return False
-    
+
     print("✅ All required environment variables are set")
     return True
 
@@ -102,14 +102,14 @@ def check_secret_key():
     """Check if SECRET_KEY is properly configured"""
     print("🔍 Checking SECRET_KEY...")
     from django.conf import settings
-    
+
     default_key = 'django-insecure-t9u1+2ux%d02^oc1fhy%rlyybh%)y28y=ee_8^%+rb^2i6i6cj'
     if settings.SECRET_KEY == default_key:
         print("❌ SECRET_KEY is still the default Django key")
         print("Generate a new key with:")
         print("python -c \"from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())\"")
         return False
-    
+
     print("✅ SECRET_KEY is properly configured")
     return True
 
@@ -134,7 +134,7 @@ def run_security_tests():
     if result.returncode != 0:
         print("❌ Security tests failed")
         return False
-    
+
     print("✅ Security tests passed")
     return True
 
@@ -145,7 +145,7 @@ def run_django_checks():
     if result.returncode != 0:
         print("❌ Django deployment checks failed")
         return False
-    
+
     print("✅ Django deployment checks passed")
     return True
 
@@ -156,7 +156,7 @@ def check_static_files():
     if result.returncode != 0:
         print("❌ Static file collection failed")
         return False
-    
+
     print("✅ Static files collected")
     return True
 
@@ -167,27 +167,27 @@ def run_migrations():
     if result.returncode != 0:
         print("❌ Database migrations failed")
         return False
-    
+
     print("✅ Database migrations completed")
     return True
 
 def check_file_permissions():
     """Check file permissions"""
     print("🔍 Checking file permissions...")
-    
+
     # Check that sensitive files are not world-readable
     sensitive_files = [
         '.env',
         'settings_production.py',
         'db.sqlite3',
     ]
-    
+
     for file_path in sensitive_files:
         if os.path.exists(file_path):
             stat = os.stat(file_path)
             if stat.st_mode & 0o777 == 0o666:  # World readable/writable
                 print(f"⚠️  Warning: {file_path} is world readable")
-    
+
     print("✅ File permissions check completed")
     return True
 
@@ -197,7 +197,7 @@ def create_backup():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     backup_dir = project_root / "backups" / timestamp
     backup_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Backup database
     if os.environ.get('DB_ENGINE') == 'sqlite':
         db_file = project_root / "db.sqlite3"
@@ -206,12 +206,12 @@ def create_backup():
     else:
         # For PostgreSQL, you might want to use pg_dump
         pass
-    
+
     # Backup media files
     media_dir = project_root / "media"
     if media_dir.exists():
         shutil.copytree(media_dir, backup_dir / "media")
-    
+
     print(f"✅ Backup created at {backup_dir}")
     return True
 
@@ -222,7 +222,7 @@ def check_ssl_certificate():
     if not domain:
         print("⚠️  No domain configured, skipping SSL check")
         return True
-    
+
     # This is a basic check - in production you'd want more comprehensive SSL validation
     print(f"⚠️  Please verify SSL certificate for {domain}")
     return True
@@ -230,7 +230,7 @@ def check_ssl_certificate():
 def generate_security_report():
     """Generate a security deployment report"""
     print("📊 Generating security report...")
-    
+
     report = {
         'timestamp': datetime.now().isoformat(),
         'checks': {
@@ -248,31 +248,31 @@ def generate_security_report():
             'ssl_certificate': check_ssl_certificate(),
         }
     }
-    
+
     # Save report
     report_file = project_root / "deployment_report.json"
     with open(report_file, 'w') as f:
         json.dump(report, f, indent=2)
-    
+
     # Print summary
     passed_checks = sum(report['checks'].values())
     total_checks = len(report['checks'])
-    
+
     print(f"\n📋 Security Report Summary:")
     print(f"✅ Passed: {passed_checks}/{total_checks}")
     print(f"❌ Failed: {total_checks - passed_checks}/{total_checks}")
     print(f"📄 Full report saved to: {report_file}")
-    
+
     return passed_checks == total_checks
 
 def main():
     """Main deployment function"""
     print("🚀 Starting Krill Deployment Security Check")
     print("=" * 50)
-    
+
     # Run all security checks
     success = generate_security_report()
-    
+
     if success:
         print("\n🎉 All security checks passed!")
         print("✅ Your application is ready for deployment")

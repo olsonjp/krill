@@ -15,7 +15,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         force = options['force']
         self.stdout.write('Setting up aliquot dispositions...')
-        
+
         dispositions_data = [
             {
                 'name': 'Stored',
@@ -33,10 +33,10 @@ class Command(BaseCommand):
                 'description': 'Tubes that have been used up'
             }
         ]
-        
+
         dispositions_created = 0
         dispositions_updated = 0
-        
+
         for disp_data in dispositions_data:
             try:
                 disposition = AliquotDisposition.objects.get(name=disp_data['name'])
@@ -52,7 +52,7 @@ class Command(BaseCommand):
                 AliquotDisposition.objects.create(**disp_data)
                 dispositions_created += 1
                 self.stdout.write(f'Created disposition: {disp_data["name"]}')
-        
+
         self.stdout.write(
             self.style.SUCCESS(
                 f'Successfully processed dispositions:\n'

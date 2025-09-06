@@ -69,4 +69,4 @@ class SampleFormView(View):
             'form_title': self.get_title(),
             'form_description': self.get_description(),
         }
-        return render(request, self.template_name, context) 
+        return render(request, self.template_name, context)

@@ -16,7 +16,7 @@ def sample_access_demo(request, sample_id):
     """
     sample = get_object_or_404(Sample, id=sample_id)
     user_role = UserRole.get_or_create_for_user(request.user)
-    
+
     # Check if user has access to this sample
     if not user_role.can_access_object(sample):
         UserAuditLog.log_action(
@@ -35,7 +35,7 @@ def sample_access_demo(request, sample_id):
             f"Access denied. This sample is restricted to {sample.get_access_level_display()}. "
             f"Your role ({user_role.get_role_display()}) does not have sufficient privileges."
         )
-    
+
     # Log successful access
     UserAuditLog.log_action(
         user=request.user,
@@ -49,7 +49,7 @@ def sample_access_demo(request, sample_id):
         },
         request=request
     )
-    
+
     context = {
         'sample': sample,
         'user_role': user_role,
@@ -57,7 +57,7 @@ def sample_access_demo(request, sample_id):
         'can_edit': user_role.has_permission('sample.edit'),
         'can_delete': user_role.has_permission('sample.delete'),
     }
-    
+
     return render(request, 'sample/access_level_demo.html', context)
 
 
@@ -69,7 +69,7 @@ def aliquot_access_demo(request, aliquot_id):
     """
     aliquot = get_object_or_404(Aliquot, id=aliquot_id)
     user_role = UserRole.get_or_create_for_user(request.user)
-    
+
     # Check if user has access to this aliquot
     if not user_role.can_access_object(aliquot):
         UserAuditLog.log_action(
@@ -88,7 +88,7 @@ def aliquot_access_demo(request, aliquot_id):
             f"Access denied. This aliquot is restricted to {aliquot.get_access_level_display()}. "
             f"Your role ({user_role.get_role_display()}) does not have sufficient privileges."
         )
-    
+
     # Log successful access
     UserAuditLog.log_action(
         user=request.user,
@@ -102,7 +102,7 @@ def aliquot_access_demo(request, aliquot_id):
         },
         request=request
     )
-    
+
     context = {
         'aliquot': aliquot,
         'user_role': user_role,
@@ -110,7 +110,7 @@ def aliquot_access_demo(request, aliquot_id):
         'can_edit': user_role.has_permission('aliquot.edit'),
         'can_delete': user_role.has_permission('aliquot.delete'),
     }
-    
+
     return render(request, 'sample/aliquot_access_demo.html', context)
 
 
@@ -121,19 +121,19 @@ def access_level_info(request):
     API endpoint to get information about access levels and user permissions.
     """
     user_role = UserRole.get_or_create_for_user(request.user)
-    
+
     # Get counts of objects by access level
     sample_counts = {}
     aliquot_counts = {}
-    
+
     for level_code, level_name in Sample.ACCESS_LEVEL_CHOICES:
         sample_counts[level_code] = Sample.objects.filter(access_level=level_code).count()
         aliquot_counts[level_code] = Aliquot.objects.filter(access_level=level_code).count()
-    
+
     # Get objects user can access
     accessible_samples = []
     accessible_aliquots = []
-    
+
     for sample in Sample.objects.all()[:10]:  # Limit to first 10 for demo
         if user_role.can_access_object(sample):
             accessible_samples.append({
@@ -142,7 +142,7 @@ def access_level_info(request):
                 'access_level': sample.access_level,
                 'access_level_display': sample.get_access_level_display()
             })
-    
+
     for aliquot in Aliquot.objects.all()[:10]:  # Limit to first 10 for demo
         if user_role.can_access_object(aliquot):
             accessible_aliquots.append({
@@ -151,7 +151,7 @@ def access_level_info(request):
                 'access_level': aliquot.access_level,
                 'access_level_display': aliquot.get_access_level_display()
             })
-    
+
     data = {
         'user_role': user_role.role,
         'user_role_display': user_role.get_role_display(),
@@ -165,5 +165,5 @@ def access_level_info(request):
             'all_members': 'All Lab Members'
         }
     }
-    
+
     return JsonResponse(data)

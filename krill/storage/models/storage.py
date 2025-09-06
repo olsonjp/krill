@@ -10,12 +10,12 @@ class Device(models.Model):
         ('admins_managers', 'Admins & Managers'),
         ('all_members', 'All Lab Members'),
     ]
-    
+
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
     site = models.ForeignKey(Site, on_delete=models.PROTECT, related_name='devices')
     auto_store_enabled = models.BooleanField(
-        default=False, 
+        default=False,
         help_text="Enable auto-store for all boxes in this device"
     )
     access_level = models.CharField(
@@ -24,7 +24,7 @@ class Device(models.Model):
         default='all_members',
         help_text="Restrict access to specific user tiers"
     )
-    
+
     def __str__(self):
         return self.name
 
@@ -37,7 +37,7 @@ class Shelf(models.Model):
         ('admins_managers', 'Admins & Managers'),
         ('all_members', 'All Lab Members'),
     ]
-    
+
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
     device = models.ForeignKey(Device, on_delete=models.PROTECT, related_name='shelves')
@@ -63,7 +63,7 @@ class Rack(models.Model):
         ('admins_managers', 'Admins & Managers'),
         ('all_members', 'All Lab Members'),
     ]
-    
+
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
     shelf = models.ForeignKey(Shelf, on_delete=models.PROTECT, related_name='racks')
@@ -86,7 +86,7 @@ class Box(models.Model):
         ('admins_managers', 'Admins & Managers'),
         ('all_members', 'All Lab Members'),
     ]
-    
+
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
     rack = models.ForeignKey(Rack, on_delete=models.PROTECT, related_name='boxes')
@@ -115,7 +115,7 @@ class Box(models.Model):
         """Get all aliquots in this box."""
         from sample.models.aliquot import AliquotLocation
         return AliquotLocation.objects.filter(box=self)
-        
+
     def get_available_slots(self):
         """Get available slots in this box for auto-storage."""
         from sample.models.aliquot import AliquotLocation
@@ -132,7 +132,7 @@ class Box(models.Model):
                         'column': col
                     })
         return available_slots
-        
+
     def has_available_slots(self):
         """Check if this box has any available slots."""
         return len(self.get_available_slots()) > 0

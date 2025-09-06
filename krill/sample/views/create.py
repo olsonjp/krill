@@ -30,4 +30,4 @@ class ModelCreateView(CreateView):
         model_type = self.request.GET.get('type', 'sample')
         context['model_type'] = model_type
         context['model_name'] = model_type.replace('-', ' ').title()
-        return context 
+        return context

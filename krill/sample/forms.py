@@ -65,7 +65,7 @@ class AliquotDispositionForm(forms.ModelForm):
 class SourceForm(forms.ModelForm):
     class Meta:
         model = Source
-        fields = ['name', 'description'] 
+        fields = ['name', 'description']
 
 class AliquotTubeForm(forms.ModelForm):
     class Meta:
@@ -73,7 +73,7 @@ class AliquotTubeForm(forms.ModelForm):
         fields = ['disposition']
         help_texts = {
             'disposition': 'Current status of this tube',
-        } 
+        }
 
 class AliquotTubeMoveForm(forms.Form):
     box = forms.ModelChoiceField(
@@ -91,8 +91,8 @@ class AliquotTubeMoveForm(forms.Form):
         max_value=10,
         help_text="Column position (1-10)"
     )
-    
+
     def __init__(self, *args, **kwargs):
         from storage.models.storage import Box
         super().__init__(*args, **kwargs)
-        self.fields['box'].queryset = Box.objects.all() 
+        self.fields['box'].queryset = Box.objects.all()

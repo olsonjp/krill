@@ -4,7 +4,7 @@ from django.dispatch import receiver
 
 from .models.sample import Sample
 from .models.aliquot import (
-    Aliquot, AliquotType, AliquotDisposition, 
+    Aliquot, AliquotType, AliquotDisposition,
     AliquotLocation, AliquotTube
 )
 from .models.source import Source
