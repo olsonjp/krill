@@ -45,6 +45,9 @@ class Aliquot(models.Model):
     deleted = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(null=True, blank=True)
 
+    class Meta:
+        ordering = ['sample__name', 'id']
+
     def __str__(self):
         return f"{self.sample.name} - Aliquot {self.id}"
 

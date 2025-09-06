@@ -667,7 +667,7 @@ def create_user(request):
 def user_list(request):
     """List all users with their roles and permissions"""
     form = UserSearchForm(request.GET)
-    users = UserRole.objects.select_related('user').all()
+    users = UserRole.objects.select_related('user').order_by('user__username')
     if form.is_valid():
         search = form.cleaned_data.get('search')
         role = form.cleaned_data.get('role')
@@ -759,7 +759,7 @@ def user_role_edit(request, user_id):
 @require_minimum_role('lab_manager')
 def permission_list(request):
     """List all object-level permissions"""
-    permissions = Permission.objects.select_related('user', 'content_type', 'granted_by').all()
+    permissions = Permission.objects.select_related('user', 'content_type', 'granted_by').order_by('user__username', 'permission_type')
     # Filtering
     user_filter = request.GET.get('user')
     permission_type_filter = request.GET.get('permission_type')
@@ -858,7 +858,7 @@ def bulk_grant_permission(request):
 def audit_log(request):
     """View user audit logs"""
     form = AuditLogFilterForm(request.GET)
-    logs = UserAuditLog.objects.select_related('user').all()
+    logs = UserAuditLog.objects.select_related('user').order_by('-timestamp')
     if form.is_valid():
         user = form.cleaned_data.get('user')
         action = form.cleaned_data.get('action')
