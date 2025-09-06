@@ -80,7 +80,8 @@
                 </span>
                 <h3>Settings</h3>
             </a>
-            <!-- Admin section -->
+            <!-- Admin section - Only visible to lab managers and administrators -->
+            {% if user.role.role == 'lab_admin' or user.role.role == 'lab_manager' %}
             <div class="sidebar-section">
                 <a href="#" class="sidebar-toggle {% if 'admin' in request.path or 'users' in request.path or 'data-import' in request.path %}active{% endif %}" onclick="toggleSection('admin-section')">
                     <span class="material-icons-round">
@@ -116,6 +117,7 @@
                     </a>
                 </div>
             </div>
+            {% endif %}
             <form method="post" action="{% url 'logout' %}" class="logout-form">
                 {% csrf_token %}
                 <button type="submit" class="sidebar-logout">

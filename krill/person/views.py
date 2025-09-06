@@ -36,7 +36,7 @@ class DataImportForm(forms.Form):
 
 
 # Data Import View for main app
-@method_decorator(staff_member_required, name='dispatch')
+@method_decorator(require_minimum_role('lab_manager'), name='dispatch')
 class DataImportView(TemplateView):
     template_name = 'person/data_import.html'
 
@@ -686,7 +686,7 @@ def bulk_grant_permission(request):
 
 
 @login_required
-@require_minimum_role('lab_admin')
+@require_minimum_role('lab_manager')
 def audit_log(request):
     """View user audit logs"""
     form = AuditLogFilterForm(request.GET)
