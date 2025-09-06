@@ -288,3 +288,71 @@ class AuditLogFilterForm(forms.Form):
         required=False,
         widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'})
     )
+
+
+class PasswordChangeForm(forms.Form):
+    """Form for changing user password"""
+    current_password = forms.CharField(
+        label='Current Password',
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Enter your current password'
+        }),
+        help_text='Enter your current password to verify your identity'
+    )
+    new_password1 = forms.CharField(
+        label='New Password',
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Enter your new password'
+        }),
+        help_text='Enter a strong password with at least 8 characters'
+    )
+    new_password2 = forms.CharField(
+        label='Confirm New Password',
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Confirm your new password'
+        }),
+        help_text='Re-enter your new password to confirm'
+    )
+
+    def __init__(self, user, *args, **kwargs):
+        self.user = user
+        super().__init__(*args, **kwargs)
+
+    def clean_current_password(self):
+        """Validate the current password"""
+        current_password = self.cleaned_data.get('current_password')
+        if not self.user.check_password(current_password):
+            raise forms.ValidationError('Current password is incorrect.')
+        return current_password
+
+    def clean_new_password2(self):
+        """Validate that both new passwords match"""
+        password1 = self.cleaned_data.get('new_password1')
+        password2 = self.cleaned_data.get('new_password2')
+        if password1 and password2:
+            if password1 != password2:
+                raise forms.ValidationError('New passwords do not match.')
+        return password2
+
+    def clean(self):
+        """Additional validation"""
+        cleaned_data = super().clean()
+        current_password = cleaned_data.get('current_password')
+        new_password1 = cleaned_data.get('new_password1')
+
+        # Check if new password is different from current password
+        if current_password and new_password1:
+            if self.user.check_password(new_password1):
+                raise forms.ValidationError('New password must be different from your current password.')
+
+        return cleaned_data
+
+    def save(self):
+        """Change the user's password"""
+        new_password = self.cleaned_data['new_password1']
+        self.user.set_password(new_password)
+        self.user.save()
+        return self.user

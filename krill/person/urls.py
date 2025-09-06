@@ -11,6 +11,8 @@ urlpatterns = [
     path('users/create/', views.create_user, name='create_user'),
     path('users/<int:user_id>/', views.user_detail, name='user_detail'),
     path('users/<int:user_id>/edit/', views.user_role_edit, name='user_role_edit'),
+    # Password management
+    path('change-password/', views.change_password, name='change_password'),
     # Permission management
     path('permissions/', views.permission_list, name='permission_list'),
     path('permissions/grant/', views.grant_permission, name='grant_permission'),
