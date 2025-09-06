@@ -25,6 +25,15 @@
                     <label>Display Name</label>
                     <input type="text" value="{{ user.first_name|default:user.username }}" />
                 </div>
+                <div class="setting-item">
+                    <label>Password</label>
+                    <div class="setting-actions">
+                        <a href="{% url 'person:change_password' %}" class="btn btn-outline-primary">
+                            <span class="material-icons-round">lock</span>
+                            Change Password
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -55,4 +64,41 @@
 
 {% block extrahead %}
 <script src="{% static 'js/settings.js' %}"></script>
+<style>
+.setting-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.15s ease-in-out;
+}
+
+.btn-outline-primary {
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+    background-color: transparent;
+}
+
+.btn-outline-primary:hover {
+    color: var(--color-white);
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.btn-outline-primary .material-icons-round {
+    font-size: 1rem;
+}
+</style>
 {% endblock %}
