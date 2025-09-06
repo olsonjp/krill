@@ -89,6 +89,10 @@ def require_minimum_role(minimum_role):
     def decorator(view_func):
         @wraps(view_func)
         def wrapper(request, *args, **kwargs):
+            # Check if user is authenticated
+            if not request.user.is_authenticated:
+                return HttpResponseForbidden("Authentication required")
+
             user_role = UserRole.get_or_create_for_user(request.user)
             user_role_level = role_hierarchy.get(user_role.role, 0)
             required_level = role_hierarchy.get(minimum_role, 0)

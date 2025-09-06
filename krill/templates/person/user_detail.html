@@ -14,10 +14,12 @@
                 <i class="material-icons-round">edit</i>
                 Edit Role
             </a>
+            {% if user.role.role == 'lab_admin' or user.role.role == 'lab_manager' %}
             <a href="{% url 'admin:person_userrole_change' user_role.id %}" class="btn btn-danger">
                 <i class="material-icons-round">admin_panel_settings</i>
                 Admin
             </a>
+            {% endif %}
         </div>
     </div>
 
