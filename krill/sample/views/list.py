@@ -52,9 +52,33 @@ class SampleListView(LoginRequiredMixin, ListView):
         if sort_order == 'desc':
             sort_by = f'-{sort_by}'
 
-        # Apply sorting to queryset
-        if hasattr(queryset.model, sort_by.replace('-', '')):
-            queryset = queryset.order_by(sort_by)
+        # Handle special cases for computed properties and non-database fields
+        if model_type == 'aliquot' and sort_by.replace('-', '') == 'disposition':
+            # Disposition is a computed property, so we can't sort by it directly
+            # Instead, sort by sample name and id for consistent pagination
+            queryset = queryset.order_by('sample__name', 'id')
+        elif model_type == 'aliquot' and sort_by.replace('-', '') == 'type':
+            # Map 'type' to 'aliquot_type__name' for proper sorting
+            sort_field = 'aliquot_type__name' if not sort_by.startswith('-') else '-aliquot_type__name'
+            queryset = queryset.order_by(sort_field, 'id')
+        elif model_type == 'aliquot' and sort_by.replace('-', '') == 'sample':
+            # Map 'sample' to 'sample__name' for proper sorting
+            sort_field = 'sample__name' if not sort_by.startswith('-') else '-sample__name'
+            queryset = queryset.order_by(sort_field, 'id')
+        elif hasattr(queryset.model, sort_by.replace('-', '')):
+            # Check if it's actually a database field, not just a property
+            field_name = sort_by.replace('-', '')
+            field = queryset.model._meta.get_field(field_name)
+            if field:
+                queryset = queryset.order_by(sort_by)
+            else:
+                # It's a property, not a field, so use default sorting
+                if model_type == 'aliquot':
+                    queryset = queryset.order_by('sample__name', 'id')
+                elif hasattr(queryset.model, 'name'):
+                    queryset = queryset.order_by('name', 'id')
+                else:
+                    queryset = queryset.order_by('id')
         else:
             # Default sorting - use appropriate field for consistent pagination
             if model_type == 'aliquot':
