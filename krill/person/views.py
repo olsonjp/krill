@@ -54,7 +54,22 @@ class DataImportView(TemplateView):
 
             try:
                 if proceed_with_import:
-                    # Actual import
+                    # Actual import - get file from temporary storage
+                    import_id = request.POST.get('import_id')
+                    if not import_id:
+                        messages.error(request, 'Import session expired. Please upload your file again.')
+                        return redirect('person:data_import')
+
+                    # Retrieve file from temporary storage
+                    csv_file = self.get_temp_file(import_id, request.user.id)
+                    if not csv_file:
+                        messages.error(request, 'Import file not found. Please upload your file again.')
+                        return redirect('person:data_import')
+
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.info(f"Starting data import for user {request.user.username}")
+
                     import_result = self.perform_import(csv_file)
                     details = import_result.get('details', {})
                     message = f'Successfully imported {import_result["total"]} records: '
@@ -63,17 +78,39 @@ class DataImportView(TemplateView):
                     message += f'{details.get("aliquots", 0)} aliquots, '
                     message += f'{details.get("tubes", 0)} tubes, '
                     message += f'{details.get("locations", 0)} locations'
+
+                    logger.info(f"Import completed successfully: {message}")
+
+                    # Clean up temporary file
+                    self.cleanup_temp_file(import_id, request.user.id)
+
                     messages.success(request, message)
                     return redirect('person:user_list')
                 else:
-                    # Preview mode (default for first submission)
+                    # Preview mode - store file temporarily and generate import ID
+                    import_id = self.store_temp_file(csv_file, request.user.id)
+
+                    # Reset file pointer for preview
+                    csv_file.seek(0)
+
                     preview_data = self.preview_import(csv_file)
                     context = self.get_context_data()
                     context['preview_data'] = preview_data
                     context['form'] = form
+                    context['import_id'] = import_id
+                    context['file_stored'] = True
                     return render(request, self.template_name, context)
 
             except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Import failed for user {request.user.username}: {str(e)}", exc_info=True)
+
+                # Clean up temporary file on error
+                import_id = request.POST.get('import_id')
+                if import_id:
+                    self.cleanup_temp_file(import_id, request.user.id)
+
                 messages.error(request, f'Import failed: {str(e)}')
                 context = self.get_context_data()
                 context['form'] = form
@@ -97,8 +134,12 @@ class DataImportView(TemplateView):
         }
 
         try:
-            # Save uploaded file temporarily
-            temp_csv_path = f'/tmp/import_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+            # Use Django's temp directory setting
+            from django.conf import settings
+            temp_dir = getattr(settings, 'FILE_UPLOAD_TEMP_DIR', '/tmp')
+            os.makedirs(temp_dir, exist_ok=True)
+
+            temp_csv_path = os.path.join(temp_dir, f'import_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv')
             with open(temp_csv_path, 'wb') as temp_file:
                 for chunk in csv_file.chunks():
                     temp_file.write(chunk)
@@ -132,11 +173,122 @@ class DataImportView(TemplateView):
 
         return preview_data
 
+    def store_temp_file(self, csv_file, user_id):
+        """Store uploaded file temporarily and return import ID"""
+        import uuid
+        import hashlib
+        from django.conf import settings
+
+        # Check file size limit (default 10MB, configurable)
+        max_size = getattr(settings, 'MAX_IMPORT_FILE_SIZE', 10 * 1024 * 1024)  # 10MB
+        if csv_file.size > max_size:
+            raise Exception(f"File too large. Maximum size allowed is {max_size / 1024 / 1024:.1f}MB")
+
+        # Generate unique import ID
+        import_id = str(uuid.uuid4())
+
+        # Use Django's temp directory
+        temp_dir = getattr(settings, 'FILE_UPLOAD_TEMP_DIR', '/tmp')
+        os.makedirs(temp_dir, exist_ok=True)
+
+        # Create user-specific subdirectory for security
+        user_temp_dir = os.path.join(temp_dir, f'imports_{user_id}')
+        os.makedirs(user_temp_dir, exist_ok=True)
+
+        # Store file with import ID
+        temp_file_path = os.path.join(user_temp_dir, f'{import_id}.csv')
+
+        with open(temp_file_path, 'wb') as temp_file:
+            for chunk in csv_file.chunks():
+                temp_file.write(chunk)
+
+        # Store metadata (file name, size, timestamp)
+        metadata = {
+            'filename': csv_file.name,
+            'size': csv_file.size,
+            'timestamp': timezone.now().isoformat(),
+            'user_id': user_id
+        }
+
+        metadata_path = os.path.join(user_temp_dir, f'{import_id}.meta')
+        with open(metadata_path, 'w') as f:
+            json.dump(metadata, f)
+
+        return import_id
+
+    def get_temp_file(self, import_id, user_id):
+        """Retrieve temporary file by import ID"""
+        from django.conf import settings
+        from django.core.files.uploadedfile import InMemoryUploadedFile
+        from io import BytesIO
+
+        temp_dir = getattr(settings, 'FILE_UPLOAD_TEMP_DIR', '/tmp')
+        user_temp_dir = os.path.join(temp_dir, f'imports_{user_id}')
+        temp_file_path = os.path.join(user_temp_dir, f'{import_id}.csv')
+        metadata_path = os.path.join(user_temp_dir, f'{import_id}.meta')
+
+        if not os.path.exists(temp_file_path) or not os.path.exists(metadata_path):
+            return None
+
+        try:
+            # Read metadata
+            with open(metadata_path, 'r') as f:
+                metadata = json.load(f)
+
+            # Read file data
+            with open(temp_file_path, 'rb') as f:
+                file_data = f.read()
+
+            # Recreate InMemoryUploadedFile
+            csv_file = InMemoryUploadedFile(
+                BytesIO(file_data),
+                None,
+                metadata['filename'],
+                'text/csv',
+                len(file_data),
+                None
+            )
+
+            return csv_file
+
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error retrieving temp file {import_id}: {e}")
+            return None
+
+    def cleanup_temp_file(self, import_id, user_id):
+        """Clean up temporary file and metadata"""
+        from django.conf import settings
+
+        temp_dir = getattr(settings, 'FILE_UPLOAD_TEMP_DIR', '/tmp')
+        user_temp_dir = os.path.join(temp_dir, f'imports_{user_id}')
+        temp_file_path = os.path.join(user_temp_dir, f'{import_id}.csv')
+        metadata_path = os.path.join(user_temp_dir, f'{import_id}.meta')
+
+        try:
+            if os.path.exists(temp_file_path):
+                os.remove(temp_file_path)
+            if os.path.exists(metadata_path):
+                os.remove(metadata_path)
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error cleaning up temp file {import_id}: {e}")
+
     def perform_import(self, csv_file):
         """Actually perform the import"""
+        temp_csv_path = None
+        fixtures_file = None
+
         try:
+            # Use Django's temp directory setting
+            from django.conf import settings
+            temp_dir = getattr(settings, 'FILE_UPLOAD_TEMP_DIR', '/tmp')
+            os.makedirs(temp_dir, exist_ok=True)
+
             # Save uploaded file temporarily
-            temp_csv_path = f'/tmp/import_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+            temp_csv_path = os.path.join(temp_dir, f'import_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv')
             with open(temp_csv_path, 'wb') as temp_file:
                 for chunk in csv_file.chunks():
                     temp_file.write(chunk)
@@ -145,20 +297,37 @@ class DataImportView(TemplateView):
             fixtures = self.convert_csv_to_fixtures(temp_csv_path)
 
             # Save fixtures to temporary file
-            fixtures_file = f'/tmp/import_fixtures_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json'
+            fixtures_file = os.path.join(temp_dir, f'import_fixtures_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json')
             with open(fixtures_file, 'w') as f:
                 json.dump(fixtures, f, indent=2)
 
             # Use Django's loaddata command to import the fixtures
             from django.core.management import call_command
             from django.core.management.base import CommandError
+            import logging
+
+            logger = logging.getLogger(__name__)
 
             try:
                 # Add debug logging
+                logger.info(f"Attempting to import {len(fixtures)} fixtures from {fixtures_file}")
                 print(f"Attempting to import {len(fixtures)} fixtures from {fixtures_file}")
 
-                # Import fixtures using Django's loaddata command
-                call_command('loaddata', fixtures_file, verbosity=1)
+                # Import fixtures using Django's loaddata command with better error handling
+                from io import StringIO
+                import sys
+
+                # Capture output from loaddata command
+                old_stdout = sys.stdout
+                sys.stdout = captured_output = StringIO()
+
+                try:
+                    call_command('loaddata', fixtures_file, verbosity=2)
+                    output = captured_output.getvalue()
+                    logger.info(f"Loaddata output: {output}")
+                    print(f"Loaddata output: {output}")
+                finally:
+                    sys.stdout = old_stdout
 
                 # Count what was imported
                 import_counts = {
@@ -177,12 +346,13 @@ class DataImportView(TemplateView):
                 }
 
                 total_imported = sum(import_counts.values())
+                logger.info(f"Successfully imported {total_imported} objects")
                 print(f"Successfully imported {total_imported} objects")
 
                 # Clean up temporary files
-                if os.path.exists(fixtures_file):
+                if fixtures_file and os.path.exists(fixtures_file):
                     os.remove(fixtures_file)
-                if os.path.exists(temp_csv_path):
+                if temp_csv_path and os.path.exists(temp_csv_path):
                     os.remove(temp_csv_path)
 
                 return {
@@ -191,24 +361,21 @@ class DataImportView(TemplateView):
                 }
 
             except CommandError as e:
-                # Clean up temporary files on error
-                if os.path.exists(fixtures_file):
-                    os.remove(fixtures_file)
-                if os.path.exists(temp_csv_path):
-                    os.remove(temp_csv_path)
+                logger.error(f"CommandError during import: {str(e)}")
                 print(f"CommandError during import: {str(e)}")
                 raise Exception(f"Django import failed: {str(e)}")
 
             except Exception as e:
-                # Clean up temporary files on any other error
-                if os.path.exists(fixtures_file):
-                    os.remove(fixtures_file)
-                if os.path.exists(temp_csv_path):
-                    os.remove(temp_csv_path)
+                logger.error(f"Unexpected error during import: {str(e)}")
                 print(f"Unexpected error during import: {str(e)}")
                 raise Exception(f"Unexpected import error: {str(e)}")
 
         except Exception as e:
+            # Clean up temporary files on any error
+            if fixtures_file and os.path.exists(fixtures_file):
+                os.remove(fixtures_file)
+            if temp_csv_path and os.path.exists(temp_csv_path):
+                os.remove(temp_csv_path)
             raise Exception(f"Import failed: {str(e)}")
 
     def convert_csv_to_fixtures(self, csv_file_path):
