@@ -138,10 +138,10 @@
             </div>
 
             <div class="preview-actions">
-                <form method="post" enctype="multipart/form-data" style="display: inline;">
+                <form method="post" style="display: inline;">
                     {% csrf_token %}
-                    <input type="hidden" name="csv_file" value="{{ form.csv_file.value }}">
                     <input type="hidden" name="proceed_with_import" value="true">
+                    <input type="hidden" name="import_id" value="{{ import_id }}">
                     <button type="submit" class="btn btn-success">
                         <i class="material-icons-round">cloud_upload</i>
                         Proceed with Import
