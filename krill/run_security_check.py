@@ -38,38 +38,38 @@ def check_django_deployment():
 def check_security_settings():
     """Check critical security settings"""
     print("🔍 Checking security settings...")
-    
+
     # Import Django settings
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'krill.settings')
-    
+
     try:
         from django.conf import settings
-        
+
         issues = []
-        
+
         # Check DEBUG setting
         if settings.DEBUG:
             issues.append("⚠️  DEBUG is True (should be False in production)")
-        
+
         # Check SECRET_KEY
         default_key = 'django-insecure-t9u1+2ux%d02^oc1fhy%rlyybh%)y28y=ee_8^%+rb^2i6i6cj'
         if settings.SECRET_KEY == default_key:
             issues.append("❌ SECRET_KEY is still the default Django key")
-        
+
         # Check ALLOWED_HOSTS
         if not settings.ALLOWED_HOSTS or settings.ALLOWED_HOSTS == ['*']:
             issues.append("❌ ALLOWED_HOSTS is not properly configured")
-        
+
         # Check security middleware
         required_middleware = [
             'django.middleware.security.SecurityMiddleware',
             'django.middleware.csrf.CsrfViewMiddleware',
         ]
-        
+
         for middleware in required_middleware:
             if middleware not in settings.MIDDLEWARE:
                 issues.append(f"❌ Missing required middleware: {middleware}")
-        
+
         if issues:
             print("❌ Security issues found:")
             for issue in issues:
@@ -78,7 +78,7 @@ def check_security_settings():
         else:
             print("✅ Security settings look good")
             return True
-            
+
     except ImportError as e:
         print(f"❌ Could not import Django settings: {e}")
         return False
@@ -86,7 +86,7 @@ def check_security_settings():
 def check_dependencies():
     """Check for known security vulnerabilities in dependencies"""
     print("🔍 Checking dependencies for security vulnerabilities...")
-    
+
     # Try to run safety check if available
     result = run_command("safety check", check=False)
     if result.returncode == 0:
@@ -103,20 +103,20 @@ def check_dependencies():
 def check_file_permissions():
     """Check file permissions"""
     print("🔍 Checking file permissions...")
-    
+
     sensitive_files = [
         '.env',
         'settings_production.py',
         'db.sqlite3',
     ]
-    
+
     issues = []
     for file_path in sensitive_files:
         if os.path.exists(file_path):
             stat = os.stat(file_path)
             if stat.st_mode & 0o777 == 0o666:  # World readable/writable
                 issues.append(f"⚠️  {file_path} is world readable")
-    
+
     if issues:
         print("⚠️  File permission issues found:")
         for issue in issues:
@@ -129,15 +129,15 @@ def check_file_permissions():
 def check_environment_variables():
     """Check if critical environment variables are set"""
     print("🔍 Checking environment variables...")
-    
+
     # This is a basic check - in production you'd want to check specific variables
     critical_vars = ['DJANGO_SECRET_KEY', 'DB_PASSWORD']
-    
+
     missing_vars = []
     for var in critical_vars:
         if not os.environ.get(var):
             missing_vars.append(var)
-    
+
     if missing_vars:
         print(f"⚠️  Missing environment variables: {', '.join(missing_vars)}")
         return False
@@ -149,7 +149,7 @@ def main():
     """Run all security checks"""
     print("🚀 Starting Krill Security Check")
     print("=" * 50)
-    
+
     checks = [
         ("Django Deployment", check_django_deployment),
         ("Security Settings", check_security_settings),
@@ -157,7 +157,7 @@ def main():
         ("File Permissions", check_file_permissions),
         ("Environment Variables", check_environment_variables),
     ]
-    
+
     results = []
     for name, check_func in checks:
         print(f"\n📋 {name} Check:")
@@ -167,20 +167,20 @@ def main():
         except Exception as e:
             print(f"❌ Error during {name} check: {e}")
             results.append((name, False))
-    
+
     # Summary
     print("\n" + "=" * 50)
     print("📊 Security Check Summary:")
-    
+
     passed = sum(1 for _, result in results if result)
     total = len(results)
-    
+
     for name, result in results:
         status = "✅ PASS" if result else "❌ FAIL"
         print(f"  {name}: {status}")
-    
+
     print(f"\nOverall: {passed}/{total} checks passed")
-    
+
     if passed == total:
         print("\n🎉 All security checks passed!")
         print("✅ Your application is ready for deployment")

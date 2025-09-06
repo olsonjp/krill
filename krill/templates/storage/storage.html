@@ -162,7 +162,7 @@
         background: var(--color-primary);
         color: white;
     }
-    
+
     /* Clickable card styles */
     .stat-card.clickable {
         text-decoration: none;
@@ -170,56 +170,56 @@
         transition: all 0.2s ease;
         cursor: pointer;
     }
-    
+
     .stat-card.clickable:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     }
-    
+
     .action-btn {
         text-decoration: none;
         color: inherit;
         transition: all 0.2s ease;
     }
-    
+
     .action-btn:hover {
         transform: translateY(-1px);
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
-    
+
     /* Loading and error states */
     .loading {
         opacity: 0.6;
         animation: pulse 1.5s ease-in-out infinite;
     }
-    
+
     .error {
         color: #dc3545;
         font-weight: 500;
     }
-    
+
     @keyframes pulse {
         0% { opacity: 0.6; }
         50% { opacity: 1; }
         100% { opacity: 0.6; }
     }
-    
+
     /* Enhanced hover effects */
     .stat-card.clickable:hover .material-icons-round {
         transform: scale(1.1);
         transition: transform 0.2s ease;
     }
-    
+
     .action-btn:hover .material-icons-round {
         transform: scale(1.1);
         transition: transform 0.2s ease;
     }
-    
+
     .freezer-unit.clickable {
         cursor: pointer;
         transition: all 0.2s ease;
     }
-    
+
     .freezer-unit.clickable:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -231,34 +231,34 @@
 async function loadStorageData() {
     // Show loading state
     showStorageLoadingState();
-    
+
     try {
         const response = await fetch('{% url "reports:storage_dashboard" %}');
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        
+
         // Update stat cards
         const freezerCount = document.getElementById('freezerCount');
         const boxCount = document.getElementById('boxCount');
         const sampleCount = document.getElementById('sampleCount');
-        
+
         if (freezerCount) {
             freezerCount.textContent = `${data.active_devices} Active Units`;
             freezerCount.classList.remove('loading');
         }
-        
+
         if (boxCount) {
             boxCount.textContent = `${data.used_boxes} / ${data.total_boxes} Available`;
             boxCount.classList.remove('loading');
         }
-        
+
         if (sampleCount) {
             sampleCount.textContent = `${data.stored_aliquots} Stored`;
             sampleCount.classList.remove('loading');
         }
-        
+
         // Update freezer grid
         const freezerGrid = document.getElementById('freezerGrid');
         if (freezerGrid) {
@@ -275,10 +275,10 @@ async function loadStorageData() {
                 freezerGrid.innerHTML = '<p>No freezer units found</p>';
             }
         }
-        
+
         // Hide loading state
         hideStorageLoadingState();
-        
+
     } catch (error) {
         console.error('Error loading storage data:', error);
         showStorageErrorState();
@@ -315,7 +315,7 @@ function showStorageErrorState() {
             element.textContent = 'Error';
         }
     });
-    
+
     // Show error notification
     showStorageNotification('Failed to load storage data. Please refresh the page.', 'error');
 }
@@ -326,7 +326,7 @@ function showStorageNotification(message, type = 'info') {
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
     notification.textContent = message;
-    
+
     // Add styles
     notification.style.cssText = `
         position: fixed;
@@ -341,7 +341,7 @@ function showStorageNotification(message, type = 'info') {
         transform: translateX(100%);
         transition: all 0.3s ease;
     `;
-    
+
     // Set background color based on type
     if (type === 'error') {
         notification.style.backgroundColor = '#dc3545';
@@ -350,16 +350,16 @@ function showStorageNotification(message, type = 'info') {
     } else {
         notification.style.backgroundColor = '#007bff';
     }
-    
+
     // Add to page
     document.body.appendChild(notification);
-    
+
     // Animate in
     setTimeout(() => {
         notification.style.opacity = '1';
         notification.style.transform = 'translateX(0)';
     }, 100);
-    
+
     // Remove after 5 seconds
     setTimeout(() => {
         notification.style.opacity = '0';
@@ -383,4 +383,4 @@ document.addEventListener('DOMContentLoaded', function() {
     loadStorageData();
 });
 </script>
-{% endblock %} 
+{% endblock %}

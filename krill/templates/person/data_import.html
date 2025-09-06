@@ -17,7 +17,7 @@
             <strong>Error:</strong> {{ error }}
         </div>
         {% endif %}
-        
+
         {% if messages %}
             {% for message in messages %}
                 <div class="{% if message.tags == 'error' %}error-message{% else %}success-message{% endif %}">
@@ -25,16 +25,16 @@
                 </div>
             {% endfor %}
         {% endif %}
-        
+
         <div class="import-form">
             <h3><i class="material-icons-round">file_upload</i> Upload CSV File</h3>
             <p class="form-description">
                 Import sample data from CSV files. The system will automatically create sources, samples, storage locations, and aliquots based on your data.
             </p>
-            
+
             <form method="post" enctype="multipart/form-data">
                 {% csrf_token %}
-                
+
                 <div class="detail-field">
                     {{ form.csv_file.label_tag }}
                     {{ form.csv_file }}
@@ -49,27 +49,18 @@
                         </div>
                     {% endif %}
                 </div>
-                
-                <div class="detail-field">
-                    {{ form.dry_run.label_tag }}
-                    {{ form.dry_run }}
-                    {% if form.dry_run.help_text %}
-                        <div class="help-text">{{ form.dry_run.help_text }}</div>
-                    {% endif %}
-                </div>
-                
+
+
                 <div class="form-buttons">
                     <button type="submit" class="btn btn-primary">
-                        <i class="material-icons-round">
-                            {% if dry_run %}cloud_upload{% else %}preview{% endif %}
-                        </i>
-                        {% if dry_run %}Import Data{% else %}Preview Import{% endif %}
+                        <i class="material-icons-round">preview</i>
+                        Preview Import
                     </button>
                     <a href="{% url 'person:user_list' %}" class="btn btn-secondary">Cancel</a>
                 </div>
             </form>
         </div>
-        
+
         {% if preview_data %}
         <div class="preview-section">
             <h3><i class="material-icons-round">preview</i> Import Preview</h3>
@@ -77,7 +68,7 @@
                 <i class="material-icons-round">info</i>
                 <p><strong>This is a preview. No data has been imported yet.</strong></p>
             </div>
-            
+
             <div class="preview-grid">
                 <div class="preview-item">
                     <h4>Sources</h4>
@@ -88,7 +79,7 @@
                         {% endfor %}
                     </div>
                 </div>
-                
+
                 <div class="preview-item">
                     <h4>Samples</h4>
                     <div class="preview-count">{{ preview_data.samples|length }}</div>
@@ -98,7 +89,7 @@
                         {% endfor %}
                     </div>
                 </div>
-                
+
                 <div class="preview-item">
                     <h4>Storage Items</h4>
                     <div class="preview-count">{{ preview_data.storage_items|length }}</div>
@@ -108,7 +99,7 @@
                         {% endfor %}
                     </div>
                 </div>
-                
+
                 <div class="preview-item">
                     <h4>Aliquot Types</h4>
                     <div class="preview-count">{{ preview_data.aliquot_types|length }}</div>
@@ -118,7 +109,7 @@
                         {% endfor %}
                     </div>
                 </div>
-                
+
                 <div class="preview-item">
                     <h4>Dispositions</h4>
                     <div class="preview-count">{{ preview_data.dispositions|length }}</div>
@@ -128,7 +119,7 @@
                         {% endfor %}
                     </div>
                 </div>
-                
+
                 <div class="preview-item">
                     <h4>Summary</h4>
                     <div class="preview-count">{{ preview_data.aliquots }}</div>
@@ -137,16 +128,20 @@
                             <strong>Total Aliquots:</strong> {{ preview_data.aliquots }}
                         </div>
                         <div class="preview-list-item">
+                            <strong>Total Tubes:</strong> {{ preview_data.tubes }}
+                        </div>
+                        <div class="preview-list-item">
                             <strong>With Locations:</strong> {{ preview_data.locations }}
                         </div>
                     </div>
                 </div>
             </div>
-            
+
             <div class="preview-actions">
                 <form method="post" enctype="multipart/form-data" style="display: inline;">
                     {% csrf_token %}
                     <input type="hidden" name="csv_file" value="{{ form.csv_file.value }}">
+                    <input type="hidden" name="proceed_with_import" value="true">
                     <button type="submit" class="btn btn-success">
                         <i class="material-icons-round">cloud_upload</i>
                         Proceed with Import
@@ -286,11 +281,11 @@
     .preview-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .preview-item {
         padding: 1rem;
     }
-    
+
     .preview-count {
         font-size: 1.5rem;
     }

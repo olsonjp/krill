@@ -14,12 +14,12 @@
             <div class="form-row">
                 <div class="form-group">
                     <label for="searchQuery">Search Query</label>
-                    <input type="text" id="searchQuery" name="q" class="form-control" 
+                    <input type="text" id="searchQuery" name="q" class="form-control"
                            value="{{ query }}" placeholder="Search by name, description, or type...">
                 </div>
                 <div class="form-group">
                     <label for="sampleType">Sample Type</label>
-                    <input type="text" id="sampleType" name="type" class="form-control" 
+                    <input type="text" id="sampleType" name="type" class="form-control"
                            value="{{ sample_type }}" placeholder="Filter by sample type">
                 </div>
                 <div class="form-group">
@@ -73,7 +73,7 @@
                         {% endif %}
                         <p><strong>Created:</strong> {{ sample.created_at|date:"M d, Y"|default:"Unknown" }}</p>
                         {% if sample.access_level %}
-                            <p><strong>Access Level:</strong> 
+                            <p><strong>Access Level:</strong>
                                 <span class="access-level-badge access-{{ sample.access_level }}">
                                     {{ sample.get_access_level_display }}
                                 </span>
@@ -98,16 +98,16 @@
             {% if samples.has_other_pages %}
             <div class="pagination">
                 {% if samples.has_previous %}
-                    <a href="?q={{ query }}&type={{ sample_type }}&disposition={{ disposition }}&page={{ samples.previous_page_number }}" 
+                    <a href="?q={{ query }}&type={{ sample_type }}&disposition={{ disposition }}&page={{ samples.previous_page_number }}"
                        class="page-link">&laquo; Previous</a>
                 {% endif %}
-                
+
                 <span class="current-page">
                     Page {{ samples.number }} of {{ samples.paginator.num_pages }}
                 </span>
-                
+
                 {% if samples.has_next %}
-                    <a href="?q={{ query }}&type={{ sample_type }}&disposition={{ disposition }}&page={{ samples.next_page_number }}" 
+                    <a href="?q={{ query }}&type={{ sample_type }}&disposition={{ disposition }}&page={{ samples.next_page_number }}"
                        class="page-link">Next &raquo;</a>
                 {% endif %}
             </div>
@@ -154,11 +154,11 @@ function performSearch() {
     const form = document.getElementById('sampleSearchForm');
     const formData = new FormData(form);
     const params = new URLSearchParams(formData);
-    
+
     // Update URL with search parameters
     const newUrl = `${window.location.pathname}?${params.toString()}`;
     window.history.pushState({}, '', newUrl);
-    
+
     // Reload page with search parameters
     window.location.reload();
 }
@@ -186,14 +186,14 @@ function exportResults() {
     const query = document.getElementById('searchQuery').value;
     const type = document.getElementById('sampleType').value;
     const disposition = document.getElementById('disposition').value;
-    
+
     const params = new URLSearchParams({
         q: query,
         type: type,
         disposition: disposition,
         format: 'csv'
     });
-    
+
     window.location.href = `/samples/search/?${params.toString()}`;
 }
 
@@ -492,21 +492,21 @@ document.addEventListener('DOMContentLoaded', setupAutoSearch);
     .search-form .form-row {
         grid-template-columns: 1fr;
     }
-    
+
     .results-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .results-header {
         flex-direction: column;
         gap: 15px;
         align-items: flex-start;
     }
-    
+
     .form-actions {
         flex-direction: column;
     }
-    
+
     .action-buttons {
         flex-direction: column;
         align-items: center;

@@ -189,7 +189,7 @@ def convert_csv_to_fixtures(csv_file):
                         }
                     })
                     pk_counter['tube'] += 1
-                    
+
                     # Create AliquotLocation if box exists and this is the first tube
                     if tube_num == 1 and box_key in storage['boxes'] and row['Position 3'] and row['Position 4']:
                         fixtures.append({
@@ -211,4 +211,4 @@ def convert_csv_to_fixtures(csv_file):
 # Usage
 # Note: This script now uses the anonymized test data by default
 # The original sensitive data should not be used for testing
-convert_csv_to_fixtures('../data/anonymized_test_data.csv') 
+convert_csv_to_fixtures('../data/anonymized_test_data.csv')

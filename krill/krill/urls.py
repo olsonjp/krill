@@ -25,7 +25,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LogoutView
 from .views.auth import KrillLoginView
 from .views.home import HomeView, SettingsView, ReportsView, dashboard_stats
-from person.views import toggle_theme  
+from person.views import toggle_theme
 from .views.preferences import get_user_preferences, save_user_preferences
 
 admin.site.site_header = "Krill Admin"

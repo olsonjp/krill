@@ -38,20 +38,20 @@ class DataImportForm(forms.Form):
 @method_decorator(staff_member_required, name='dispatch')
 class DataImportView(TemplateView):
     template_name = 'admin/data_import.html'
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['form'] = DataImportForm()
         context['title'] = 'Data Import'
         context['opts'] = {'app_label': 'person', 'model_name': 'dataimport'}
         return context
-    
+
     def post(self, request, *args, **kwargs):
         form = DataImportForm(request.POST, request.FILES)
         if form.is_valid():
             csv_file = form.cleaned_data['csv_file']
             dry_run = form.cleaned_data['dry_run']
-            
+
             try:
                 if dry_run:
                     # Preview mode
@@ -66,18 +66,18 @@ class DataImportView(TemplateView):
                     import_result = self.perform_import(csv_file)
                     messages.success(request, f'Successfully imported {import_result["total"]} records')
                     return redirect('admin:index')
-                    
+
             except Exception as e:
                 messages.error(request, f'Import failed: {str(e)}')
                 context = self.get_context_data()
                 context['form'] = form
                 context['error'] = str(e)
                 return render(request, self.template_name, context)
-        
+
         context = self.get_context_data()
         context['form'] = form
         return render(request, self.template_name, context)
-    
+
     def preview_import(self, csv_file):
         """Preview the import data without creating records"""
         preview_data = {
@@ -89,12 +89,12 @@ class DataImportView(TemplateView):
             'aliquots': 0,
             'locations': 0
         }
-        
+
         try:
             # Read CSV file
             decoded_file = csv_file.read().decode('utf-8')
             csv_file.seek(0)  # Reset file pointer
-            
+
             reader = csv.DictReader(decoded_file.splitlines(), delimiter=';')
             for row in reader:
                 # Collect unique values
@@ -112,35 +112,35 @@ class DataImportView(TemplateView):
                     preview_data['aliquot_types'].add(row['Aliquot Type'])
                 if row.get('Disposition'):
                     preview_data['dispositions'].add(row['Disposition'])
-                
+
                 preview_data['aliquots'] += 1
                 if row.get('Position 3') and row.get('Position 4'):
                     preview_data['locations'] += 1
-            
+
             # Convert sets to sorted lists for display
             for key in ['sources', 'samples', 'storage_items', 'aliquot_types', 'dispositions']:
                 preview_data[key] = sorted(list(preview_data[key]))
-                
+
         except Exception as e:
             raise Exception(f"Error reading CSV file: {str(e)}")
-        
+
         return preview_data
-    
+
     def perform_import(self, csv_file):
         """Actually perform the import"""
         try:
             # Read CSV file
             decoded_file = csv_file.read().decode('utf-8')
             csv_file.seek(0)  # Reset file pointer
-            
+
             # Parse CSV and create fixtures
             fixtures = self.parse_csv_to_fixtures(decoded_file)
-            
+
             # Save fixtures to file (this could be enhanced to directly create Django objects)
             fixtures_file = f'import_fixtures_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json'
             with open(fixtures_file, 'w') as f:
                 json.dump(fixtures, f, indent=2)
-            
+
             return {
                 'total': len(fixtures),
                 'sources': len([f for f in fixtures if f['model'] == 'sample.source']),
@@ -148,22 +148,22 @@ class DataImportView(TemplateView):
                 'aliquots': len([f for f in fixtures if f['model'] == 'sample.aliquot']),
                 'fixtures_file': fixtures_file
             }
-            
+
         except Exception as e:
             raise Exception(f"Import failed: {str(e)}")
-    
+
     def parse_csv_to_fixtures(self, csv_content):
         """Parse CSV content and convert to Django fixtures format"""
         fixtures = []
         pk_counter = defaultdict(lambda: 1)
-        
+
         # Mapping dictionaries to track created objects
         sources = {}
         samples = {}
         storage = {'sites': {}, 'devices': {}, 'shelves': {}, 'racks': {}, 'boxes': {}}
         aliquot_types = {}
         dispositions = {}
-        
+
         # Read CSV content
         reader = csv.DictReader(csv_content.splitlines(), delimiter=';')
         for row in reader:
@@ -180,7 +180,7 @@ class DataImportView(TemplateView):
                     }
                 })
                 pk_counter['source'] += 1
-            
+
             # Create Sample if not exists
             sample_key = row.get('Cell Line')
             if sample_key and sample_key not in samples:
@@ -196,14 +196,14 @@ class DataImportView(TemplateView):
                     }
                 })
                 pk_counter['sample'] += 1
-            
+
             # Create Storage hierarchy
             site_name = 'Sikora Lab'
             freezer_name = row.get('Freezer Name')
             shelf_name = "Shelf 1"
             rack_name = row.get('Position 1')
             box_name = row.get('Position 2')
-            
+
             if site_name not in storage['sites']:
                 storage['sites'][site_name] = pk_counter['site']
                 fixtures.append({
@@ -212,7 +212,7 @@ class DataImportView(TemplateView):
                     'fields': {'name': site_name}
                 })
                 pk_counter['site'] += 1
-            
+
             if freezer_name:
                 if freezer_name not in storage['devices']:
                     storage['devices'][freezer_name] = pk_counter['device']
@@ -226,7 +226,7 @@ class DataImportView(TemplateView):
                         }
                     })
                     pk_counter['device'] += 1
-            
+
             if shelf_name and rack_name and box_name:
                 if shelf_name not in storage['shelves']:
                     storage['shelves'][shelf_name] = pk_counter['shelf']
@@ -240,7 +240,7 @@ class DataImportView(TemplateView):
                         }
                     })
                     pk_counter['shelf'] += 1
-                
+
                 if rack_name not in storage['racks']:
                     storage['racks'][rack_name] = pk_counter['rack']
                     fixtures.append({
@@ -253,7 +253,7 @@ class DataImportView(TemplateView):
                         }
                     })
                     pk_counter['rack'] += 1
-                
+
                 box_key = f"{shelf_name}_{rack_name}_{box_name}"
                 if box_key not in storage['boxes']:
                     storage['boxes'][box_key] = pk_counter['box']
@@ -269,7 +269,7 @@ class DataImportView(TemplateView):
                         }
                     })
                     pk_counter['box'] += 1
-            
+
             # Create AliquotType if not exists
             aliquot_type = row.get('Aliquot Type') or 'Unknown'
             if aliquot_type not in aliquot_types:
@@ -283,7 +283,7 @@ class DataImportView(TemplateView):
                     }
                 })
                 pk_counter['aliquot_type'] += 1
-            
+
             # Map disposition
             disposition_map = {
                 'In Storage': 'stored',
@@ -304,7 +304,7 @@ class DataImportView(TemplateView):
                     }
                 })
                 pk_counter['disposition'] += 1
-            
+
             # Create Aliquot
             aliquot_pk = pk_counter['aliquot']
             fixtures.append({
@@ -322,7 +322,7 @@ class DataImportView(TemplateView):
                 }
             })
             pk_counter['aliquot'] += 1
-            
+
             # Create AliquotLocation if box exists
             if box_key in storage['boxes'] and row.get('Position 3') and row.get('Position 4'):
                 fixtures.append({
@@ -336,7 +336,7 @@ class DataImportView(TemplateView):
                     }
                 })
                 pk_counter['location'] += 1
-        
+
         return fixtures
 
 
@@ -345,7 +345,7 @@ class KrillAdminSite(admin.AdminSite):
     site_header = "Krill Laboratory Management System"
     site_title = "Krill Admin"
     index_title = "Welcome to Krill Administration"
-    
+
     def get_urls(self):
         urls = super().get_urls()
         custom_urls = [
@@ -370,7 +370,7 @@ class CustomUserAdmin(UserAdmin):
         ('Additional Info', {'fields': ('role_display',)}),
     )
     readonly_fields = ('role_display',)
-    
+
     def role_display(self, obj):
         if hasattr(obj, 'role'):
             role_colors = {
@@ -415,7 +415,7 @@ class UserRoleAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
-    
+
     def get_queryset(self, request):
         return super().get_queryset(request).select_related('user')
 
@@ -438,12 +438,12 @@ class PermissionAdmin(admin.ModelAdmin):
             'fields': ('is_valid',)
         }),
     )
-    
+
     def is_valid(self, obj):
         return obj.is_valid()
     is_valid.boolean = True
     is_valid.short_description = 'Valid'
-    
+
     def get_queryset(self, request):
         return super().get_queryset(request).select_related('user', 'granted_by', 'content_type')
 
@@ -472,19 +472,19 @@ class UserAuditLogAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
-    
+
     def has_add_permission(self, request):
         return False
-    
+
     def has_change_permission(self, request, obj=None):
         return False
-    
+
     def has_delete_permission(self, request, obj=None):
         return request.user.is_superuser
-    
+
     def get_queryset(self, request):
         return super().get_queryset(request).select_related('user')
-    
+
     def details_formatted(self, obj):
         if obj.details:
             formatted = []

@@ -111,7 +111,7 @@
     .storage-card .progress svg circle {
         stroke-dashoffset: calc(227 - (227 * var(--percentage)) / 100);
     }
-    
+
     /* Clickable card styles */
     .stat-card.clickable {
         text-decoration: none;
@@ -119,67 +119,67 @@
         transition: all 0.2s ease;
         cursor: pointer;
     }
-    
+
     .stat-card.clickable:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     }
-    
+
     .action-btn {
         text-decoration: none;
         color: inherit;
         transition: all 0.2s ease;
     }
-    
+
     .action-btn:hover {
         transform: translateY(-1px);
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
-    
+
     .activity-item.clickable {
         cursor: pointer;
         transition: all 0.2s ease;
     }
-    
+
     .activity-item.clickable:hover {
         background-color: rgba(0, 0, 0, 0.05);
         transform: translateX(4px);
     }
-    
+
     .view-all {
         text-decoration: none;
         color: #007bff;
         font-weight: 500;
         transition: color 0.2s ease;
     }
-    
+
     .view-all:hover {
         color: #0056b3;
     }
-    
+
     /* Loading and error states */
     .loading {
         opacity: 0.6;
         animation: pulse 1.5s ease-in-out infinite;
     }
-    
+
     .error {
         color: #dc3545;
         font-weight: 500;
     }
-    
+
     @keyframes pulse {
         0% { opacity: 0.6; }
         50% { opacity: 1; }
         100% { opacity: 0.6; }
     }
-    
+
     /* Enhanced hover effects */
     .stat-card.clickable:hover .material-icons-round {
         transform: scale(1.1);
         transition: transform 0.2s ease;
     }
-    
+
     .action-btn:hover .material-icons-round {
         transform: scale(1.1);
         transition: transform 0.2s ease;
@@ -216,7 +216,7 @@
         if (!actionType || actionType === 'system_init') {
             return; // Don't navigate for system activities
         }
-        
+
         if (actionType.includes('sample')) {
             if (targetId) {
                 window.location.href = `/samples/${targetId}/`;

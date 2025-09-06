@@ -21,7 +21,7 @@
     --color-success-dark: #155724;
     --color-info-light: #e2e3e5;
     --color-info-dark: #383d41;
-    
+
     /* Additional utility colors */
     --color-success-lighter: #e0f2e9;
     --color-success-darker: #2d6a4f;
@@ -31,12 +31,12 @@
     --color-gray-light: #f8f9fa;
     --color-gray-medium: #e9ecef;
     --color-gray-border: #dee2e6;
-    
+
     /* Additional status badge colors */
     --color-danger-lighter: #fce4e4;
     --color-danger-darker: #cc0000;
     --color-warning-darker: #cc8800;
-    
+
     /* Softer button colors for better UX */
     --color-success-soft: #4CAF50;
     --color-danger-soft: #E91E63;
@@ -61,7 +61,7 @@
     --color-dark-variant: #a3bdcc;
     --color-light: rgba(0, 0, 0, 0.4);
     --box-shadow: 0 2rem 3rem var(--color-light);
-    
+
     /* Dark mode status badge colors - adjusted for dark theme */
     --color-danger-light: #2d1b1e;
     --color-danger-dark: #f5c6cb;
@@ -71,7 +71,7 @@
     --color-success-dark: #d4edda;
     --color-info-light: #1e1e2d;
     --color-info-dark: #e2e3e5;
-    
+
     /* Dark mode utility colors */
     --color-success-lighter: #1e2d1e;
     --color-success-darker: #d4edda;
@@ -81,12 +81,12 @@
     --color-gray-light: #2d2d2d;
     --color-gray-medium: #404040;
     --color-gray-border: #555555;
-    
+
     /* Dark mode additional status badge colors */
     --color-danger-lighter: #2d1b1e;
     --color-danger-darker: #f5c6cb;
     --color-warning-darker: #fff3cd;
-    
+
     /* Dark mode softer button colors */
     --color-success-soft: #66BB6A;
     --color-danger-soft: #F06292;
@@ -105,7 +105,7 @@
 }
 
 html{
-    font-size: 14px 
+    font-size: 14px
 }
 
 body{
@@ -1002,7 +1002,6 @@ main table tbody tr:last-child td{
     margin: 0 0.5rem;
     border-radius: var(--border-radius-1);
 }
-
 
 
 /* List Container Styles */

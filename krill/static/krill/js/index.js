@@ -11,11 +11,11 @@ function initializeDarkMode() {
     if (darkMode) {
         // Check if body already has dark mode class (set by Django template)
         const isDarkMode = document.body.classList.contains('dark-mode-variables');
-        
+
         // Update the toggle state to match current theme
         const lightIcon = darkMode.querySelector('span:nth-child(1)');
         const darkIcon = darkMode.querySelector('span:nth-child(2)');
-        
+
         if (isDarkMode) {
             lightIcon.classList.remove('active');
             darkIcon.classList.add('active');
@@ -29,12 +29,12 @@ function initializeDarkMode() {
 if (darkMode) {
     // Initialize dark mode state
     initializeDarkMode();
-    
+
     darkMode.addEventListener('click', async () => {
         try {
             // Try to get CSRF token from hidden field first, then fall back to cookie
             const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || getCookie('csrftoken');
-            
+
             const response = await fetch('/preferences/theme/', {
                 method: 'POST',
                 headers: {
@@ -83,4 +83,4 @@ function getCookie(name) {
         }
     }
     return cookieValue;
-} 
+}

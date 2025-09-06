@@ -12,7 +12,7 @@ class ReportTemplate(models.Model):
         ('storage_audit', 'Storage Audit'),
         ('custom', 'Custom Report'),
     ]
-    
+
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True, null=True)
     report_type = models.CharField(max_length=50, choices=REPORT_TYPE_CHOICES)
@@ -37,14 +37,14 @@ class Report(models.Model):
         ('failed', 'Failed'),
         ('cancelled', 'Cancelled'),
     ]
-    
+
     FORMAT_CHOICES = [
         ('pdf', 'PDF'),
         ('csv', 'CSV'),
         ('json', 'JSON'),
         ('excel', 'Excel'),
     ]
-    
+
     template = models.ForeignKey(ReportTemplate, on_delete=models.CASCADE, related_name='reports')
     name = models.CharField(max_length=200)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
@@ -91,7 +91,7 @@ class ScheduledReport(models.Model):
         ('quarterly', 'Quarterly'),
         ('yearly', 'Yearly'),
     ]
-    
+
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True, null=True)
     template = models.ForeignKey(ReportTemplate, on_delete=models.CASCADE, related_name='scheduled_reports')
@@ -119,14 +119,14 @@ class Alert(models.Model):
         ('high', 'High'),
         ('critical', 'Critical'),
     ]
-    
+
     STATUS_CHOICES = [
         ('active', 'Active'),
         ('acknowledged', 'Acknowledged'),
         ('resolved', 'Resolved'),
         ('dismissed', 'Dismissed'),
     ]
-    
+
     ALERT_TYPE_CHOICES = [
         ('storage', 'Storage'),
         ('sample', 'Sample'),
@@ -134,7 +134,7 @@ class Alert(models.Model):
         ('security', 'Security'),
         ('general', 'General'),
     ]
-    
+
     title = models.CharField(max_length=200)
     message = models.TextField()
     severity = models.CharField(max_length=20, choices=SEVERITY_CHOICES, default='medium')
@@ -166,6 +166,3 @@ class Alert(models.Model):
 
     class Meta:
         ordering = ['-created_at']
-
-
-

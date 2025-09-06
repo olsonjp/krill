@@ -14,7 +14,7 @@
         margin: 0 auto;
         padding: 20px;
     }
-    
+
     .import-form {
         background: #fff;
         padding: 20px;
@@ -22,35 +22,35 @@
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         margin-bottom: 20px;
     }
-    
+
     .form-row {
         margin-bottom: 15px;
     }
-    
+
     .form-row label {
         display: block;
         font-weight: bold;
         margin-bottom: 5px;
         color: #333;
     }
-    
+
     .form-row input[type="file"],
     .form-row input[type="checkbox"] {
         margin-top: 5px;
     }
-    
+
     .help-text {
         color: #666;
         font-size: 0.9em;
         margin-top: 5px;
     }
-    
+
     .submit-row {
         margin-top: 20px;
         padding-top: 20px;
         border-top: 1px solid #eee;
     }
-    
+
     .btn {
         display: inline-block;
         padding: 10px 20px;
@@ -61,81 +61,81 @@
         text-decoration: none;
         font-size: 14px;
     }
-    
+
     .btn-primary {
         background: #79aec8;
         color: white;
     }
-    
+
     .btn-primary:hover {
         background: #417690;
     }
-    
+
     .btn-secondary {
         background: #f8f9fa;
         color: #333;
         border: 1px solid #ddd;
     }
-    
+
     .btn-secondary:hover {
         background: #e9ecef;
     }
-    
+
     .preview-section {
         background: #f8f9fa;
         padding: 20px;
         border-radius: 8px;
         margin-top: 20px;
     }
-    
+
     .preview-section h3 {
         margin-top: 0;
         color: #333;
         border-bottom: 2px solid #79aec8;
         padding-bottom: 10px;
     }
-    
+
     .preview-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
         gap: 20px;
         margin-top: 15px;
     }
-    
+
     .preview-item {
         background: white;
         padding: 15px;
         border-radius: 6px;
         border-left: 4px solid #79aec8;
     }
-    
+
     .preview-item h4 {
         margin: 0 0 10px 0;
         color: #333;
         font-size: 1.1em;
     }
-    
+
     .preview-list {
         list-style: none;
         padding: 0;
         margin: 0;
     }
-    
+
     .preview-list li {
         padding: 3px 0;
         border-bottom: 1px solid #eee;
     }
-    
+
     .preview-list li:last-child {
         border-bottom: none;
     }
-    
+
     .preview-count {
         font-size: 1.2em;
         font-weight: bold;
         color: #79aec8;
     }
-    
+
     .error-message {
         background: #f8d7da;
         color: #721c24;
@@ -144,7 +144,7 @@
         border: 1px solid #f5c6cb;
         margin-bottom: 20px;
     }
-    
+
     .success-message {
         background: #d4edda;
         color: #155724;
@@ -167,13 +167,13 @@
 {% block content %}
 <div class="data-import-container">
     <h1>{% trans 'Data Import' %}</h1>
-    
+
     {% if error %}
     <div class="error-message">
         <strong>Error:</strong> {{ error }}
     </div>
     {% endif %}
-    
+
     {% if messages %}
         {% for message in messages %}
             <div class="{% if message.tags == 'error' %}error-message{% else %}success-message{% endif %}">
@@ -181,12 +181,12 @@
             </div>
         {% endfor %}
     {% endif %}
-    
+
     <div class="import-form">
         <h2>Upload CSV File</h2>
         <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
-            
+
             <div class="form-row">
                 {{ form.csv_file.label_tag }}
                 {{ form.csv_file }}
@@ -197,7 +197,7 @@
                     <div class="error-message">{{ form.csv_file.errors }}</div>
                 {% endif %}
             </div>
-            
+
             <div class="form-row">
                 {{ form.dry_run.label_tag }}
                 {{ form.dry_run }}
@@ -205,19 +205,19 @@
                     <div class="help-text">{{ form.dry_run.help_text }}</div>
                 {% endif %}
             </div>
-            
+
             <div class="submit-row">
                 <input type="submit" value="{% if dry_run %}Import Data{% else %}Preview Import{% endif %}" class="btn btn-primary">
                 <a href="{% url 'admin:index' %}" class="btn btn-secondary">Cancel</a>
             </div>
         </form>
     </div>
-    
+
     {% if preview_data %}
     <div class="preview-section">
         <h3>Import Preview</h3>
         <p><strong>This is a preview. No data has been imported yet.</strong></p>
-        
+
         <div class="preview-grid">
             <div class="preview-item">
                 <h4>Sources</h4>
@@ -228,7 +228,7 @@
                     {% endfor %}
                 </ul>
             </div>
-            
+
             <div class="preview-item">
                 <h4>Samples</h4>
                 <div class="preview-count">{{ preview_data.samples|length }}</div>
@@ -238,7 +238,7 @@
                     {% endfor %}
                 </ul>
             </div>
-            
+
             <div class="preview-item">
                 <h4>Storage Items</h4>
                 <div class="preview-count">{{ preview_data.storage_items|length }}</div>
@@ -248,7 +248,7 @@
                     {% endfor %}
                 </ul>
             </div>
-            
+
             <div class="preview-item">
                 <h4>Aliquot Types</h4>
                 <div class="preview-count">{{ preview_data.aliquot_types|length }}</div>
@@ -258,7 +258,7 @@
                     {% endfor %}
                 </ul>
             </div>
-            
+
             <div class="preview-item">
                 <h4>Dispositions</h4>
                 <div class="preview-count">{{ preview_data.dispositions|length }}</div>
@@ -268,7 +268,7 @@
                     {% endfor %}
                 </ul>
             </div>
-            
+
             <div class="preview-item">
                 <h4>Summary</h4>
                 <div class="preview-count">{{ preview_data.aliquots }}</div>
@@ -278,7 +278,7 @@
                 </ul>
             </div>
         </div>
-        
+
         <div style="margin-top: 20px; text-align: center;">
             <form method="post" enctype="multipart/form-data" style="display: inline;">
                 {% csrf_token %}

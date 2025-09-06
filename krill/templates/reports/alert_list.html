@@ -111,11 +111,11 @@
                 {% if alerts.has_previous %}
                     <a href="?page={{ alerts.previous_page_number }}" class="page-link">&laquo; Previous</a>
                 {% endif %}
-                
+
                 <span class="current-page">
                     Page {{ alerts.number }} of {{ alerts.paginator.num_pages }}
                 </span>
-                
+
                 {% if alerts.has_next %}
                     <a href="?page={{ alerts.next_page_number }}" class="page-link">Next &raquo;</a>
                 {% endif %}
@@ -160,19 +160,19 @@
                     </div>
                     <div class="form-group">
                         <label for="alertType">Alert Type</label>
-                        <input type="text" id="alertType" name="alert_type" class="form-control" 
+                        <input type="text" id="alertType" name="alert_type" class="form-control"
                                placeholder="e.g., storage_full, temperature_warning">
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
                         <label for="targetType">Target Type (Optional)</label>
-                        <input type="text" id="targetType" name="target_type" class="form-control" 
+                        <input type="text" id="targetType" name="target_type" class="form-control"
                                placeholder="e.g., freezer, sample">
                     </div>
                     <div class="form-group">
                         <label for="targetId">Target ID (Optional)</label>
-                        <input type="number" id="targetId" name="target_id" class="form-control" 
+                        <input type="number" id="targetId" name="target_id" class="form-control"
                                placeholder="Target ID">
                     </div>
                 </div>
@@ -197,7 +197,7 @@ function closeCreateAlertModal() {
 function createAlert() {
     const form = document.getElementById('createAlertForm');
     const formData = new FormData(form);
-    
+
     const data = {
         title: formData.get('title'),
         message: formData.get('message'),
@@ -206,7 +206,7 @@ function createAlert() {
         target_type: formData.get('target_type'),
         target_id: formData.get('target_id') ? parseInt(formData.get('target_id')) : null,
     };
-    
+
     fetch('{% url "reports:create_alert" %}', {
         method: 'POST',
         headers: {
@@ -670,22 +670,22 @@ window.onclick = function(event) {
         gap: 15px;
         align-items: flex-start;
     }
-    
+
     .list-header {
         flex-direction: column;
         gap: 15px;
         align-items: flex-start;
     }
-    
+
     .list-filters {
         flex-direction: column;
         width: 100%;
     }
-    
+
     .alerts-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .form-row {
         grid-template-columns: 1fr;
     }

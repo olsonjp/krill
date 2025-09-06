@@ -32,7 +32,7 @@ def get_user_preferences(request):
             user=request.user,
             defaults={'dark_mode': False}
         )
-        
+
         return JsonResponse({
             'success': True,
             'preferences': {
@@ -52,23 +52,23 @@ def save_user_preferences(request):
     """Save all user preferences"""
     try:
         data = json.loads(request.body)
-        
+
         # Get or create user preference
         preference, created = UserPreference.objects.get_or_create(
             user=request.user,
             defaults={'dark_mode': False}
         )
-        
+
         # Update dark mode if provided
         if 'dark_mode' in data:
             preference.dark_mode = data['dark_mode']
             preference.save()
-        
+
         # Update display name (user's first_name field)
         if 'display_name' in data:
             request.user.first_name = data['display_name']
             request.user.save()
-        
+
         return JsonResponse({
             'success': True,
             'message': 'Preferences saved successfully'

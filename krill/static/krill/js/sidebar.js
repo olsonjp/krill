@@ -17,4 +17,4 @@ document.addEventListener('DOMContentLoaded', function() {
             document.querySelector('aside').classList.toggle('collapsed');
         });
     }
-}); 
+});

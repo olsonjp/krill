@@ -189,7 +189,7 @@ class SettingsView(View):
             user=request.user,
             defaults={'dark_mode': False}
         )
-        
+
         context = {
             'user_preference': user_preference
         }

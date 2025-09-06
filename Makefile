@@ -4,6 +4,7 @@
 .PHONY: help build-dev build-test build-prod build-all test run-dev run-prod clean
 .PHONY: server migrate makemigrations shell collectstatic createsuperuser
 .PHONY: test-local test-docker security-check deploy-check push-prod
+.PHONY: clean-whitespace lint
 
 # Default target
 help:
@@ -54,6 +55,8 @@ help:
 	@echo "  clean         - Remove all krill images"
 	@echo "  logs          - Show container logs"
 	@echo "  deploy-check  - Run deployment checks"
+	@echo "  clean-whitespace - Clean trailing whitespace and excessive blank lines"
+	@echo "  lint          - Run code linting and whitespace cleanup"
 
 # Build commands
 build-dev:
@@ -249,3 +252,13 @@ reset-test:
 	cd krill && python manage.py loaddata ../tests/fixtures/sample_fixtures.json
 	cd tests/scripts && python create_test_superuser.py
 	@echo "Test environment reset complete!"
+
+# Code Quality Commands
+clean-whitespace:
+	@echo "Cleaning whitespace in all files..."
+	python3 scripts/clean_whitespace.py
+
+lint:
+	@echo "Running code linting and whitespace cleanup..."
+	python3 scripts/clean_whitespace.py
+	@echo "Linting complete!"

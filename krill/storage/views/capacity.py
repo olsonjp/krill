@@ -70,4 +70,4 @@ def box_capacity(request):
         'total_slots': sum(site['total_slots'] for site in sites.values()),
         'used_slots': sum(site['used_slots'] for site in sites.values()),
         'free_slots': sum(site['free_slots'] for site in sites.values())
-    }) 
+    })

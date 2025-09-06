@@ -88,4 +88,3 @@ def handle_tube_disposition_change(sender, instance, created, **kwargs):
         if old_disposition == 'stored' and new_disposition != 'stored':
             # Remove storage location for this tube (using the old model structure)
             AliquotLocation.objects.filter(aliquot=instance.aliquot, tube_number=instance.tube_number).delete()
-

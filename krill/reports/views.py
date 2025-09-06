@@ -31,16 +31,16 @@ def reports_dashboard(request):
         pending_reports = Report.objects.filter(status='pending').count()
         active_alerts = Alert.objects.filter(status='active').count()
         open_issues = 0  # Issue tracking removed
-        
+
         # Get recent reports
         recent_reports = Report.objects.filter(created_by=request.user).order_by('-created_at')[:5]
-        
+
         # Get recent alerts
         recent_alerts = Alert.objects.filter(status='active').order_by('-created_at')[:5]
-        
+
         # Get recent issues (removed - issue tracking disabled)
         recent_issues = []
-        
+
         context = {
             'total_reports': total_reports,
             'pending_reports': pending_reports,
@@ -50,7 +50,7 @@ def reports_dashboard(request):
             'recent_alerts': recent_alerts,
             'recent_issues': recent_issues,
         }
-        
+
         return render(request, 'reports/reports_dashboard.html', context)
     except Exception as e:
         # Fallback to basic template if there are any errors
@@ -72,7 +72,7 @@ def dashboard_stats(request):
     try:
         # Active samples count
         active_samples = Sample.objects.count()
-        
+
         # Storage usage calculation
         total_slots = 0
         used_slots = 0
@@ -83,28 +83,28 @@ def dashboard_stats(request):
         storage_usage = 0
         if total_slots > 0:
             storage_usage = round((used_slots / total_slots) * 100)
-        
+
         # Recent reports count
         recent_reports = Report.objects.filter(
             created_at__gte=timezone.now() - timedelta(days=7)
         ).count()
-        
+
         # Active alerts count
         active_alerts = Alert.objects.filter(status='active').count()
-        
+
         # Recent activity count
         recent_activity = UserAuditLog.objects.filter(
             timestamp__gte=timezone.now() - timedelta(days=1)
         ).count()
-        
+
         # Storage device status
         storage_devices = Device.objects.count()
         active_devices = Device.objects.filter(is_active=True).count()
-        
+
         # Sample statistics
         total_aliquots = Aliquot.objects.count()
         stored_aliquots = AliquotLocation.objects.count()
-        
+
         stats = {
             'active_samples': active_samples,
             'storage_usage': storage_usage,
@@ -134,9 +134,9 @@ def generate_report(request):
         report_name = data.get('name', 'Generated Report')
         report_format = data.get('format', 'pdf')
         parameters = data.get('parameters', {})
-        
+
         template = get_object_or_404(ReportTemplate, id=template_id, is_active=True)
-        
+
         # Create report instance
         report = Report.objects.create(
             template=template,
@@ -145,11 +145,11 @@ def generate_report(request):
             parameters=parameters,
             created_by=request.user
         )
-        
+
         # Generate report data based on type
         sample_data = generate_sample_report_data(template.report_type, parameters)
         report.mark_complete(result_data=sample_data)
-        
+
         return JsonResponse({
             'success': True,
             'report_id': report.id,
@@ -169,7 +169,7 @@ def generate_audit_report(request):
             sample_size = int(data.get('sample_size', 10))
             include_empty_checks = data.get('include_empty_checks', False)
             report_name = data.get('name', f'Storage Audit - {timezone.now().strftime("%Y-%m-%d")}')
-            
+
             # Create or get the storage audit template
             template, created = ReportTemplate.objects.get_or_create(
                 report_type='storage_audit',
@@ -180,13 +180,13 @@ def generate_audit_report(request):
                     'created_by': request.user
                 }
             )
-            
+
             # Create report instance
             parameters = {
                 'sample_size': sample_size,
                 'include_empty_checks': include_empty_checks
             }
-            
+
             report = Report.objects.create(
                 template=template,
                 name=report_name,
@@ -194,11 +194,11 @@ def generate_audit_report(request):
                 parameters=parameters,
                 created_by=request.user
             )
-            
+
             # Generate audit data
             audit_data = generate_storage_audit_data(parameters)
             report.mark_complete(result_data=audit_data)
-            
+
             return JsonResponse({
                 'success': True,
                 'report_id': report.id,
@@ -208,7 +208,7 @@ def generate_audit_report(request):
             })
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
-    
+
     # GET request - show audit report form
     return render(request, 'reports/audit_report_form.html')
 
@@ -217,12 +217,12 @@ def generate_audit_report(request):
 def report_list(request):
     """List all reports for the current user"""
     reports = Report.objects.filter(created_by=request.user).order_by('-created_at')
-    
+
     # Pagination
     paginator = Paginator(reports, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    
+
     context = {
         'reports': page_obj,
         'total_reports': reports.count(),
@@ -244,10 +244,10 @@ def report_detail(request, report_id):
 def download_report(request, report_id):
     """Download generated report file"""
     report = get_object_or_404(Report, id=report_id, created_by=request.user)
-    
+
     if report.status != 'complete':
         return JsonResponse({'error': 'Report not ready for download'}, status=400)
-    
+
     if report.format == 'csv':
         return generate_csv_response(report.result_data)
     elif report.format == 'json':
@@ -265,17 +265,17 @@ def download_report(request, report_id):
 def alert_list(request):
     """List all alerts"""
     alerts = Alert.objects.all().order_by('-created_at')
-    
+
     # Filter by status if provided
     status_filter = request.GET.get('status')
     if status_filter:
         alerts = alerts.filter(status=status_filter)
-    
+
     # Pagination
     paginator = Paginator(alerts, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    
+
     context = {
         'alerts': page_obj,
         'total_alerts': alerts.count(),
@@ -332,12 +332,6 @@ def create_alert(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 
-
-
-
-
-
-
 # Storage Management Dashboard API
 @login_required
 def storage_dashboard(request):
@@ -346,12 +340,12 @@ def storage_dashboard(request):
         # Device statistics
         total_devices = Device.objects.count()
         active_devices = Device.objects.filter(is_active=True).count()
-        
+
         # Box statistics
         total_boxes = Box.objects.count()
         used_boxes = Box.objects.filter(aliquotlocation__isnull=False).distinct().count()
         available_boxes = total_boxes - used_boxes
-        
+
         # Capacity statistics
         total_slots = 0
         used_slots = 0
@@ -359,7 +353,7 @@ def storage_dashboard(request):
         for box in boxes:
             total_slots += box.rows * box.columns
         used_slots = AliquotLocation.objects.count()
-        
+
         # Freezer status (mock data for now)
         freezer_status = []
         for device in Device.objects.filter(device_type='freezer')[:4]:
@@ -370,7 +364,7 @@ def storage_dashboard(request):
                 'capacity': f"{used_slots}/{total_slots}",
                 'usage_percent': round((used_slots / total_slots * 100) if total_slots > 0 else 0)
             })
-        
+
         stats = {
             'total_devices': total_devices,
             'active_devices': active_devices,
@@ -413,11 +407,11 @@ def generate_storage_audit_data(parameters):
     """Generate storage audit data with random slot selection"""
     import random
     from django.db.models import Prefetch
-    
+
     # Get parameters with defaults
     sample_size = int(parameters.get('sample_size', 10))
     include_empty_checks = parameters.get('include_empty_checks', False)
-    
+
     # Get all occupied slots
     occupied_locations = AliquotLocation.objects.select_related(
         'aliquot__sample',
@@ -425,9 +419,9 @@ def generate_storage_audit_data(parameters):
     ).prefetch_related(
         Prefetch('aliquot__sample__aliquots', queryset=Aliquot.objects.all())
     ).all()
-    
+
     total_occupied = occupied_locations.count()
-    
+
     if total_occupied == 0:
         return {
             'total_occupied_slots': 0,
@@ -435,11 +429,11 @@ def generate_storage_audit_data(parameters):
             'audit_slots': [],
             'summary': 'No occupied slots found for audit'
         }
-    
+
     # Randomly select slots for audit
     actual_sample_size = min(sample_size, total_occupied)
     audit_slots = random.sample(list(occupied_locations), actual_sample_size)
-    
+
     # Format audit data
     audit_data = []
     for location in audit_slots:
@@ -460,18 +454,18 @@ def generate_storage_audit_data(parameters):
             'notes': '',  # For audit notes
         }
         audit_data.append(slot_data)
-    
+
     # If including empty slot checks, also randomly select some empty slots
     empty_audit_data = []
     if include_empty_checks:
         # Get all boxes and their total capacity
         all_boxes = Box.objects.select_related('device__site').all()
         empty_slots = []
-        
+
         for box in all_boxes:
             occupied_in_box = AliquotLocation.objects.filter(box=box).values_list('row', 'column')
             occupied_set = set(occupied_in_box)
-            
+
             for row in range(1, box.rows + 1):
                 for col in range(1, box.columns + 1):
                     if (row, col) not in occupied_set:
@@ -485,12 +479,12 @@ def generate_storage_audit_data(parameters):
                             'actual_empty': True,  # This would be filled in during physical audit
                             'notes': ''
                         })
-        
+
         # Randomly select some empty slots for verification
         if empty_slots:
             empty_sample_size = min(5, len(empty_slots))  # Check up to 5 empty slots
             empty_audit_data = random.sample(empty_slots, empty_sample_size)
-    
+
     return {
         'total_occupied_slots': total_occupied,
         'sample_size': actual_sample_size,
@@ -506,9 +500,9 @@ def generate_csv_response(data):
     """Generate CSV response from data"""
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename="report.csv"'
-    
+
     writer = csv.writer(response)
-    
+
     # Write headers and data based on data structure
     if isinstance(data, dict):
         for key, value in data.items():
@@ -525,7 +519,7 @@ def generate_csv_response(data):
                 writer.writerow([])  # Empty row for separation
             else:
                 writer.writerow([key, value])
-    
+
     return response
 
 
@@ -535,10 +529,10 @@ class ReportListView(LoginRequiredMixin, ListView):
     template_name = 'reports/report_list.html'
     context_object_name = 'reports'
     paginate_by = 20
-    
+
     def get_queryset(self):
         return Report.objects.filter(created_by=self.request.user).order_by('-created_at')
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['total_reports'] = Report.objects.filter(created_by=self.request.user).count()
@@ -552,20 +546,17 @@ class AlertListView(LoginRequiredMixin, ListView):
     template_name = 'reports/alert_list.html'
     context_object_name = 'alerts'
     paginate_by = 20
-    
+
     def get_queryset(self):
         queryset = Alert.objects.all().order_by('-created_at')
         status_filter = self.request.GET.get('status')
         if status_filter:
             queryset = queryset.filter(status=status_filter)
         return queryset
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['total_alerts'] = Alert.objects.count()
         context['active_alerts'] = Alert.objects.filter(status='active').count()
         context['critical_alerts'] = Alert.objects.filter(severity='critical', status='active').count()
         return context
-
-
-

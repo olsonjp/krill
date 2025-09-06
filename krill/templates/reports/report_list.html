@@ -135,11 +135,11 @@
                             Previous
                         </a>
                     {% endif %}
-                    
+
                     <span class="current-page">
                         Page {{ reports.number }} of {{ reports.paginator.num_pages }}
                     </span>
-                    
+
                     {% if reports.has_next %}
                         <a href="?page={{ reports.next_page_number }}" class="page-link">
                             Next
@@ -224,7 +224,7 @@ function closeGenerateReportModal() {
 function generateReport() {
     const form = document.getElementById('generateReportForm');
     const formData = new FormData(form);
-    
+
     const data = {
         template_id: formData.get('template'),
         name: formData.get('name'),
@@ -232,7 +232,7 @@ function generateReport() {
         format: formData.get('format'),
         parameters: {}
     };
-    
+
     fetch('{% url "reports:generate_report" %}', {
         method: 'POST',
         headers: {
@@ -515,16 +515,16 @@ window.onclick = function(event) {
         align-items: flex-start;
         gap: 10px;
     }
-    
+
     .report-actions {
         flex-direction: column;
     }
-    
+
     .btn {
         width: 100%;
         justify-content: center;
     }
-    
+
     .pagination {
         flex-direction: column;
         gap: 10px;

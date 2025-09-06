@@ -60,4 +60,4 @@ def update_user_role_on_superuser_change(sender, instance, **kwargs):
                 role=role,
                 department='',
                 lab_unit=''
-            ) 
+            )

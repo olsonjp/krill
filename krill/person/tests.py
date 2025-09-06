@@ -21,7 +21,8 @@ from .forms import (
 from .views import (
     toggle_theme, create_user, user_list, user_detail, user_role_edit,
     permission_list, grant_permission, revoke_permission, bulk_grant_permission,
-    audit_log, user_permissions_api, grant_object_permission_api, revoke_object_permission_api
+    audit_log, user_permissions_api, grant_object_permission_api, revoke_object_permission_api,
+    DataImportView
 )
 from sample.models.sample import Sample
 from sample.models.source import Source
@@ -1434,3 +1435,168 @@ class RevokeObjectPermissionApiViewTest(PersonViewTest):
         data = response.json()
         self.assertIn('error', data)
         self.assertEqual(data['error'], 'Invalid model name')
+
+
+class DataImportViewTest(PersonViewTest):
+    """Test cases for the DataImportView"""
+
+    def setUp(self):
+        """Set up test data"""
+        super().setUp()
+        # Create a test CSV content based on actual CSV structure
+        self.test_csv_content = """Cell Line;Source;Freezer Name;Position 1;Position 2;Position 3;Position 4;Aliquot Type;Number of Aliquots Total;Disposition;Sample Notes;Aliquot Notes;Aliquot/SubA Passage#;Experiment #
+MDA MB 134VI (MM134);UPMC/MJS;Sikora LN2 #1;4;F;1;1;Cells;5;In Storage;Legacy MM134 from Oesterreich Lab banks;;p+33;EXP001
+MDA MB 134VI (MM134);UPMC/MJS;Sikora LN2 #1;4;F;1;2;Cells;3;Checked Out;Legacy MM134 from Oesterreich Lab banks;Thawed by MTS on 09.04.19;p+33;EXP001"""
+
+    def test_data_import_requires_staff_member(self):
+        """Test that data import requires staff member"""
+        # Test with regular user (should redirect to login)
+        self.client.force_login(self.lab_member_user)
+        response = self.client.get(reverse('person:data_import'))
+        self.assertEqual(response.status_code, 302)  # Redirect to login
+
+        # Test with staff user
+        self.lab_manager_user.is_staff = True
+        self.lab_manager_user.save()
+        self.client.force_login(self.lab_manager_user)
+        response = self.client.get(reverse('person:data_import'))
+        self.assertEqual(response.status_code, 200)  # OK
+
+    def test_data_import_get_request(self):
+        """Test data import GET request"""
+        self.lab_manager_user.is_staff = True
+        self.lab_manager_user.save()
+        self.client.force_login(self.lab_manager_user)
+
+        response = self.client.get(reverse('person:data_import'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'person/data_import.html')
+        self.assertIn('form', response.context)
+        self.assertEqual(response.context['title'], 'Data Import')
+
+    def test_data_import_preview_mode(self):
+        """Test data import preview mode"""
+        self.lab_manager_user.is_staff = True
+        self.lab_manager_user.save()
+        self.client.force_login(self.lab_manager_user)
+
+        # Create a test CSV file
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        csv_file = SimpleUploadedFile(
+            "test.csv",
+            self.test_csv_content.encode('utf-8'),
+            content_type="text/csv"
+        )
+
+        form_data = {
+            'csv_file': csv_file
+        }
+
+        response = self.client.post(reverse('person:data_import'), form_data)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'person/data_import.html')
+        self.assertIn('preview_data', response.context)
+
+        # Check preview data structure
+        preview_data = response.context['preview_data']
+        self.assertIn('sources', preview_data)
+        self.assertIn('samples', preview_data)
+        self.assertIn('aliquots', preview_data)
+
+    def test_data_import_form_validation(self):
+        """Test data import form validation"""
+        self.lab_manager_user.is_staff = True
+        self.lab_manager_user.save()
+        self.client.force_login(self.lab_manager_user)
+
+        # Test with no file
+        form_data = {}
+        response = self.client.post(reverse('person:data_import'), form_data)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('form', response.context)
+        self.assertFalse(response.context['form'].is_valid())
+
+    def test_convert_csv_to_fixtures_method(self):
+        """Test the convert_csv_to_fixtures method"""
+        self.lab_manager_user.is_staff = True
+        self.lab_manager_user.save()
+        self.client.force_login(self.lab_manager_user)
+
+        # Create a temporary CSV file
+        import tempfile
+        import os
+
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as temp_file:
+            temp_file.write(self.test_csv_content)
+            temp_file_path = temp_file.name
+
+        try:
+            # Test the convert_csv_to_fixtures method
+            view = DataImportView()
+            fixtures = view.convert_csv_to_fixtures(temp_file_path)
+
+            # Check that fixtures were created
+            self.assertIsInstance(fixtures, list)
+            self.assertGreater(len(fixtures), 0)
+
+            # Check for expected fixture types
+            fixture_models = [fixture['model'] for fixture in fixtures]
+            self.assertIn('sample.source', fixture_models)
+            self.assertIn('sample.sample', fixture_models)
+            self.assertIn('sample.aliquot', fixture_models)
+            self.assertIn('sample.aliquottube', fixture_models)
+            self.assertIn('storage.site', fixture_models)
+            self.assertIn('storage.device', fixture_models)
+            self.assertIn('storage.shelf', fixture_models)
+            self.assertIn('storage.rack', fixture_models)
+            self.assertIn('storage.box', fixture_models)
+            self.assertIn('sample.aliquotlocation', fixture_models)
+
+            # Check storage hierarchy structure
+            storage_fixtures = {f['model']: f for f in fixtures if f['model'].startswith('storage.')}
+
+            # Verify site
+            self.assertIn('storage.site', storage_fixtures)
+            self.assertEqual(storage_fixtures['storage.site']['fields']['name'], 'Sikora Lab')
+
+            # Verify device
+            self.assertIn('storage.device', storage_fixtures)
+            self.assertEqual(storage_fixtures['storage.device']['fields']['name'], 'Sikora LN2 #1')
+
+            # Verify shelf (Position 2)
+            self.assertIn('storage.shelf', storage_fixtures)
+            self.assertEqual(storage_fixtures['storage.shelf']['fields']['name'], 'F')
+
+            # Verify rack (Position 1)
+            self.assertIn('storage.rack', storage_fixtures)
+            self.assertEqual(storage_fixtures['storage.rack']['fields']['name'], '4')
+
+            # Verify box (Position 1 + Position 2)
+            self.assertIn('storage.box', storage_fixtures)
+            self.assertEqual(storage_fixtures['storage.box']['fields']['name'], '4_F')
+
+            # Verify location (Position 3, Position 4)
+            location_fixtures = [f for f in fixtures if f['model'] == 'sample.aliquotlocation']
+            self.assertGreater(len(location_fixtures), 0)
+            for location in location_fixtures:
+                self.assertEqual(location['fields']['row'], 1)  # Position 3
+                self.assertIn(location['fields']['column'], [1, 2])  # Position 4
+
+            # Verify that tubes are created with correct quantities
+            tube_fixtures = [f for f in fixtures if f['model'] == 'sample.aliquottube']
+            self.assertGreater(len(tube_fixtures), 0)
+
+            # Check that we have the expected number of tubes (5 + 3 = 8 total)
+            self.assertEqual(len(tube_fixtures), 8)
+
+            # Verify tube dispositions
+            for tube in tube_fixtures:
+                disposition_pk = tube['fields']['disposition']
+                # Find the disposition fixture
+                disposition_fixture = next(f for f in fixtures if f['model'] == 'sample.aliquotdisposition' and f['pk'] == disposition_pk)
+                self.assertIn(disposition_fixture['fields']['disposition_type'], ['stored', 'in_use', 'exhausted'])
+
+        finally:
+            # Clean up temporary file
+            if os.path.exists(temp_file_path):
+                os.unlink(temp_file_path)
