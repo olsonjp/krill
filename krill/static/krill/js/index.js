@@ -32,10 +32,13 @@ if (darkMode) {
     
     darkMode.addEventListener('click', async () => {
         try {
+            // Try to get CSRF token from hidden field first, then fall back to cookie
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || getCookie('csrftoken');
+            
             const response = await fetch('/preferences/theme/', {
                 method: 'POST',
                 headers: {
-                    'X-CSRFToken': getCookie('csrftoken'),
+                    'X-CSRFToken': csrfToken,
                     'Content-Type': 'application/json',
                 },
             });

@@ -52,7 +52,7 @@ function handleDarkModeToggle(isDarkMode) {
     fetch('/preferences/theme/', {
         method: 'POST',
         headers: {
-            'X-CSRFToken': getCookie('csrftoken'),
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
             'Content-Type': 'application/json',
         },
     })
@@ -119,7 +119,7 @@ function saveAllSettings() {
     fetch('/preferences/save/', {
         method: 'POST',
         headers: {
-            'X-CSRFToken': getCookie('csrftoken'),
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
             'Content-Type': 'application/json',
         },
         body: JSON.stringify(settings)
