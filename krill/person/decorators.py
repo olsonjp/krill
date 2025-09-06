@@ -30,7 +30,7 @@ def require_permission(permission, model_class=None, object_id_param='pk'):
                     request=request
                 )
                 return HttpResponseForbidden("Insufficient permissions")
-            
+
             # Check object-level permissions if model_class is provided
             if model_class and object_id_param in kwargs:
                 object_id = kwargs[object_id_param]
@@ -44,7 +44,7 @@ def require_permission(permission, model_class=None, object_id_param='pk'):
                         request=request
                     )
                     return HttpResponseForbidden("Insufficient permissions for this object")
-            
+
             return view_func(request, *args, **kwargs)
         return wrapper
     return decorator
@@ -155,13 +155,13 @@ def has_object_permission(user, model_class, object_id, permission_type):
             department='',
             lab_unit=''
         )
-    
+
     # Get the model name for permission checking
     model_name = model_class.__name__.lower()
     role_permission = f"{model_name}.{permission_type}"
     if not user.role.has_permission(role_permission):
         return False
-    
+
     # Check for specific object-level permissions
     content_type = ContentType.objects.get_for_model(model_class)
     try:
@@ -224,7 +224,7 @@ def grant_object_permission(user, model_class, object_id, permission_type, grant
         permission.granted_by = granted_by
         permission.expires_at = expires_at
         permission.save()
-    
+
     # Log the permission grant
     UserAuditLog.log_action(
         user=granted_by or user,
@@ -261,7 +261,7 @@ def revoke_object_permission(user, model_class, object_id, permission_type, revo
             object_id=object_id
         )
         permission.delete()
-        
+
         # Log the permission revocation
         UserAuditLog.log_action(
             user=revoked_by or user,
@@ -298,7 +298,7 @@ def require_permission_cbv(permission, model_class=None, object_id_param='pk'):
                     request=request
                 )
                 return HttpResponseForbidden("Insufficient permissions")
-            
+
             # Check object-level permissions if model_class is provided
             if model_class and object_id_param in kwargs:
                 object_id = kwargs[object_id_param]
@@ -312,7 +312,7 @@ def require_permission_cbv(permission, model_class=None, object_id_param='pk'):
                         request=request
                     )
                     return HttpResponseForbidden("Insufficient permissions for this object")
-            
+
             return original_dispatch(self, request, *args, **kwargs)
         cls.dispatch = dispatch
         return cls

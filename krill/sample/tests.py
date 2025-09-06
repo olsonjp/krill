@@ -8,12 +8,12 @@ from django.contrib.auth import get_user_model
 
 from .models.sample import Sample
 from .models.aliquot import (
-    Aliquot, AliquotType, AliquotDisposition, 
+    Aliquot, AliquotType, AliquotDisposition,
     AliquotLocation, AliquotTube
 )
 from .models.source import Source
 from .forms import (
-    SampleForm, AliquotForm, AliquotLocationForm, 
+    SampleForm, AliquotForm, AliquotLocationForm,
     AliquotTypeForm, AliquotDispositionForm, SourceForm
 )
 from .views.list import SampleListView
@@ -1062,7 +1062,7 @@ class ModelCreateViewTest(SampleViewTest):
 
 class AliquotTubeFormTest(TestCase):
     """Test cases for the AliquotTubeForm"""
-    
+
     def setUp(self):
         """Set up test data"""
         self.source = Source.objects.create(
@@ -1107,14 +1107,14 @@ class AliquotTubeFormTest(TestCase):
             username='testuser',
             password='testpass123'
         )
-    
+
     def test_aliquot_tube_form_creation(self):
         """Test AliquotTubeForm creation with valid data"""
         from .forms import AliquotTubeForm
         form = AliquotTubeForm(instance=self.tube)
         self.assertIsInstance(form, AliquotTubeForm)
         self.assertEqual(form.instance, self.tube)
-    
+
     def test_aliquot_tube_form_fields(self):
         """Test that AliquotTubeForm has the correct fields"""
         from .forms import AliquotTubeForm
@@ -1122,7 +1122,7 @@ class AliquotTubeFormTest(TestCase):
         self.assertIn('disposition', form.fields)
         self.assertNotIn('aliquot', form.fields)
         self.assertNotIn('tube_number', form.fields)
-    
+
     def test_aliquot_tube_form_validation(self):
         """Test AliquotTubeForm validation with valid data"""
         from .forms import AliquotTubeForm
@@ -1131,7 +1131,7 @@ class AliquotTubeFormTest(TestCase):
         }
         form = AliquotTubeForm(data=form_data, instance=self.tube)
         self.assertTrue(form.is_valid())
-    
+
     def test_aliquot_tube_form_invalid_data(self):
         """Test AliquotTubeForm validation with invalid data"""
         from .forms import AliquotTubeForm
@@ -1144,7 +1144,7 @@ class AliquotTubeFormTest(TestCase):
 
 class TubeDetailViewTest(TestCase):
     """Test cases for the TubeDetailView"""
-    
+
     def setUp(self):
         """Set up test data"""
         self.source = Source.objects.create(
@@ -1190,7 +1190,7 @@ class TubeDetailViewTest(TestCase):
             password='testpass123'
         )
         self.client = Client()
-    
+
     def test_tube_detail_view_get(self):
         """Test tube detail view GET request"""
         self.client.force_login(self.user)
@@ -1202,12 +1202,12 @@ class TubeDetailViewTest(TestCase):
         self.assertIn('form', response.context)
         from .forms import AliquotTubeForm
         self.assertIsInstance(response.context['form'], AliquotTubeForm)
-    
+
     def test_tube_detail_view_get_unauthenticated(self):
         """Test tube detail view GET request without authentication"""
         response = self.client.get(reverse('sample:tube_detail', kwargs={'pk': self.tube.pk}))
         self.assertEqual(response.status_code, 302)  # Redirect to login
-    
+
     def test_tube_detail_view_post_valid_disposition_change(self):
         """Test tube detail view POST with valid disposition change"""
         self.client.force_login(self.user)
@@ -1216,11 +1216,11 @@ class TubeDetailViewTest(TestCase):
         }
         response = self.client.post(reverse('sample:tube_detail', kwargs={'pk': self.tube.pk}), form_data)
         self.assertEqual(response.status_code, 302)  # Redirect after successful save
-        
+
         # Check that the tube was updated
         self.tube.refresh_from_db()
         self.assertEqual(self.tube.disposition, self.in_use_disposition)
-    
+
     def test_tube_detail_view_post_invalid_data(self):
         """Test tube detail view POST with invalid data"""
         self.client.force_login(self.user)
@@ -1232,21 +1232,21 @@ class TubeDetailViewTest(TestCase):
         self.assertTemplateUsed(response, 'sample/tube_detail.html')
         self.assertIn('form', response.context)
         self.assertFalse(response.context['form'].is_valid())
-    
+
     def test_tube_detail_view_post_stored_to_non_stored_removes_location(self):
         """Test that changing from stored to non-stored removes storage location"""
         self.client.force_login(self.user)
-        
+
         # Create a storage location for the tube
         from storage.models.storage import Device, Shelf, Rack, Box
         from storage.models.site import Site
-        
+
         site = Site.objects.create(name="Test Site", description="Test site")
         device = Device.objects.create(name="Test Device", site=site, description="Test device")
         shelf = Shelf.objects.create(name="Test Shelf", device=device, description="Test shelf")
         rack = Rack.objects.create(name="Test Rack", shelf=shelf, description="Test rack")
         box = Box.objects.create(name="Test Box", rack=rack, rows=8, columns=12, description="Test box")
-        
+
         location = AliquotLocation.objects.create(
             aliquot=self.aliquot,
             box=box,
@@ -1254,38 +1254,38 @@ class TubeDetailViewTest(TestCase):
             column=1,
             tube_number=self.tube.tube_number
         )
-        
+
         # Change disposition from stored to in_use
         form_data = {
             'disposition': self.in_use_disposition.id
         }
         response = self.client.post(reverse('sample:tube_detail', kwargs={'pk': self.tube.pk}), form_data)
         self.assertEqual(response.status_code, 302)  # Redirect after successful save
-        
+
         # Check that the tube was updated
         self.tube.refresh_from_db()
         self.assertEqual(self.tube.disposition, self.in_use_disposition)
-        
+
         # Check that the storage location was removed
         self.assertFalse(AliquotLocation.objects.filter(
             aliquot=self.aliquot,
             tube_number=self.tube.tube_number
         ).exists())
-    
+
     def test_tube_detail_view_context_includes_storage_location(self):
         """Test that tube detail view includes storage location in context when tube is stored"""
         self.client.force_login(self.user)
-        
+
         # Create a storage location for the tube
         from storage.models.storage import Device, Shelf, Rack, Box
         from storage.models.site import Site
-        
+
         site = Site.objects.create(name="Test Site", description="Test site")
         device = Device.objects.create(name="Test Device", site=site, description="Test device")
         shelf = Shelf.objects.create(name="Test Shelf", device=device, description="Test shelf")
         rack = Rack.objects.create(name="Test Rack", shelf=shelf, description="Test rack")
         box = Box.objects.create(name="Test Box", rack=rack, rows=8, columns=12, description="Test box")
-        
+
         location = AliquotLocation.objects.create(
             aliquot=self.aliquot,
             box=box,
@@ -1293,7 +1293,7 @@ class TubeDetailViewTest(TestCase):
             column=1,
             tube_number=self.tube.tube_number
         )
-        
+
         response = self.client.get(reverse('sample:tube_detail', kwargs={'pk': self.tube.pk}))
         self.assertEqual(response.status_code, 200)
         self.assertIn('storage_location', response.context)
@@ -1301,13 +1301,13 @@ class TubeDetailViewTest(TestCase):
         self.assertEqual(response.context['storage_location']['box'], box)
         self.assertEqual(response.context['storage_location']['row'], 1)
         self.assertEqual(response.context['storage_location']['column'], 1)
-    
+
     def test_tube_detail_view_context_no_storage_location(self):
         """Test that tube detail view has no storage location when tube is not stored"""
         # Change tube to non-stored disposition
         self.tube.disposition = self.in_use_disposition
         self.tube.save()
-        
+
         self.client.force_login(self.user)
         response = self.client.get(reverse('sample:tube_detail', kwargs={'pk': self.tube.pk}))
         self.assertEqual(response.status_code, 200)
@@ -1317,7 +1317,7 @@ class TubeDetailViewTest(TestCase):
 
 class AliquotTubeMoveFormTest(TestCase):
     """Test cases for the AliquotTubeMoveForm"""
-    
+
     def setUp(self):
         """Set up test data"""
         self.source = Source.objects.create(
@@ -1358,29 +1358,29 @@ class AliquotTubeMoveFormTest(TestCase):
             tube_number=1,
             disposition=self.stored_disposition
         )
-        
+
         # Create storage hierarchy
         from storage.models.storage import Device, Shelf, Rack, Box
         from storage.models.site import Site
-        
+
         self.site = Site.objects.create(name="Test Site", description="Test site")
         self.device = Device.objects.create(name="Test Device", site=self.site, description="Test device")
         self.shelf = Shelf.objects.create(name="Test Shelf", device=self.device, description="Test shelf")
         self.rack = Rack.objects.create(name="Test Rack", shelf=self.shelf, description="Test rack")
         self.box = Box.objects.create(name="Test Box", rack=self.rack, rows=8, columns=12, description="Test box")
         self.box2 = Box.objects.create(name="Test Box 2", rack=self.rack, rows=6, columns=8, description="Test box 2")
-        
+
         self.user = get_user_model().objects.create_user(
             username='testuser',
             password='testpass123'
         )
-    
+
     def test_aliquot_tube_move_form_creation(self):
         """Test AliquotTubeMoveForm creation"""
         from .forms import AliquotTubeMoveForm
         form = AliquotTubeMoveForm()
         self.assertIsInstance(form, AliquotTubeMoveForm)
-    
+
     def test_aliquot_tube_move_form_fields(self):
         """Test that AliquotTubeMoveForm has the correct fields"""
         from .forms import AliquotTubeMoveForm
@@ -1388,7 +1388,7 @@ class AliquotTubeMoveFormTest(TestCase):
         self.assertIn('box', form.fields)
         self.assertIn('row', form.fields)
         self.assertIn('column', form.fields)
-    
+
     def test_aliquot_tube_move_form_validation_valid_data(self):
         """Test AliquotTubeMoveForm validation with valid data"""
         from .forms import AliquotTubeMoveForm
@@ -1399,7 +1399,7 @@ class AliquotTubeMoveFormTest(TestCase):
         }
         form = AliquotTubeMoveForm(data=form_data)
         self.assertTrue(form.is_valid())
-    
+
     def test_aliquot_tube_move_form_validation_invalid_position(self):
         """Test AliquotTubeMoveForm validation with invalid position"""
         from .forms import AliquotTubeMoveForm
@@ -1411,11 +1411,11 @@ class AliquotTubeMoveFormTest(TestCase):
         form = AliquotTubeMoveForm(data=form_data)
         self.assertFalse(form.is_valid())
         self.assertIn('Row 10 is outside the box dimensions (max: 8)', str(form.errors))
-    
+
     def test_aliquot_tube_move_form_validation_occupied_position(self):
         """Test AliquotTubeMoveForm validation with occupied position"""
         from .forms import AliquotTubeMoveForm
-        
+
         # Create a location to occupy the position
         AliquotLocation.objects.create(
             aliquot=self.aliquot,
@@ -1424,7 +1424,7 @@ class AliquotTubeMoveFormTest(TestCase):
             column=1,
             tube_number=2
         )
-        
+
         form_data = {
             'box': self.box.id,
             'row': 1,
@@ -1433,7 +1433,7 @@ class AliquotTubeMoveFormTest(TestCase):
         form = AliquotTubeMoveForm(data=form_data)
         self.assertFalse(form.is_valid())
         self.assertIn('Position (1, 1) in Test Box is already occupied', str(form.errors))
-    
+
     def test_aliquot_tube_move_form_validation_missing_data(self):
         """Test AliquotTubeMoveForm validation with missing data"""
         from .forms import AliquotTubeMoveForm
@@ -1449,7 +1449,7 @@ class AliquotTubeMoveFormTest(TestCase):
 
 class TubeDetailViewMoveTest(TestCase):
     """Test cases for the TubeDetailView move functionality"""
-    
+
     def setUp(self):
         """Set up test data"""
         self.source = Source.objects.create(
@@ -1485,24 +1485,24 @@ class TubeDetailViewMoveTest(TestCase):
             tube_number=1,
             disposition=self.stored_disposition
         )
-        
+
         # Create storage hierarchy
         from storage.models.storage import Device, Shelf, Rack, Box
         from storage.models.site import Site
-        
+
         self.site = Site.objects.create(name="Test Site", description="Test site")
         self.device = Device.objects.create(name="Test Device", site=self.site, description="Test device")
         self.shelf = Shelf.objects.create(name="Test Shelf", device=self.device, description="Test shelf")
         self.rack = Rack.objects.create(name="Test Rack", shelf=self.shelf, description="Test rack")
         self.box = Box.objects.create(name="Test Box", rack=self.rack, rows=8, columns=12, description="Test box")
         self.box2 = Box.objects.create(name="Test Box 2", rack=self.rack, rows=6, columns=8, description="Test box 2")
-        
+
         self.user = get_user_model().objects.create_user(
             username='testuser',
             password='testpass123'
         )
         self.client = Client()
-    
+
     def test_tube_detail_view_get_includes_move_form(self):
         """Test that tube detail view includes move form in context"""
         self.client.force_login(self.user)
@@ -1511,7 +1511,7 @@ class TubeDetailViewMoveTest(TestCase):
         self.assertIn('move_form', response.context)
         from .forms import AliquotTubeMoveForm
         self.assertIsInstance(response.context['move_form'], AliquotTubeMoveForm)
-    
+
     def test_tube_detail_view_post_move_valid_data(self):
         """Test tube detail view POST with valid move data"""
         self.client.force_login(self.user)
@@ -1523,17 +1523,17 @@ class TubeDetailViewMoveTest(TestCase):
         }
         response = self.client.post(reverse('sample:tube_detail', kwargs={'pk': self.tube.pk}), form_data)
         self.assertEqual(response.status_code, 302)  # Redirect after successful move
-        
+
         # Check that the tube was moved to the new location
         location = AliquotLocation.objects.get(aliquot=self.aliquot, tube_number=self.tube.tube_number)
         self.assertEqual(location.box, self.box2)
         self.assertEqual(location.row, 2)
         self.assertEqual(location.column, 3)
-        
+
         # Check that tube disposition is still stored
         self.tube.refresh_from_db()
         self.assertEqual(self.tube.disposition, self.stored_disposition)
-    
+
     def test_tube_detail_view_post_move_invalid_data(self):
         """Test tube detail view POST with invalid move data"""
         self.client.force_login(self.user)
@@ -1548,11 +1548,11 @@ class TubeDetailViewMoveTest(TestCase):
         self.assertTemplateUsed(response, 'sample/tube_detail.html')
         self.assertIn('move_form', response.context)
         self.assertFalse(response.context['move_form'].is_valid())
-    
+
     def test_tube_detail_view_post_move_occupied_position(self):
         """Test tube detail view POST with occupied position"""
         self.client.force_login(self.user)
-        
+
         # Create a location to occupy the position
         AliquotLocation.objects.create(
             aliquot=self.aliquot,
@@ -1561,7 +1561,7 @@ class TubeDetailViewMoveTest(TestCase):
             column=3,
             tube_number=2
         )
-        
+
         form_data = {
             'action': 'move',
             'box': self.box2.id,
@@ -1573,11 +1573,11 @@ class TubeDetailViewMoveTest(TestCase):
         self.assertTemplateUsed(response, 'sample/tube_detail.html')
         self.assertIn('move_form', response.context)
         self.assertFalse(response.context['move_form'].is_valid())
-    
+
     def test_tube_detail_view_post_move_from_existing_location(self):
         """Test moving a tube from an existing location to a new one"""
         self.client.force_login(self.user)
-        
+
         # Create initial location
         initial_location = AliquotLocation.objects.create(
             aliquot=self.aliquot,
@@ -1586,7 +1586,7 @@ class TubeDetailViewMoveTest(TestCase):
             column=1,
             tube_number=self.tube.tube_number
         )
-        
+
         form_data = {
             'action': 'move',
             'box': self.box2.id,
@@ -1595,22 +1595,22 @@ class TubeDetailViewMoveTest(TestCase):
         }
         response = self.client.post(reverse('sample:tube_detail', kwargs={'pk': self.tube.pk}), form_data)
         self.assertEqual(response.status_code, 302)  # Redirect after successful move
-        
+
         # Check that the old location was removed
         self.assertFalse(AliquotLocation.objects.filter(id=initial_location.id).exists())
-        
+
         # Check that the new location was created
         new_location = AliquotLocation.objects.get(aliquot=self.aliquot, tube_number=self.tube.tube_number)
         self.assertEqual(new_location.box, self.box2)
         self.assertEqual(new_location.row, 3)
         self.assertEqual(new_location.column, 4)
-    
+
     def test_tube_detail_view_post_move_non_stored_tube(self):
         """Test moving a tube that is not in stored disposition"""
         # Change tube to non-stored disposition
         self.tube.disposition = self.in_use_disposition
         self.tube.save()
-        
+
         self.client.force_login(self.user)
         form_data = {
             'action': 'move',
@@ -1620,11 +1620,11 @@ class TubeDetailViewMoveTest(TestCase):
         }
         response = self.client.post(reverse('sample:tube_detail', kwargs={'pk': self.tube.pk}), form_data)
         self.assertEqual(response.status_code, 302)  # Redirect after successful move
-        
+
         # Check that the tube disposition was changed to stored
         self.tube.refresh_from_db()
         self.assertEqual(self.tube.disposition, self.stored_disposition)
-        
+
         # Check that the location was created
         location = AliquotLocation.objects.get(aliquot=self.aliquot, tube_number=self.tube.tube_number)
         self.assertEqual(location.box, self.box)

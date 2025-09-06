@@ -29,7 +29,7 @@ class Aliquot(models.Model):
         ('admins_managers', 'Admins & Managers'),
         ('all_members', 'All Lab Members'),
     ]
-    
+
     sample = models.ForeignKey('Sample', on_delete=models.CASCADE, related_name='aliquots')
     aliquot_type = models.ForeignKey(AliquotType, on_delete=models.PROTECT, null=True, blank=True)
     quantity = models.IntegerField(default=1)
@@ -54,7 +54,7 @@ class Aliquot(models.Model):
         if not hasattr(self, '_disposition_cache'):
             stored_tubes = self.tubes.filter(disposition__disposition_type='stored').count()
             total_tubes = self.tubes.count()
-            
+
             if total_tubes == 0:
                 self._disposition_cache = 'exhausted'
             elif stored_tubes == total_tubes:
@@ -74,12 +74,12 @@ class Aliquot(models.Model):
     def unstored_tubes_count(self):
         """Count of tubes that are not 'stored'"""
         return self.tubes.exclude(disposition__disposition_type='stored').count()
-    
+
     @property
     def in_use_tubes_count(self):
         """Count of tubes with 'in_use' disposition"""
         return self.tubes.filter(disposition__disposition_type='in_use').count()
-    
+
     @property
     def exhausted_tubes_count(self):
         """Count of tubes with 'exhausted' disposition"""
@@ -89,13 +89,13 @@ class Aliquot(models.Model):
         """Create individual tubes for this aliquot"""
         from .aliquot_tube import AliquotTube
         from .aliquot_disposition import AliquotDisposition
-        
+
         # Get the default 'stored' disposition
         stored_disposition, _ = AliquotDisposition.objects.get_or_create(
             name='Stored',
             defaults={'disposition_type': 'stored'}
         )
-        
+
         # Create tubes
         for i in range(1, self.quantity + 1):
             AliquotTube.objects.create(
@@ -103,7 +103,7 @@ class Aliquot(models.Model):
                 tube_number=i,
                 disposition=stored_disposition
             )
-        
+
         # Auto-store if enabled
         if auto_store:
             from sample.signals import auto_store_aliquot_tubes
@@ -125,14 +125,14 @@ class Aliquot(models.Model):
     def store_tube_in_location(self, tube_number, box, row, column):
         """Store a specific tube in a location"""
         from .aliquot_location import AliquotLocation
-        
+
         # Change tube disposition to stored
         stored_disposition, _ = AliquotDisposition.objects.get_or_create(
             name='Stored',
             defaults={'disposition_type': 'stored'}
         )
         self.change_tube_disposition(tube_number, stored_disposition)
-        
+
         # Create or update location
         location, created = AliquotLocation.objects.get_or_create(
             aliquot=self,

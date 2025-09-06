@@ -2,16 +2,16 @@
 async function updateDashboardStats() {
     // Show loading state
     showLoadingState();
-    
+
     try {
         const response = await fetch('/dashboard/stats/');
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        
+
         // Update Active Samples
-        const sampleCard = Array.from(document.querySelectorAll('.stat-card')).find(card => 
+        const sampleCard = Array.from(document.querySelectorAll('.stat-card')).find(card =>
             card.querySelector('.material-icons-round').textContent.trim() === 'science'
         );
         if (sampleCard) {
@@ -21,9 +21,9 @@ async function updateDashboardStats() {
                 sampleElement.classList.remove('loading');
             }
         }
-        
+
         // Update Storage Usage
-        const storageCard = Array.from(document.querySelectorAll('.stat-card')).find(card => 
+        const storageCard = Array.from(document.querySelectorAll('.stat-card')).find(card =>
             card.querySelector('.material-icons-round').textContent.trim() === 'inventory_2'
         );
         if (storageCard) {
@@ -33,9 +33,9 @@ async function updateDashboardStats() {
                 percentageElement.classList.remove('loading');
             }
         }
-        
+
         // Update Reports
-        const reportCard = Array.from(document.querySelectorAll('.stat-card')).find(card => 
+        const reportCard = Array.from(document.querySelectorAll('.stat-card')).find(card =>
             card.querySelector('.material-icons-round').textContent.trim() === 'description'
         );
         if (reportCard) {
@@ -45,9 +45,9 @@ async function updateDashboardStats() {
                 reportElement.classList.remove('loading');
             }
         }
-        
+
         // Update Alerts
-        const alertCard = Array.from(document.querySelectorAll('.stat-card')).find(card => 
+        const alertCard = Array.from(document.querySelectorAll('.stat-card')).find(card =>
             card.querySelector('.material-icons-round').textContent.trim() === 'warning'
         );
         if (alertCard) {
@@ -57,10 +57,10 @@ async function updateDashboardStats() {
                 alertElement.classList.remove('loading');
             }
         }
-        
+
         // Hide loading state
         hideLoadingState();
-        
+
     } catch (error) {
         console.error('Error fetching dashboard stats:', error);
         showErrorState();
@@ -91,7 +91,7 @@ function showErrorState() {
         element.classList.add('error');
         element.textContent = 'Error';
     });
-    
+
     // Show error notification
     showNotification('Failed to load dashboard statistics. Please refresh the page.', 'error');
 }
@@ -102,7 +102,7 @@ function showNotification(message, type = 'info') {
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
     notification.textContent = message;
-    
+
     // Add styles
     notification.style.cssText = `
         position: fixed;
@@ -117,7 +117,7 @@ function showNotification(message, type = 'info') {
         transform: translateX(100%);
         transition: all 0.3s ease;
     `;
-    
+
     // Set background color based on type
     if (type === 'error') {
         notification.style.backgroundColor = '#dc3545';
@@ -126,16 +126,16 @@ function showNotification(message, type = 'info') {
     } else {
         notification.style.backgroundColor = '#007bff';
     }
-    
+
     // Add to page
     document.body.appendChild(notification);
-    
+
     // Animate in
     setTimeout(() => {
         notification.style.opacity = '1';
         notification.style.transform = 'translateX(0)';
     }, 100);
-    
+
     // Remove after 5 seconds
     setTimeout(() => {
         notification.style.opacity = '0';
@@ -160,7 +160,7 @@ async function updateStorageUsage() {
         const percentageUsed = Math.round((data.used_slots / data.total_slots) * 100) || 0;
         // Find the storage usage stat card
         const storageCards = document.querySelectorAll('.stat-card');
-        const storageCard = Array.from(storageCards).find(card => 
+        const storageCard = Array.from(storageCards).find(card =>
             card.querySelector('.material-icons-round').textContent.trim() === 'inventory_2'
         );
         if (storageCard) {
@@ -179,4 +179,4 @@ document.addEventListener('DOMContentLoaded', function() {
     updateDashboardStats();
     // Keep the storage usage update for backward compatibility
     // updateStorageUsage();
-}); 
+});

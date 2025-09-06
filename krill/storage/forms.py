@@ -28,7 +28,7 @@ class DeviceForm(forms.ModelForm):
         widgets = {
             'description': forms.Textarea(attrs={'rows': 4}),
         }
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Make access_level optional by not requiring it
@@ -47,7 +47,7 @@ class ShelfForm(forms.ModelForm):
         widgets = {
             'description': forms.Textarea(attrs={'rows': 4}),
         }
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Make access_level optional by not requiring it
@@ -66,7 +66,7 @@ class RackForm(forms.ModelForm):
         widgets = {
             'description': forms.Textarea(attrs={'rows': 4}),
         }
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Make access_level optional by not requiring it
@@ -87,8 +87,8 @@ class BoxForm(forms.ModelForm):
         widgets = {
             'description': forms.Textarea(attrs={'rows': 4}),
         }
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Make access_level optional by not requiring it
-        self.fields['access_level'].required = False 
+        self.fields['access_level'].required = False

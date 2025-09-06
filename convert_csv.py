@@ -194,4 +194,4 @@ def convert_csv_to_fixtures(csv_file):
 # Usage
 # Note: This script now uses the anonymized test data by default
 # The original sensitive data should not be used for testing
-convert_csv_to_fixtures('anonymized_test_data.csv') 
+convert_csv_to_fixtures('anonymized_test_data.csv')

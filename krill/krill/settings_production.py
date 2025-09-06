@@ -202,7 +202,7 @@ class SecurityMiddleware:
 
     def __call__(self, request):
         response = self.get_response(request)
-        
+
         # Additional security headers
         response['X-Content-Type-Options'] = 'nosniff'
         response['X-Frame-Options'] = 'DENY'
@@ -210,7 +210,7 @@ class SecurityMiddleware:
         response['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains; preload'
         response['Referrer-Policy'] = 'strict-origin-when-cross-origin'
         response['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
-        
+
         return response
 
 # Add custom security middleware

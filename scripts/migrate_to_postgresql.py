@@ -33,16 +33,16 @@ def check_database_connection():
     try:
         # Temporarily switch to PostgreSQL
         os.environ['DATABASE_ENGINE'] = 'postgresql'
-        
+
         # Reload Django settings
         django.setup()
-        
+
         # Test connection
         db_conn = connections['default']
         db_conn.cursor()
         print("✓ PostgreSQL connection successful")
         return True
-        
+
     except OperationalError as e:
         print(f"✗ PostgreSQL connection failed: {e}")
         print("Please check your PostgreSQL configuration and environment variables")
@@ -56,7 +56,7 @@ def backup_sqlite_data():
     """Create a backup of the SQLite database."""
     sqlite_path = project_root / 'krill' / 'db.sqlite3'
     backup_path = project_root / 'krill' / 'db.sqlite3.backup'
-    
+
     if sqlite_path.exists():
         import shutil
         shutil.copy2(sqlite_path, backup_path)
@@ -71,20 +71,20 @@ def migrate_to_postgresql():
     """Migrate the database schema to PostgreSQL."""
     try:
         print("Migrating database schema to PostgreSQL...")
-        
+
         # Run migrations
         call_command('migrate', verbosity=2)
         print("✓ Database schema migrated successfully")
-        
+
         # Load fixtures if they exist
         fixtures_dir = project_root / 'tests' / 'fixtures'
         if fixtures_dir.exists():
             for fixture_file in fixtures_dir.glob('*.json'):
                 print(f"Loading fixture: {fixture_file.name}")
                 call_command('loaddata', str(fixture_file), verbosity=1)
-        
+
         return True
-        
+
     except Exception as e:
         print(f"✗ Migration failed: {e}")
         return False
@@ -105,32 +105,32 @@ def create_superuser():
 def main():
     """Main migration process."""
     print("=== SQLite to PostgreSQL Migration Script ===\n")
-    
+
     # Check PostgreSQL connection
     if not check_database_connection():
         print("\nMigration cannot proceed. Please fix PostgreSQL connection issues.")
         return False
-    
+
     # Backup SQLite data
     if not backup_sqlite_data():
         print("\nMigration cannot proceed. Please ensure SQLite database exists.")
         return False
-    
+
     # Migrate schema
     if not migrate_to_postgresql():
         print("\nMigration failed. Please check the error messages above.")
         return False
-    
+
     # Create superuser
     create_superuser()
-    
+
     print("\n=== Migration Completed Successfully! ===")
     print("\nNext steps:")
     print("1. Test your application with PostgreSQL")
     print("2. Update your environment variables to use PostgreSQL permanently")
     print("3. Remove the SQLite backup when you're confident everything works")
     print("4. Consider setting up regular PostgreSQL backups")
-    
+
     return True
 
 

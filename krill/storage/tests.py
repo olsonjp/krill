@@ -12,7 +12,7 @@ from .views.list import StorageListView
 from .views.views import HomeView, StorageView
 from sample.models.sample import Sample
 from sample.models.aliquot import (
-    Aliquot, AliquotType, AliquotDisposition, 
+    Aliquot, AliquotType, AliquotDisposition,
     AliquotLocation, AliquotTube
 )
 from sample.models.source import Source
@@ -408,14 +408,14 @@ class StorageHierarchyTest(TestCase):
         self.assertEqual(rack_total_capacity, expected_rack_capacity)
         # Calculate total capacity at shelf level
         shelf_total_capacity = sum(
-            box.rows * box.columns 
-            for rack in self.shelf.racks.all() 
+            box.rows * box.columns
+            for rack in self.shelf.racks.all()
             for box in rack.boxes.all()
         )
         self.assertEqual(shelf_total_capacity, expected_rack_capacity)
         # Calculate total capacity at device level
         device_total_capacity = sum(
-            box.rows * box.columns 
+            box.rows * box.columns
             for shelf in self.device.shelves.all()
             for rack in shelf.racks.all()
             for box in rack.boxes.all()
@@ -423,7 +423,7 @@ class StorageHierarchyTest(TestCase):
         self.assertEqual(device_total_capacity, expected_rack_capacity)
         # Calculate total capacity at site level
         site_total_capacity = sum(
-            box.rows * box.columns 
+            box.rows * box.columns
             for device in self.site.devices.all()
             for shelf in device.shelves.all()
             for rack in shelf.racks.all()

@@ -2,7 +2,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize settings page
     initializeSettings();
-    
+
     // Add event listeners
     setupEventListeners();
 });
@@ -22,13 +22,13 @@ function setupEventListeners() {
             handleDarkModeToggle(this.checked);
         });
     }
-    
+
     // Save settings button
     const saveButton = document.querySelector('.save-settings');
     if (saveButton) {
         saveButton.addEventListener('click', saveAllSettings);
     }
-    
+
     // Display name input
     const displayNameInput = document.querySelector('.setting-item input[type="text"]');
     if (displayNameInput) {
@@ -69,13 +69,13 @@ function handleDarkModeToggle(isDarkMode) {
         } else {
             document.body.classList.remove('dark-mode-variables');
         }
-        
+
         // Update header toggle state
         const headerDarkMode = document.querySelector('.header .dark-mode');
         if (headerDarkMode) {
             const lightIcon = headerDarkMode.querySelector('span:nth-child(1)');
             const darkIcon = headerDarkMode.querySelector('span:nth-child(2)');
-            
+
             if (data.dark_mode) {
                 lightIcon.classList.remove('active');
                 darkIcon.classList.add('active');
@@ -84,7 +84,7 @@ function handleDarkModeToggle(isDarkMode) {
                 darkIcon.classList.remove('active');
             }
         }
-        
+
         markSettingsChanged();
     })
     .catch(error => {
@@ -108,13 +108,13 @@ function saveAllSettings() {
         dark_mode: document.getElementById('dark-mode')?.checked || false,
         display_name: document.querySelector('.setting-item input[type="text"]')?.value || ''
     };
-    
+
     // Show loading state on save button
     const saveButton = document.querySelector('.save-settings');
     const originalText = saveButton.textContent;
     saveButton.textContent = 'Saving...';
     saveButton.disabled = true;
-    
+
     // Save settings to server
     fetch('/preferences/save/', {
         method: 'POST',
@@ -134,7 +134,7 @@ function saveAllSettings() {
         if (data.success) {
             // Show subtle success message
             showSuccessMessage('Settings saved successfully!');
-            
+
             // Refresh the page after a short delay to reflect new state
             setTimeout(() => {
                 window.location.reload();
@@ -146,7 +146,7 @@ function saveAllSettings() {
     .catch(error => {
         console.error('Error saving settings:', error);
         showErrorMessage('Failed to save settings. Please try again.');
-        
+
         // Reset save button
         saveButton.textContent = originalText;
         saveButton.disabled = false;
@@ -156,7 +156,7 @@ function saveAllSettings() {
 function showSuccessMessage(message) {
     // Remove any existing messages
     removeExistingMessages();
-    
+
     // Create success message element
     const successDiv = document.createElement('div');
     successDiv.className = 'settings-message success';
@@ -164,11 +164,11 @@ function showSuccessMessage(message) {
         <span class="material-icons-round">check_circle</span>
         <span>${message}</span>
     `;
-    
+
     // Insert before the save button
     const saveButton = document.querySelector('.save-settings');
     saveButton.parentNode.insertBefore(successDiv, saveButton);
-    
+
     // Auto-remove after 3 seconds
     setTimeout(() => {
         if (successDiv.parentNode) {
@@ -180,7 +180,7 @@ function showSuccessMessage(message) {
 function showErrorMessage(message) {
     // Remove any existing messages
     removeExistingMessages();
-    
+
     // Create error message element
     const errorDiv = document.createElement('div');
     errorDiv.className = 'settings-message error';
@@ -188,11 +188,11 @@ function showErrorMessage(message) {
         <span class="material-icons-round">error</span>
         <span>${message}</span>
     `;
-    
+
     // Insert before the save button
     const saveButton = document.querySelector('.save-settings');
     saveButton.parentNode.insertBefore(errorDiv, saveButton);
-    
+
     // Auto-remove after 5 seconds
     setTimeout(() => {
         if (errorDiv.parentNode) {

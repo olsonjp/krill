@@ -23,7 +23,7 @@ class ReportGenerationForm(forms.Form):
         initial='pdf',
         widget=forms.Select(attrs={'class': 'form-control'})
     )
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Add custom validation or field customization here
@@ -42,9 +42,6 @@ class AlertCreationForm(forms.ModelForm):
             'target_type': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., freezer, sample (optional)'}),
             'target_id': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Target ID (optional)'}),
         }
-
-
-
 
 
 class SampleSearchForm(forms.Form):
@@ -73,17 +70,17 @@ class SampleSearchForm(forms.Form):
         ],
         widget=forms.Select(attrs={'class': 'form-control'})
     )
-    
+
     def clean(self):
         cleaned_data = super().clean()
         query = cleaned_data.get('query')
         sample_type = cleaned_data.get('sample_type')
         disposition = cleaned_data.get('disposition')
-        
+
         # At least one filter must be provided
         if not any([query, sample_type, disposition]):
             raise forms.ValidationError("Please provide at least one search criteria.")
-        
+
         return cleaned_data
 
 
@@ -103,7 +100,7 @@ class ReportTemplateForm(forms.ModelForm):
             }),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
-    
+
     def clean_template_data(self):
         """Validate that template_data is valid JSON"""
         import json
@@ -138,7 +135,7 @@ class ScheduledReportForm(forms.ModelForm):
             }),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
-    
+
     def clean_recipients(self):
         """Convert recipients text to list and validate emails"""
         recipients_text = self.cleaned_data.get('recipients')
@@ -153,7 +150,7 @@ class ScheduledReportForm(forms.ModelForm):
                     raise forms.ValidationError(f"Invalid email address: {email}")
             return recipients
         return []
-    
+
     def clean_parameters(self):
         """Validate that parameters is valid JSON"""
         import json

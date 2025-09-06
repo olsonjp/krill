@@ -80,19 +80,19 @@
                 </span>
                 <h3>Settings</h3>
             </a>
-            <!-- User Management section -->
+            <!-- Admin section -->
             <div class="sidebar-section">
-                <a href="{% url 'person:user_list' %}" class="sidebar-toggle {% if 'users' in request.path %}active{% endif %}">
+                <a href="#" class="sidebar-toggle {% if 'admin' in request.path or 'users' in request.path or 'data-import' in request.path %}active{% endif %}" onclick="toggleSection('admin-section')">
                     <span class="material-icons-round">
-                        people
+                        admin_panel_settings
                     </span>
-                    <h3>Users</h3>
+                    <h3>Admin</h3>
                     <span class="material-icons-round expand-icon">expand_more</span>
                 </a>
-                <div id="users-section" class="sidebar-submenu {% if 'users' in request.path %}show{% endif %}">
+                <div id="admin-section" class="sidebar-submenu {% if 'admin' in request.path or 'users' in request.path or 'data-import' in request.path %}show{% endif %}">
                     <a href="{% url 'person:user_list' %}" class="submenu-item {% if 'users' in request.path and not 'audit' in request.path and not 'create' in request.path %}active{% endif %}">
-                        <span class="material-icons-round">list</span>
-                        <h3>User List</h3>
+                        <span class="material-icons-round">people</span>
+                        <h3>User Management</h3>
                     </a>
                     <a href="{% url 'person:create_user' %}" class="submenu-item {% if 'create' in request.path %}active{% endif %}">
                         <span class="material-icons-round">person_add</span>
@@ -101,6 +101,18 @@
                     <a href="{% url 'person:audit_log' %}" class="submenu-item {% if 'audit' in request.path %}active{% endif %}">
                         <span class="material-icons-round">history</span>
                         <h3>Audit Log</h3>
+                    </a>
+                    <a href="{% url 'person:permission_list' %}" class="submenu-item {% if 'permissions' in request.path %}active{% endif %}">
+                        <span class="material-icons-round">security</span>
+                        <h3>Permissions</h3>
+                    </a>
+                    <a href="{% url 'person:data_import' %}" class="submenu-item {% if 'data-import' in request.path %}active{% endif %}">
+                        <span class="material-icons-round">upload_file</span>
+                        <h3>Data Import</h3>
+                    </a>
+                    <a href="{% url 'admin:index' %}" class="submenu-item {% if 'admin' in request.path and not 'data-import' in request.path %}active{% endif %}">
+                        <span class="material-icons-round">settings_applications</span>
+                        <h3>System Admin</h3>
                     </a>
                 </div>
             </div>

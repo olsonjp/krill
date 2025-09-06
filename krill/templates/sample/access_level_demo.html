@@ -17,15 +17,15 @@
                     <!-- Access Level Information -->
                     <div class="alert alert-info">
                         <h5><i class="fas fa-info-circle"></i> Access Level Information</h5>
-                        <p><strong>Current Access Level:</strong> 
+                        <p><strong>Current Access Level:</strong>
                             <span class="badge badge-{% if sample.access_level == 'admins_only' %}danger{% elif sample.access_level == 'admins_managers' %}warning{% else %}success{% endif %}">
                                 {{ sample.get_access_level_display }}
                             </span>
                         </p>
-                        <p><strong>Your Role:</strong> 
+                        <p><strong>Your Role:</strong>
                             <span class="badge badge-primary">{{ user_role.get_role_display }}</span>
                         </p>
-                        <p><strong>Access Status:</strong> 
+                        <p><strong>Access Status:</strong>
                             <span class="badge badge-success">
                                 <i class="fas fa-check"></i> Access Granted
                             </span>

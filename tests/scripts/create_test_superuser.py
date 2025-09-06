@@ -20,11 +20,11 @@ django.setup()
 def create_test_superuser():
     """Create a test superuser if it doesn't exist"""
     User = get_user_model()
-    
+
     username = 'admin'
     password = 'admin'
     email = 'admin@test.com'
-    
+
     # Check if superuser already exists
     if User.objects.filter(username=username).exists():
         print(f"Superuser '{username}' already exists. Updating password...")
@@ -44,7 +44,7 @@ def create_test_superuser():
             password=password
         )
         print(f"✓ Created superuser '{username}' with password '{password}'")
-    
+
     print(f"\nTest superuser credentials:")
     print(f"  Username: {username}")
     print(f"  Password: {password}")

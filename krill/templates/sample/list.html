@@ -14,7 +14,7 @@
             <div class="form-row">
                 <div class="form-group">
                     <label for="searchInput">Search</label>
-                    <input type="text" id="searchInput" name="q" class="form-control" 
+                    <input type="text" id="searchInput" name="q" class="form-control"
                            placeholder="Search {{ model_name|lower }}..." value="{{ search_query }}">
                 </div>
                 <div class="form-group">
@@ -89,7 +89,7 @@
                     <div class="sample-meta">
                         {% if model_name == 'Aliquots' %}
                             <p><strong>Sample:</strong> {{ item.sample.name }}</p>
-                            <p><strong>Disposition:</strong> 
+                            <p><strong>Disposition:</strong>
                                 <span class="disposition-badge disposition-{{ item.disposition|default:'unknown' }}">
                                     {{ item.disposition|title|default:"Unknown" }}
                                 </span>
@@ -122,7 +122,7 @@
                 </div>
                 {% endfor %}
             </div>
-            
+
             <!-- Pagination -->
             {% if is_paginated %}
             <div class="pagination">
@@ -132,11 +132,11 @@
                         Previous
                     </a>
                 {% endif %}
-                
+
                 <span class="current-page">
                     Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
                 </span>
-                
+
                 {% if page_obj.has_next %}
                     <a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}{% if request.GET.sort %}sort={{ request.GET.sort }}&{% endif %}{% if request.GET.order %}order={{ request.GET.order }}&{% endif %}{% if request.GET.type %}type={{ request.GET.type }}&{% endif %}page={{ page_obj.next_page_number }}" class="page-link">
                         Next
@@ -163,16 +163,16 @@ function performSearch() {
     const searchInput = document.getElementById('searchInput');
     const sortBy = document.getElementById('sortBy');
     const sortOrder = document.getElementById('sortOrder');
-    
+
     const params = new URLSearchParams();
     if (searchInput.value) params.set('q', searchInput.value);
     if (sortBy.value) params.set('sort', sortBy.value);
     if (sortOrder.value) params.set('order', sortOrder.value);
-    
+
     // Preserve type parameter
     const currentType = new URLSearchParams(window.location.search).get('type');
     if (currentType) params.set('type', currentType);
-    
+
     // Navigate to new URL with search parameters
     const newUrl = `${window.location.pathname}?${params.toString()}`;
     window.location.href = newUrl;
@@ -183,7 +183,7 @@ function clearSearch() {
     const currentType = new URLSearchParams(window.location.search).get('type');
     const params = new URLSearchParams();
     if (currentType) params.set('type', currentType);
-    
+
     // Navigate to URL without search parameters
     const newUrl = `${window.location.pathname}?${params.toString()}`;
     window.location.href = newUrl;
@@ -456,21 +456,21 @@ function viewSample(sampleId) {
     .search-form .form-row {
         grid-template-columns: 1fr;
     }
-    
+
     .results-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .results-header {
         flex-direction: column;
         gap: 15px;
         align-items: flex-start;
     }
-    
+
     .form-actions {
         flex-direction: column;
     }
-    
+
     .action-buttons {
         flex-direction: column;
         align-items: center;
@@ -515,4 +515,4 @@ function viewSample(sampleId) {
     margin-left: 10px;
 }
 </style>
-{% endblock %} 
+{% endblock %}

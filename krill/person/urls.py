@@ -18,6 +18,8 @@ urlpatterns = [
     path('permissions/<int:permission_id>/revoke/', views.revoke_permission, name='revoke_permission'),
     # Audit logs
     path('audit-logs/', views.audit_log, name='audit_log'),
+    # Data import
+    path('data-import/', views.DataImportView.as_view(), name='data_import'),
     # API endpoints
     path('api/users/<int:user_id>/permissions/', views.user_permissions_api, name='user_permissions_api'),
     path('api/permissions/grant/', views.grant_object_permission_api, name='grant_object_permission_api'),

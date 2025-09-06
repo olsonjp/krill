@@ -52,17 +52,17 @@
                 {% csrf_token %}
                 <div class="form-group">
                     <label for="reportName">Report Name</label>
-                    <input type="text" class="form-control" id="reportName" name="name" 
+                    <input type="text" class="form-control" id="reportName" name="name"
                            placeholder="Storage Audit - 2024-01-15" required>
                 </div>
-                
+
                 <div class="form-group">
                     <label for="sampleSize">Sample Size</label>
-                    <input type="number" class="form-control" id="sampleSize" name="sample_size" 
+                    <input type="number" class="form-control" id="sampleSize" name="sample_size"
                            value="10" min="1" max="100" required>
                     <small class="form-text">Number of occupied slots to randomly select for audit (1-100)</small>
                 </div>
-                
+
                 <div class="form-group">
                     <div class="form-check">
                         <input type="checkbox" class="form-check-input" id="includeEmpty" name="include_empty_checks">
@@ -72,7 +72,7 @@
                         <small class="form-text">Also randomly check some empty slots to verify they are actually empty</small>
                     </div>
                 </div>
-                
+
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary" id="generateBtn">
                         <span class="material-icons-round">assignment_turned_in</span>
@@ -100,7 +100,7 @@
                     <small>A storage audit randomly selects occupied storage slots and provides a checklist for physical verification. This helps ensure data integrity and catch any discrepancies between the system records and actual storage.</small>
                 </div>
             </div>
-            
+
             <div class="info-item">
                 <span class="material-icons-round">list_alt</span>
                 <div class="info-content">
@@ -108,7 +108,7 @@
                     <small>1. System randomly selects occupied slots → 2. Generate audit checklist with location details → 3. Physical verification of each slot → 4. Record any discrepancies found → 5. Update system records if needed</small>
                 </div>
             </div>
-            
+
             <div class="info-item">
                 <span class="material-icons-round">check_circle</span>
                 <div class="info-content">
@@ -133,19 +133,19 @@
 <script>
 document.getElementById('auditForm').addEventListener('submit', function(e) {
     e.preventDefault();
-    
+
     const formData = new FormData(this);
     const data = {
         name: formData.get('name'),
         sample_size: parseInt(formData.get('sample_size')),
         include_empty_checks: formData.get('include_empty_checks') === 'on'
     };
-    
+
     const generateBtn = document.getElementById('generateBtn');
     const originalText = generateBtn.innerHTML;
     generateBtn.innerHTML = '<span class="material-icons-round rotating">refresh</span> Generating...';
     generateBtn.disabled = true;
-    
+
     fetch('{% url "reports:generate_audit_report" %}', {
         method: 'POST',
         headers: {
@@ -176,7 +176,7 @@ document.getElementById('auditForm').addEventListener('submit', function(e) {
 
 function displayAuditResults(auditData) {
     const resultsDiv = document.getElementById('auditResults');
-    
+
     let html = `
         <div class="info-item success">
             <span class="material-icons-round">check_circle</span>
@@ -185,7 +185,7 @@ function displayAuditResults(auditData) {
                 <small>${auditData.summary}</small>
             </div>
         </div>
-        
+
         <div class="stats-container">
             <div class="stat-card">
                 <span class="material-icons-round">inventory_2</span>
@@ -217,7 +217,7 @@ function displayAuditResults(auditData) {
             </div>
         </div>
     `;
-    
+
     if (auditData.audit_slots.length > 0) {
         html += `
             <div class="info-item">
@@ -228,7 +228,7 @@ function displayAuditResults(auditData) {
                 </div>
             </div>
         `;
-        
+
         auditData.audit_slots.forEach((slot, index) => {
             html += `
                 <div class="audit-item">
@@ -261,7 +261,7 @@ function displayAuditResults(auditData) {
             `;
         });
     }
-    
+
     if (auditData.empty_audit_slots && auditData.empty_audit_slots.length > 0) {
         html += `
             <div class="info-item">
@@ -272,7 +272,7 @@ function displayAuditResults(auditData) {
                 </div>
             </div>
         `;
-        
+
         auditData.empty_audit_slots.forEach(slot => {
             html += `
                 <div class="audit-item empty-slot">
@@ -297,7 +297,7 @@ function displayAuditResults(auditData) {
             `;
         });
     }
-    
+
     html += `
         <div class="form-actions">
             <button class="btn btn-primary" onclick="printAuditReport()">
@@ -310,7 +310,7 @@ function displayAuditResults(auditData) {
             </button>
         </div>
     `;
-    
+
     resultsDiv.innerHTML = html;
 }
 
@@ -328,7 +328,7 @@ style.textContent = `
     .rotating {
         animation: rotate 2s linear infinite;
     }
-    
+
     @keyframes rotate {
         from { transform: rotate(0deg); }
         to { transform: rotate(360deg); }
@@ -529,11 +529,11 @@ document.head.appendChild(style);
     .form-actions {
         flex-direction: column;
     }
-    
+
     .audit-fields {
         grid-template-columns: 1fr;
     }
-    
+
     .audit-header {
         flex-direction: column;
         gap: 8px;

@@ -29,4 +29,4 @@ class StorageCreateView(CreateView):
         model_type = self.request.GET.get('type', 'site')
         context['model_type'] = model_type
         context['model_name'] = model_type.title()
-        return context 
+        return context

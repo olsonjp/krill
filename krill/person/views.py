@@ -8,14 +8,437 @@ from django.db.models import Q
 from django.utils import timezone
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth import get_user_model
+from django.views.generic import TemplateView
+from django.utils.decorators import method_decorator
+from django.contrib.admin.views.decorators import staff_member_required
+from django import forms
+import csv
+import json
+import os
+from datetime import datetime
+from collections import defaultdict
 
 User = get_user_model()
 from .models import UserPreference, UserRole, Permission, UserAuditLog
 from .forms import (
-    UserRoleForm, PermissionForm, UserPreferenceForm, 
+    UserRoleForm, PermissionForm, UserPreferenceForm,
     BulkPermissionForm, UserSearchForm, AuditLogFilterForm, CreateUserForm
 )
 from .decorators import require_permission, require_minimum_role, grant_object_permission, revoke_object_permission
+
+
+# Data Import Form
+class DataImportForm(forms.Form):
+    csv_file = forms.FileField(
+        label='CSV File',
+        help_text='Upload a CSV file with sample data. Expected format: Source;Cell Line;Experiment #;Sample Notes;Freezer Name;Position 1;Position 2;Position 3;Position 4;Aliquot Type;Number of Aliquots Total;Disposition'
+    )
+
+
+# Data Import View for main app
+@method_decorator(staff_member_required, name='dispatch')
+class DataImportView(TemplateView):
+    template_name = 'person/data_import.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['form'] = DataImportForm()
+        context['title'] = 'Data Import'
+        return context
+
+    def post(self, request, *args, **kwargs):
+        form = DataImportForm(request.POST, request.FILES)
+        if form.is_valid():
+            csv_file = form.cleaned_data['csv_file']
+            proceed_with_import = request.POST.get('proceed_with_import', False)
+
+            try:
+                if proceed_with_import:
+                    # Actual import
+                    import_result = self.perform_import(csv_file)
+                    details = import_result.get('details', {})
+                    message = f'Successfully imported {import_result["total"]} records: '
+                    message += f'{details.get("sources", 0)} sources, '
+                    message += f'{details.get("samples", 0)} samples, '
+                    message += f'{details.get("aliquots", 0)} aliquots, '
+                    message += f'{details.get("tubes", 0)} tubes, '
+                    message += f'{details.get("locations", 0)} locations'
+                    messages.success(request, message)
+                    return redirect('person:user_list')
+                else:
+                    # Preview mode (default for first submission)
+                    preview_data = self.preview_import(csv_file)
+                    context = self.get_context_data()
+                    context['preview_data'] = preview_data
+                    context['form'] = form
+                    return render(request, self.template_name, context)
+
+            except Exception as e:
+                messages.error(request, f'Import failed: {str(e)}')
+                context = self.get_context_data()
+                context['form'] = form
+                context['error'] = str(e)
+                return render(request, self.template_name, context)
+
+        context = self.get_context_data()
+        context['form'] = form
+        return render(request, self.template_name, context)
+
+    def preview_import(self, csv_file):
+        """Preview the import data without creating records"""
+        preview_data = {
+            'sources': set(),
+            'samples': set(),
+            'storage_items': set(),
+            'aliquot_types': set(),
+            'dispositions': set(),
+            'aliquots': 0,
+            'locations': 0
+        }
+
+        try:
+            # Save uploaded file temporarily
+            temp_csv_path = f'/tmp/import_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+            with open(temp_csv_path, 'wb') as temp_file:
+                for chunk in csv_file.chunks():
+                    temp_file.write(chunk)
+
+            # Use the existing convert_csv.py functionality
+            fixtures = self.convert_csv_to_fixtures(temp_csv_path)
+
+            # Count what would be imported
+            preview_data['sources'] = set([f['fields']['name'] for f in fixtures if f['model'] == 'sample.source'])
+            preview_data['samples'] = set([f['fields']['name'] for f in fixtures if f['model'] == 'sample.sample'])
+            preview_data['aliquot_types'] = set([f['fields']['name'] for f in fixtures if f['model'] == 'sample.aliquottype'])
+            preview_data['dispositions'] = set([f['fields']['name'] for f in fixtures if f['model'] == 'sample.aliquotdisposition'])
+            preview_data['storage_items'] = set([f['fields']['name'] for f in fixtures if f['model'] in ['storage.site', 'storage.device', 'storage.shelf', 'storage.rack', 'storage.box']])
+            preview_data['aliquots'] = len([f for f in fixtures if f['model'] == 'sample.aliquot'])
+            preview_data['tubes'] = len([f for f in fixtures if f['model'] == 'sample.aliquottube'])
+            preview_data['locations'] = len([f for f in fixtures if f['model'] == 'sample.aliquotlocation'])
+
+            # Convert sets to sorted lists for display
+            for key in ['sources', 'samples', 'storage_items', 'aliquot_types', 'dispositions']:
+                preview_data[key] = sorted(list(preview_data[key]))
+
+            # Clean up temporary file
+            if os.path.exists(temp_csv_path):
+                os.remove(temp_csv_path)
+
+        except Exception as e:
+            # Clean up temporary file on error
+            if 'temp_csv_path' in locals() and os.path.exists(temp_csv_path):
+                os.remove(temp_csv_path)
+            raise Exception(f"Error reading CSV file: {str(e)}")
+
+        return preview_data
+
+    def perform_import(self, csv_file):
+        """Actually perform the import"""
+        try:
+            # Save uploaded file temporarily
+            temp_csv_path = f'/tmp/import_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+            with open(temp_csv_path, 'wb') as temp_file:
+                for chunk in csv_file.chunks():
+                    temp_file.write(chunk)
+
+            # Use the existing convert_csv.py functionality
+            fixtures = self.convert_csv_to_fixtures(temp_csv_path)
+
+            # Save fixtures to temporary file
+            fixtures_file = f'/tmp/import_fixtures_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json'
+            with open(fixtures_file, 'w') as f:
+                json.dump(fixtures, f, indent=2)
+
+            # Use Django's loaddata command to import the fixtures
+            from django.core.management import call_command
+            from django.core.management.base import CommandError
+
+            try:
+                # Add debug logging
+                print(f"Attempting to import {len(fixtures)} fixtures from {fixtures_file}")
+
+                # Import fixtures using Django's loaddata command
+                call_command('loaddata', fixtures_file, verbosity=1)
+
+                # Count what was imported
+                import_counts = {
+                    'sources': len([f for f in fixtures if f['model'] == 'sample.source']),
+                    'samples': len([f for f in fixtures if f['model'] == 'sample.sample']),
+                    'aliquot_types': len([f for f in fixtures if f['model'] == 'sample.aliquottype']),
+                    'dispositions': len([f for f in fixtures if f['model'] == 'sample.aliquotdisposition']),
+                    'sites': len([f for f in fixtures if f['model'] == 'storage.site']),
+                    'devices': len([f for f in fixtures if f['model'] == 'storage.device']),
+                    'shelves': len([f for f in fixtures if f['model'] == 'storage.shelf']),
+                    'racks': len([f for f in fixtures if f['model'] == 'storage.rack']),
+                    'boxes': len([f for f in fixtures if f['model'] == 'storage.box']),
+                    'aliquots': len([f for f in fixtures if f['model'] == 'sample.aliquot']),
+                    'tubes': len([f for f in fixtures if f['model'] == 'sample.aliquottube']),
+                    'locations': len([f for f in fixtures if f['model'] == 'sample.aliquotlocation'])
+                }
+
+                total_imported = sum(import_counts.values())
+                print(f"Successfully imported {total_imported} objects")
+
+                # Clean up temporary files
+                if os.path.exists(fixtures_file):
+                    os.remove(fixtures_file)
+                if os.path.exists(temp_csv_path):
+                    os.remove(temp_csv_path)
+
+                return {
+                    'total': total_imported,
+                    'details': import_counts
+                }
+
+            except CommandError as e:
+                # Clean up temporary files on error
+                if os.path.exists(fixtures_file):
+                    os.remove(fixtures_file)
+                if os.path.exists(temp_csv_path):
+                    os.remove(temp_csv_path)
+                print(f"CommandError during import: {str(e)}")
+                raise Exception(f"Django import failed: {str(e)}")
+
+            except Exception as e:
+                # Clean up temporary files on any other error
+                if os.path.exists(fixtures_file):
+                    os.remove(fixtures_file)
+                if os.path.exists(temp_csv_path):
+                    os.remove(temp_csv_path)
+                print(f"Unexpected error during import: {str(e)}")
+                raise Exception(f"Unexpected import error: {str(e)}")
+
+        except Exception as e:
+            raise Exception(f"Import failed: {str(e)}")
+
+    def convert_csv_to_fixtures(self, csv_file_path):
+        """Convert CSV file to Django fixtures using the existing convert_csv.py logic"""
+        fixtures = []
+        pk_counter = defaultdict(lambda: 1)
+
+        # Mapping dictionaries to track created objects
+        sources = {}
+        samples = {}
+        storage = {'sites': {}, 'devices': {}, 'shelves': {}, 'racks': {}, 'boxes': {}}
+        aliquot_types = {}
+        dispositions = {}
+
+        # Read CSV file
+        with open(csv_file_path, 'r') as f:
+            reader = csv.DictReader(f, delimiter=';')
+            for row in reader:
+                # Create Source if not exists
+                source_name = row['Source'] or 'Unknown'
+                if source_name not in sources:
+                    sources[source_name] = pk_counter['source']
+                    fixtures.append({
+                        'model': 'sample.source',
+                        'pk': sources[source_name],
+                        'fields': {
+                            'name': source_name,
+                            'description': ''
+                        }
+                    })
+                    pk_counter['source'] += 1
+
+                # Create Sample if not exists
+                sample_key = row['Cell Line']
+                current_notes = row['Sample Notes'] or ''
+                if sample_key not in samples:
+                    samples[sample_key] = pk_counter['sample']
+                    fixtures.append({
+                        'model': 'sample.sample',
+                        'pk': samples[sample_key],
+                        'fields': {
+                            'name': row['Cell Line'],
+                            'experiment': row['Experiment #'] or '',
+                            'source': sources[source_name],
+                            'notes': current_notes
+                        }
+                    })
+                    pk_counter['sample'] += 1
+                else:
+                    # Sample exists, check if we need to append notes
+                    existing_sample = next((fixture for fixture in fixtures if fixture['model'] == 'sample.sample' and fixture['fields']['name'] == sample_key), None)
+                    if existing_sample and current_notes and current_notes not in existing_sample['fields']['notes']:
+                        existing_notes = existing_sample['fields']['notes']
+                        if existing_notes:
+                            existing_sample['fields']['notes'] = existing_notes + '\n' + current_notes
+                        else:
+                            existing_sample['fields']['notes'] = current_notes
+
+                # Create Storage hierarchy
+                site_name = 'Sikora Lab'
+                freezer_name = row['Freezer Name']
+                shelf_name = row['Position 2']  # e.g., "F"
+                rack_name = row['Position 1']   # e.g., "4"
+                box_name = f"{rack_name}_{shelf_name}"  # e.g., "4_F"
+
+                if site_name not in storage['sites']:
+                    storage['sites'][site_name] = pk_counter['site']
+                    fixtures.append({
+                        'model': 'storage.site',
+                        'pk': storage['sites'][site_name],
+                        'fields': {'name': site_name}
+                    })
+                    pk_counter['site'] += 1
+
+                if freezer_name:
+                    # Create Device if not exists
+                    if freezer_name not in storage['devices']:
+                        storage['devices'][freezer_name] = pk_counter['device']
+                        fixtures.append({
+                            'model': 'storage.device',
+                            'pk': storage['devices'][freezer_name],
+                            'fields': {
+                                'name': freezer_name,
+                                'description': '',
+                                'site': storage['sites'][site_name]
+                            }
+                        })
+                        pk_counter['device'] += 1
+
+                if shelf_name and rack_name:
+                    # Create Shelf if not exists
+                    if shelf_name not in storage['shelves']:
+                        storage['shelves'][shelf_name] = pk_counter['shelf']
+                        fixtures.append({
+                            'model': 'storage.shelf',
+                            'pk': storage['shelves'][shelf_name],
+                            'fields': {
+                                'name': shelf_name,
+                                'description': '',
+                                'device': storage['devices'][freezer_name]
+                            }
+                        })
+                        pk_counter['shelf'] += 1
+
+                    # Create Rack if not exists
+                    if rack_name not in storage['racks']:
+                        storage['racks'][rack_name] = pk_counter['rack']
+                        fixtures.append({
+                            'model': 'storage.rack',
+                            'pk': storage['racks'][rack_name],
+                            'fields': {
+                                'name': rack_name,
+                                'description': '',
+                                'shelf': storage['shelves'][shelf_name]
+                            }
+                        })
+                        pk_counter['rack'] += 1
+
+                    # Create Box if not exists
+                    box_key = box_name
+                    if box_key not in storage['boxes']:
+                        storage['boxes'][box_key] = pk_counter['box']
+                        fixtures.append({
+                            'model': 'storage.box',
+                            'pk': storage['boxes'][box_key],
+                            'fields': {
+                                'name': box_name,
+                                'description': '',
+                                'rack': storage['racks'][rack_name],
+                                'rows': 10,
+                                'columns': 10
+                            }
+                        })
+                        pk_counter['box'] += 1
+
+                # Create AliquotType if not exists
+                aliquot_type = row['Aliquot Type'] or 'Unknown'
+                if aliquot_type not in aliquot_types:
+                    aliquot_types[aliquot_type] = pk_counter['aliquot_type']
+                    fixtures.append({
+                        'model': 'sample.aliquottype',
+                        'pk': aliquot_types[aliquot_type],
+                        'fields': {
+                            'name': aliquot_type,
+                            'description': ''
+                        }
+                    })
+                    pk_counter['aliquot_type'] += 1
+
+                # Map disposition
+                disposition_map = {
+                    'In Storage': 'stored',
+                    'Used': 'exhausted',
+                    'Checked Out': 'in_use'
+                }
+                disposition = row['Disposition'] or 'In Storage'
+                disp_type = disposition_map.get(disposition, 'stored')
+                if disposition not in dispositions:
+                    dispositions[disposition] = pk_counter['disposition']
+                    fixtures.append({
+                        'model': 'sample.aliquotdisposition',
+                        'pk': dispositions[disposition],
+                        'fields': {
+                            'name': disposition,
+                            'disposition_type': disp_type
+                        }
+                    })
+                    pk_counter['disposition'] += 1
+
+                # Create Aliquot
+                aliquot_pk = pk_counter['aliquot']
+                # Use "Number of Aliquots Total" or "Collef Aliquots Total" for tube count
+                quantity = int(float(row.get('Number of Aliquots Total', row.get('Collef Aliquots Total', 1)) or 1))
+                current_time = timezone.now().isoformat()
+                fixtures.append({
+                    'model': 'sample.aliquot',
+                    'pk': aliquot_pk,
+                    'fields': {
+                        'parent': None,  # Could be mapped if needed
+                        'sample': samples[sample_key],
+                        'quantity': quantity,
+                        'aliquot_type': aliquot_types[aliquot_type],
+                        'access_level': 'all_members',
+                        'created_at': current_time,
+                        'updated_at': current_time,
+                        'deleted': False
+                    }
+                })
+                pk_counter['aliquot'] += 1
+
+                # Create AliquotTube for each tube in the aliquot
+                for tube_num in range(1, quantity + 1):
+                    fixtures.append({
+                        'model': 'sample.aliquottube',
+                        'pk': pk_counter['tube'],
+                        'fields': {
+                            'aliquot': aliquot_pk,
+                            'tube_number': tube_num,
+                            'disposition': dispositions[disposition],
+                            'created_at': current_time,
+                            'updated_at': current_time
+                        }
+                    })
+                    pk_counter['tube'] += 1
+
+                # Create AliquotLocation if box exists (only for first tube)
+                if box_key in storage['boxes'] and row.get('Position 3') and row.get('Position 4') and quantity > 0:
+                    try:
+                        row_pos = int(row['Position 3'])
+                        col_pos = int(row['Position 4'])
+                        if row_pos > 0 and col_pos > 0:  # Only create location for valid positions
+                            fixtures.append({
+                                'model': 'sample.aliquotlocation',
+                                'pk': pk_counter['location'],
+                                'fields': {
+                                    'aliquot': aliquot_pk,
+                                    'tube_number': 1,  # Store first tube in the location
+                                    'box': storage['boxes'][box_key],
+                                    'row': row_pos,
+                                    'column': col_pos,
+                                    'created_at': current_time,
+                                    'updated_at': current_time
+                                }
+                            })
+                            pk_counter['location'] += 1
+                    except (ValueError, TypeError) as e:
+                        # Log error but continue with import
+                        print(f"Warning: Could not create location for aliquot {aliquot_pk}: {e}")
+
+        return fixtures
 
 
 # Create your views here.

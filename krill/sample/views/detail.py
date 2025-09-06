@@ -80,7 +80,7 @@ class TubeDetailView(DetailView):
     model = AliquotTube
     template_name = 'sample/tube_detail.html'
     context_object_name = 'tube'
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         tube = self.object
@@ -107,16 +107,16 @@ class TubeDetailView(DetailView):
         else:
             context['storage_location'] = None
         return context
-    
+
     def post(self, request, *args, **kwargs):
         self.object = self.get_object()
         action = request.POST.get('action', 'edit')
-        
+
         if action == 'move':
             return self._handle_move(request)
         else:
             return self._handle_edit(request)
-    
+
     def _handle_edit(self, request):
         """Handle edit form submission"""
         form = AliquotTubeForm(request.POST, instance=self.object)
@@ -135,7 +135,7 @@ class TubeDetailView(DetailView):
             context = self.get_context_data()
             context['form'] = form
             return render(request, self.template_name, context)
-    
+
     def _handle_move(self, request):
         """Handle move form submission"""
         move_form = AliquotTubeMoveForm(request.POST)
@@ -145,18 +145,18 @@ class TubeDetailView(DetailView):
             if self.object.disposition != stored_disposition:
                 self.object.disposition = stored_disposition
                 self.object.save()
-            
+
             # Remove any existing location for this tube
             AliquotLocation.objects.filter(
                 aliquot=self.object.aliquot,
                 tube_number=self.object.tube_number
             ).delete()
-            
+
             # Create new location
             box = move_form.cleaned_data['box']
             row = move_form.cleaned_data['row']
             column = move_form.cleaned_data['column']
-            
+
             AliquotLocation.objects.create(
                 aliquot=self.object.aliquot,
                 box=box,
@@ -164,7 +164,7 @@ class TubeDetailView(DetailView):
                 column=column,
                 tube_number=self.object.tube_number
             )
-            
+
             return redirect('sample:tube_detail', pk=self.object.pk)
         else:
             # If form is invalid, re-render with errors

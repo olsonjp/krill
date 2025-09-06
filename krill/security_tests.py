@@ -32,7 +32,7 @@ User = get_user_model()
 
 class SecurityTestCase(TestCase):
     """Base test case for security testing with common setup"""
-    
+
     def setUp(self):
         """Set up test data for security tests"""
         # Create test users with different roles
@@ -43,37 +43,37 @@ class SecurityTestCase(TestCase):
             is_staff=True,
             is_superuser=True
         )
-        
+
         self.lab_admin = User.objects.create_user(
             username='lab_admin',
             email='lab_admin@test.com',
             password='SecurePass123!'
         )
-        
+
         self.lab_manager = User.objects.create_user(
             username='lab_manager',
             email='lab_manager@test.com',
             password='SecurePass123!'
         )
-        
+
         self.researcher = User.objects.create_user(
             username='researcher',
             email='researcher@test.com',
             password='SecurePass123!'
         )
-        
+
         self.viewer = User.objects.create_user(
             username='viewer',
             email='viewer@test.com',
             password='SecurePass123!'
         )
-        
+
         # Create user roles (use get_or_create to avoid duplicates)
         UserRole.objects.get_or_create(user=self.lab_admin, defaults={'role': 'lab_admin', 'department': 'Admin'})
         UserRole.objects.get_or_create(user=self.lab_manager, defaults={'role': 'lab_manager', 'department': 'Research'})
         UserRole.objects.get_or_create(user=self.researcher, defaults={'role': 'lab_member', 'department': 'Research'})
         UserRole.objects.get_or_create(user=self.viewer, defaults={'role': 'viewer', 'department': 'Research'})
-        
+
         # Create test data
         self.site = Site.objects.create(name='Test Site', location='Test Location')
         self.device = Device.objects.create(
@@ -105,7 +105,7 @@ class SecurityTestCase(TestCase):
             unit='ml',
             created_by=self.researcher
         )
-        
+
         # Create clients
         self.client = Client()
         self.admin_client = Client()
@@ -113,7 +113,7 @@ class SecurityTestCase(TestCase):
         self.lab_manager_client = Client()
         self.researcher_client = Client()
         self.viewer_client = Client()
-        
+
         # Login clients
         self.admin_client.login(username='admin', password='SecurePass123!')
         self.lab_admin_client.login(username='lab_admin', password='SecurePass123!')
@@ -124,7 +124,7 @@ class SecurityTestCase(TestCase):
 
 class AuthenticationSecurityTests(SecurityTestCase):
     """Test authentication security features"""
-    
+
     def test_login_required_protection(self):
         """Test that protected views require authentication"""
         protected_urls = [
@@ -135,12 +135,12 @@ class AuthenticationSecurityTests(SecurityTestCase):
             reverse('storage:storage_list'),
             reverse('person:user_list'),
         ]
-        
+
         for url in protected_urls:
             response = self.client.get(url)
-            self.assertIn(response.status_code, [302, 403], 
+            self.assertIn(response.status_code, [302, 403],
                          f"URL {url} should redirect to login or return 403")
-    
+
     def test_password_strength_validation(self):
         """Test password strength validation"""
         # Test weak passwords
@@ -151,27 +151,27 @@ class AuthenticationSecurityTests(SecurityTestCase):
             'abc123',
             'test',
         ]
-        
+
         for weak_password in weak_passwords:
             with self.assertRaises(ValidationError):
                 user = User(username='testuser', email='test@test.com')
                 user.set_password(weak_password)
                 user.full_clean()
-    
+
     def test_session_security(self):
         """Test session security settings"""
         # Test session timeout
         self.client.login(username='researcher', password='SecurePass123!')
-        
+
         # Simulate session timeout by clearing session
         session = self.client.session
         session.set_expiry(0)  # Expire immediately
         session.save()
-        
+
         response = self.client.get(reverse('home'))
-        self.assertIn(response.status_code, [302, 403], 
+        self.assertIn(response.status_code, [302, 403],
                      "Session should expire and redirect to login")
-    
+
     def test_brute_force_protection(self):
         """Test brute force attack protection"""
         # Attempt multiple failed logins
@@ -180,23 +180,23 @@ class AuthenticationSecurityTests(SecurityTestCase):
                 'username': 'researcher',
                 'password': f'wrong_password_{i}'
             })
-        
+
         # Should still be able to login with correct password
         response = self.client.post(reverse('login'), {
             'username': 'researcher',
             'password': 'SecurePass123!'
         })
-        self.assertIn(response.status_code, [200, 302], 
+        self.assertIn(response.status_code, [200, 302],
                      "Should be able to login after failed attempts")
-    
+
     def test_logout_security(self):
         """Test logout functionality"""
         self.client.login(username='researcher', password='SecurePass123!')
-        
+
         # Test logout
         response = self.client.post(reverse('logout'))
         self.assertEqual(response.status_code, 302, "Logout should redirect")
-        
+
         # Verify session is cleared
         response = self.client.get(reverse('home'))
         self.assertEqual(response.status_code, 302, "Should redirect to login after logout")
@@ -204,27 +204,27 @@ class AuthenticationSecurityTests(SecurityTestCase):
 
 class AuthorizationSecurityTests(SecurityTestCase):
     """Test authorization and permission-based access control"""
-    
+
     def test_role_based_access_control(self):
         """Test role-based access control"""
         # Test admin access
         response = self.admin_client.get(reverse('person:user_list'))
         self.assertEqual(response.status_code, 200, "Admin should access user list")
-        
+
         # Test lab_admin access
         response = self.lab_admin_client.get(reverse('person:user_list'))
         self.assertEqual(response.status_code, 200, "Lab admin should access user list")
-        
+
         # Test researcher access (should be denied)
         response = self.researcher_client.get(reverse('person:user_list'))
-        self.assertIn(response.status_code, [302, 403], 
+        self.assertIn(response.status_code, [302, 403],
                      "Researcher should not access user list")
-        
+
         # Test viewer access (should be denied)
         response = self.viewer_client.get(reverse('person:user_list'))
-        self.assertIn(response.status_code, [302, 403], 
+        self.assertIn(response.status_code, [302, 403],
                      "Viewer should not access user list")
-    
+
     def test_object_level_permissions(self):
         """Test object-level permission checks"""
         # Test that users can only access their own data
@@ -235,21 +235,21 @@ class AuthorizationSecurityTests(SecurityTestCase):
             sample_type='blood',
             created_by=self.researcher
         )
-        
+
         # Lab manager should be able to access (higher role)
         response = self.lab_manager_client.get(
             reverse('sample:sample_detail', kwargs={'pk': researcher_sample.pk})
         )
-        self.assertEqual(response.status_code, 200, 
+        self.assertEqual(response.status_code, 200,
                         "Lab manager should access researcher's sample")
-        
+
         # Viewer should be able to access (read-only)
         response = self.viewer_client.get(
             reverse('sample:sample_detail', kwargs={'pk': researcher_sample.pk})
         )
-        self.assertEqual(response.status_code, 200, 
+        self.assertEqual(response.status_code, 200,
                         "Viewer should access sample in read-only mode")
-    
+
     def test_permission_escalation_prevention(self):
         """Test prevention of permission escalation attacks"""
         # Test that users cannot modify their own role
@@ -257,9 +257,9 @@ class AuthorizationSecurityTests(SecurityTestCase):
             reverse('person:user_role_edit', kwargs={'user_id': self.researcher.pk}),
             {'role': 'lab_admin', 'department': 'Admin'}
         )
-        self.assertIn(response.status_code, [302, 403], 
+        self.assertIn(response.status_code, [302, 403],
                      "User should not be able to escalate their own role")
-    
+
     def test_cross_user_data_access(self):
         """Test that users cannot access other users' data"""
         # Create user preference for researcher
@@ -267,47 +267,47 @@ class AuthorizationSecurityTests(SecurityTestCase):
             user=self.researcher,
             dark_mode=True
         )
-        
+
         # Try to access as viewer
         response = self.viewer_client.get(
             reverse('person:user_detail', kwargs={'user_id': self.researcher.pk})
         )
         # Should either be denied or show limited information
-        self.assertNotEqual(response.status_code, 200, 
+        self.assertNotEqual(response.status_code, 200,
                            "Viewer should not access researcher's detailed data")
 
 
 class CSRFProtectionTests(SecurityTestCase):
     """Test CSRF protection"""
-    
+
     def test_csrf_token_required(self):
         """Test that CSRF tokens are required for POST requests"""
         # Test without CSRF token
         response = self.researcher_client.post(reverse('person:toggle_theme'), {})
-        self.assertEqual(response.status_code, 403, 
+        self.assertEqual(response.status_code, 403,
                         "POST without CSRF token should be rejected")
-    
+
     def test_csrf_token_validation(self):
         """Test CSRF token validation"""
         # Get CSRF token
         response = self.researcher_client.get(reverse('home'))
         csrf_token = response.cookies.get('csrftoken')
-        
+
         # Test with invalid CSRF token
         response = self.researcher_client.post(
             reverse('person:toggle_theme'),
             {},
             HTTP_X_CSRFTOKEN='invalid_token'
         )
-        self.assertEqual(response.status_code, 403, 
+        self.assertEqual(response.status_code, 403,
                         "Invalid CSRF token should be rejected")
-    
+
     def test_csrf_exempt_endpoints(self):
         """Test that no endpoints are accidentally CSRF exempt"""
         # Check that no views use @csrf_exempt
         from django.views.decorators.csrf import csrf_exempt
         import inspect
-        
+
         # This is a basic check - in a real application, you'd want to scan
         # all view functions for @csrf_exempt usage
         self.assertTrue(True, "No CSRF exempt endpoints found")
@@ -315,7 +315,7 @@ class CSRFProtectionTests(SecurityTestCase):
 
 class SQLInjectionTests(SecurityTestCase):
     """Test SQL injection prevention"""
-    
+
     def test_sql_injection_in_search(self):
         """Test SQL injection prevention in search functionality"""
         # Test malicious SQL injection attempts
@@ -325,24 +325,24 @@ class SQLInjectionTests(SecurityTestCase):
             "' UNION SELECT * FROM auth_user --",
             "'; INSERT INTO sample_sample VALUES (999, 'hacked', 1, 1, 1); --",
         ]
-        
+
         for malicious_input in malicious_inputs:
             # Test in sample search
             response = self.researcher_client.get(
                 reverse('sample:sample_list'),
                 {'search': malicious_input}
             )
-            self.assertNotEqual(response.status_code, 500, 
+            self.assertNotEqual(response.status_code, 500,
                               f"SQL injection attempt should not cause 500 error: {malicious_input}")
-            
+
             # Test in user search
             response = self.lab_admin_client.get(
                 reverse('person:user_list'),
                 {'search': malicious_input}
             )
-            self.assertNotEqual(response.status_code, 500, 
+            self.assertNotEqual(response.status_code, 500,
                               f"SQL injection attempt should not cause 500 error: {malicious_input}")
-    
+
     def test_parameterized_queries(self):
         """Test that queries use parameterized inputs"""
         # This test verifies that the application uses Django's ORM
@@ -355,11 +355,11 @@ class SQLInjectionTests(SecurityTestCase):
 
 class XSSProtectionTests(SecurityTestCase):
     """Test XSS protection"""
-    
+
     def test_xss_in_sample_name(self):
         """Test XSS prevention in sample names"""
         malicious_name = '<script>alert("XSS")</script>'
-        
+
         # Try to create sample with malicious name
         response = self.researcher_client.post(
             reverse('sample:sample_create'),
@@ -369,13 +369,13 @@ class XSSProtectionTests(SecurityTestCase):
                 'sample_type': 'blood',
             }
         )
-        
+
         # Should either be rejected or sanitized
         if response.status_code == 200:
             # Check if the malicious content is sanitized in the response
-            self.assertNotIn('<script>', response.content.decode(), 
+            self.assertNotIn('<script>', response.content.decode(),
                            "XSS content should be sanitized")
-    
+
     def test_xss_in_user_input(self):
         """Test XSS prevention in user input fields"""
         malicious_inputs = [
@@ -384,7 +384,7 @@ class XSSProtectionTests(SecurityTestCase):
             '<img src="x" onerror="alert(\'XSS\')">',
             '<iframe src="javascript:alert(\'XSS\')"></iframe>',
         ]
-        
+
         for malicious_input in malicious_inputs:
             # Test in various input fields
             response = self.researcher_client.post(
@@ -395,21 +395,21 @@ class XSSProtectionTests(SecurityTestCase):
                     'sample_type': 'blood',
                 }
             )
-            
+
             if response.status_code == 200:
                 # Check if malicious content is sanitized
                 content = response.content.decode()
-                self.assertNotIn('<script>', content, 
+                self.assertNotIn('<script>', content,
                                "Script tags should be sanitized")
-                self.assertNotIn('javascript:', content, 
+                self.assertNotIn('javascript:', content,
                                "JavaScript URLs should be sanitized")
-    
+
     def test_content_security_policy(self):
         """Test Content Security Policy headers"""
         response = self.researcher_client.get(reverse('home'))
-        
+
         # Check for security headers
-        self.assertIn('X-Content-Type-Options', response.headers, 
+        self.assertIn('X-Content-Type-Options', response.headers,
                      "X-Content-Type-Options header should be present")
         self.assertEqual(response.headers['X-Content-Type-Options'], 'nosniff',
                         "X-Content-Type-Options should be set to nosniff")
@@ -417,7 +417,7 @@ class XSSProtectionTests(SecurityTestCase):
 
 class InputValidationTests(SecurityTestCase):
     """Test input validation and sanitization"""
-    
+
     def test_file_upload_validation(self):
         """Test file upload validation"""
         # Test malicious file uploads
@@ -427,12 +427,12 @@ class InputValidationTests(SecurityTestCase):
             ('test.asp', b'<% Response.Write("hacked") %>'),
             ('test.exe', b'MZ\x90\x00\x03\x00\x00\x00'),
         ]
-        
+
         for filename, content in malicious_files:
             # This test assumes file upload functionality exists
             # Adjust based on your actual file upload implementation
             pass
-    
+
     def test_email_validation(self):
         """Test email validation"""
         invalid_emails = [
@@ -442,12 +442,12 @@ class InputValidationTests(SecurityTestCase):
             'test..test@test.com',
             'test@test..com',
         ]
-        
+
         for invalid_email in invalid_emails:
             with self.assertRaises(ValidationError):
                 user = User(username='testuser', email=invalid_email)
                 user.full_clean()
-    
+
     def test_url_validation(self):
         """Test URL validation"""
         # Test that URLs are properly validated
@@ -456,56 +456,56 @@ class InputValidationTests(SecurityTestCase):
             'data:text/html,<script>alert("XSS")</script>',
             'file:///etc/passwd',
         ]
-        
+
         # This test would be implemented based on your URL validation logic
         pass
 
 
 class SessionSecurityTests(SecurityTestCase):
     """Test session security"""
-    
+
     def test_session_fixation_prevention(self):
         """Test session fixation prevention"""
         # Login should create a new session
         old_session_key = self.client.session.session_key
         self.client.login(username='researcher', password='SecurePass123!')
         new_session_key = self.client.session.session_key
-        
-        self.assertNotEqual(old_session_key, new_session_key, 
+
+        self.assertNotEqual(old_session_key, new_session_key,
                            "Login should create new session")
-    
+
     def test_session_timeout(self):
         """Test session timeout"""
         self.client.login(username='researcher', password='SecurePass123!')
-        
+
         # Set session to expire
         session = self.client.session
         session.set_expiry(0)
         session.save()
-        
+
         response = self.client.get(reverse('home'))
-        self.assertIn(response.status_code, [302, 403], 
+        self.assertIn(response.status_code, [302, 403],
                      "Expired session should redirect to login")
 
 
 class SecurityHeadersTests(SecurityTestCase):
     """Test security headers"""
-    
+
     def test_security_headers_present(self):
         """Test that security headers are present"""
         response = self.researcher_client.get(reverse('home'))
-        
+
         # Check for essential security headers
         headers_to_check = [
             'X-Content-Type-Options',
             'X-Frame-Options',
             'X-XSS-Protection',
         ]
-        
+
         for header in headers_to_check:
-            self.assertIn(header, response.headers, 
+            self.assertIn(header, response.headers,
                          f"{header} security header should be present")
-    
+
     def test_hsts_header(self):
         """Test HSTS header in production"""
         # This test would check for HSTS header in production
@@ -515,38 +515,38 @@ class SecurityHeadersTests(SecurityTestCase):
 
 class AuditLoggingTests(SecurityTestCase):
     """Test audit logging functionality"""
-    
+
     def test_failed_login_logging(self):
         """Test that failed login attempts are logged"""
         initial_log_count = UserAuditLog.objects.count()
-        
+
         # Attempt failed login
         self.client.post(reverse('login'), {
             'username': 'researcher',
             'password': 'wrong_password'
         })
-        
+
         # Check if audit log was created
         new_log_count = UserAuditLog.objects.count()
-        self.assertGreater(new_log_count, initial_log_count, 
+        self.assertGreater(new_log_count, initial_log_count,
                           "Failed login should be logged")
-    
+
     def test_permission_denied_logging(self):
         """Test that permission denied attempts are logged"""
         initial_log_count = UserAuditLog.objects.count()
-        
+
         # Attempt to access restricted area
         self.viewer_client.get(reverse('person:user_list'))
-        
+
         # Check if audit log was created
         new_log_count = UserAuditLog.objects.count()
-        self.assertGreater(new_log_count, initial_log_count, 
+        self.assertGreater(new_log_count, initial_log_count,
                           "Permission denied should be logged")
 
 
 class ConfigurationSecurityTests(TestCase):
     """Test security configuration"""
-    
+
     def test_debug_mode_disabled_in_production(self):
         """Test that DEBUG is False in production"""
         # This test should be run in production environment
@@ -554,7 +554,7 @@ class ConfigurationSecurityTests(TestCase):
         if hasattr(settings, 'DEBUG'):
             # In production, this should be False
             pass
-    
+
     def test_secret_key_security(self):
         """Test that SECRET_KEY is properly configured"""
         # Check that SECRET_KEY is not the default Django key
@@ -562,19 +562,19 @@ class ConfigurationSecurityTests(TestCase):
         # Skip this test in development environment
         if settings.DEBUG:
             self.skipTest("Skipping SECRET_KEY test in development environment")
-        self.assertNotEqual(settings.SECRET_KEY, default_key, 
+        self.assertNotEqual(settings.SECRET_KEY, default_key,
                            "SECRET_KEY should not be the default Django key")
-    
+
     def test_allowed_hosts_configuration(self):
         """Test ALLOWED_HOSTS configuration"""
         # Check that ALLOWED_HOSTS is properly configured
-        self.assertIsInstance(settings.ALLOWED_HOSTS, (list, tuple), 
+        self.assertIsInstance(settings.ALLOWED_HOSTS, (list, tuple),
                             "ALLOWED_HOSTS should be a list or tuple")
-        
+
         # In production, should not contain wildcards
         if not settings.DEBUG:
             for host in settings.ALLOWED_HOSTS:
-                self.assertNotIn('*', host, 
+                self.assertNotIn('*', host,
                                "ALLOWED_HOSTS should not contain wildcards in production")
 
 
@@ -583,13 +583,13 @@ def run_security_test_suite():
     import sys
     from django.test.utils import get_runner
     from django.conf import settings
-    
+
     TestRunner = get_runner(settings)
     test_runner = TestRunner()
-    
+
     # Run all security tests
     failures = test_runner.run_tests(['security_tests'])
-    
+
     if failures:
         print(f"❌ Security tests failed: {failures}")
         sys.exit(1)
