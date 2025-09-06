@@ -1,0 +1,36 @@
+# Cursor Instructions for Krill Project
+
+## Virtual Environment
+Always activate the virtual environment before running any Python commands:
+```bash
+source venv/bin/activate
+```
+
+## Python Commands
+When running Python commands, always ensure the virtual environment is activated first:
+- `python manage.py` commands
+- `python` scripts
+- `pip` installations
+- Any Python-related operations
+
+## Development Workflow
+1. Always activate venv: `source venv/bin/activate`
+2. Run Django commands: `python manage.py <command>`
+3. Install packages: `pip install <package>`
+4. Run tests: `python manage.py test`
+
+## Project Structure
+- Django project with multiple apps: person, sample, storage, reports, transaction
+- Static files in `krill/static/`
+- Templates in `krill/templates/`
+- Database: SQLite (development) / PostgreSQL (production)
+
+## Key Commands
+- Start development server: `python manage.py runserver`
+- Run migrations: `python manage.py migrate`
+- Create superuser: `python manage.py createsuperuser`
+- Collect static files: `python manage.py collectstatic`
+
+## Environment Files
+- Use `env.example` as template for local environment variables
+- Production settings in `krill/krill/settings_production.py`
