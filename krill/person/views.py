@@ -22,7 +22,8 @@ User = get_user_model()
 from .models import UserPreference, UserRole, Permission, UserAuditLog
 from .forms import (
     UserRoleForm, PermissionForm, UserPreferenceForm,
-    BulkPermissionForm, UserSearchForm, AuditLogFilterForm, CreateUserForm
+    BulkPermissionForm, UserSearchForm, AuditLogFilterForm, CreateUserForm,
+    PasswordChangeForm
 )
 from .decorators import require_permission, require_minimum_role, grant_object_permission, revoke_object_permission
 
@@ -1007,3 +1008,42 @@ def revoke_object_permission_api(request):
             }, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+def change_password(request):
+    """Allow users to change their password"""
+    if request.method == 'POST':
+        form = PasswordChangeForm(request.user, request.POST)
+        if form.is_valid():
+            # Change the password
+            form.save()
+
+            # Update the user's session to keep them logged in
+            from django.contrib.auth import update_session_auth_hash
+            update_session_auth_hash(request, request.user)
+
+            # Log the password change
+            UserAuditLog.log_action(
+                user=request.user,
+                action='password_changed',
+                target_type='User',
+                target_id=request.user.id,
+                target_name=request.user.username,
+                details={
+                    'changed_by': request.user.username,
+                    'ip_address': UserAuditLog.get_client_ip(request)
+                },
+                request=request
+            )
+
+            messages.success(request, 'Your password has been changed successfully.')
+            return redirect('settings')
+    else:
+        form = PasswordChangeForm(request.user)
+
+    context = {
+        'form': form,
+        'title': 'Change Password',
+    }
+    return render(request, 'person/change_password.html', context)
