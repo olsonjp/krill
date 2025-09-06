@@ -960,7 +960,7 @@ class ToggleThemeViewTest(PersonViewTest):
 class CreateUserViewTest(PersonViewTest):
     """Test cases for the create_user view"""
     def test_create_user_requires_lab_manager_role(self):
-        """Test that create_user requires lab_manager role"""
+        """Test that create_user requires lab_manager role or higher"""
         # Test with viewer role
         self.client.force_login(self.viewer_user)
         response = self.client.get(reverse('person:create_user'))
@@ -973,9 +973,13 @@ class CreateUserViewTest(PersonViewTest):
         self.client.force_login(self.lab_manager_user)
         response = self.client.get(reverse('person:create_user'))
         self.assertEqual(response.status_code, 200)  # OK
+        # Test with lab_admin role
+        self.client.force_login(self.lab_admin_user)
+        response = self.client.get(reverse('person:create_user'))
+        self.assertEqual(response.status_code, 200)  # OK
     def test_create_user_get_request(self):
         """Test create_user GET request"""
-        self.client.force_login(self.lab_manager_user)
+        self.client.force_login(self.lab_admin_user)
         response = self.client.get(reverse('person:create_user'))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'person/create_user.html')
@@ -984,7 +988,7 @@ class CreateUserViewTest(PersonViewTest):
         self.assertEqual(response.context['title'], 'Create New User')
     def test_create_user_post_valid_data(self):
         """Test create_user POST with valid data"""
-        self.client.force_login(self.lab_manager_user)
+        self.client.force_login(self.lab_admin_user)
         form_data = {
             'username': 'newuser',
             'email': 'newuser@example.com',
@@ -1015,7 +1019,7 @@ class CreateUserViewTest(PersonViewTest):
         self.assertFalse(new_user.preference.dark_mode)
         # Check that audit log was created
         audit_log = UserAuditLog.objects.filter(
-            user=self.lab_manager_user,
+            user=self.lab_admin_user,  # The user who performed the action
             action='create',
             target_type='User',
             target_id=new_user.id
@@ -1024,7 +1028,7 @@ class CreateUserViewTest(PersonViewTest):
         self.assertEqual(audit_log.target_name, 'newuser')
     def test_create_user_post_invalid_data(self):
         """Test create_user POST with invalid data"""
-        self.client.force_login(self.lab_manager_user)
+        self.client.force_login(self.lab_admin_user)
         form_data = {
             'username': 'newuser',
             'email': 'invalid-email',  # Invalid email
@@ -1041,19 +1045,19 @@ class CreateUserViewTest(PersonViewTest):
 
 class UserListViewTest(PersonViewTest):
     """Test cases for the user_list view"""
-    def test_user_list_requires_lab_manager_role(self):
-        """Test that user_list requires lab_manager role"""
+    def test_user_list_requires_lab_admin_role(self):
+        """Test that user_list requires lab_admin role"""
         # Test with viewer role
         self.client.force_login(self.viewer_user)
         response = self.client.get(reverse('person:user_list'))
         self.assertEqual(response.status_code, 403)  # Forbidden
         # Test with lab_manager role
-        self.client.force_login(self.lab_manager_user)
+        self.client.force_login(self.lab_admin_user)
         response = self.client.get(reverse('person:user_list'))
         self.assertEqual(response.status_code, 200)  # OK
     def test_user_list_get_request(self):
         """Test user_list GET request"""
-        self.client.force_login(self.lab_manager_user)
+        self.client.force_login(self.lab_admin_user)
         response = self.client.get(reverse('person:user_list'))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'person/user_list.html')
@@ -1063,7 +1067,7 @@ class UserListViewTest(PersonViewTest):
         self.assertIn('total_users', response.context)
     def test_user_list_with_search_filter(self):
         """Test user_list with search filter"""
-        self.client.force_login(self.lab_manager_user)
+        self.client.force_login(self.lab_admin_user)
         # Search by username
         response = self.client.get(reverse('person:user_list'), {'search': 'lab_manager'})
         self.assertEqual(response.status_code, 200)
@@ -1081,19 +1085,19 @@ class UserListViewTest(PersonViewTest):
 
 class UserDetailViewTest(PersonViewTest):
     """Test cases for the user_detail view"""
-    def test_user_detail_requires_lab_manager_role(self):
-        """Test that user_detail requires lab_manager role"""
+    def test_user_detail_requires_lab_admin_role(self):
+        """Test that user_detail requires lab_admin role"""
         # Test with viewer role
         self.client.force_login(self.viewer_user)
         response = self.client.get(reverse('person:user_detail', kwargs={'user_id': self.lab_member_user.id}))
         self.assertEqual(response.status_code, 403)  # Forbidden
         # Test with lab_manager role
-        self.client.force_login(self.lab_manager_user)
+        self.client.force_login(self.lab_admin_user)
         response = self.client.get(reverse('person:user_detail', kwargs={'user_id': self.lab_member_user.id}))
         self.assertEqual(response.status_code, 200)  # OK
     def test_user_detail_get_request(self):
         """Test user_detail GET request"""
-        self.client.force_login(self.lab_manager_user)
+        self.client.force_login(self.lab_admin_user)
         response = self.client.get(reverse('person:user_detail', kwargs={'user_id': self.lab_member_user.id}))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'person/user_detail.html')
@@ -1104,7 +1108,7 @@ class UserDetailViewTest(PersonViewTest):
         self.assertIn('recent_activity', response.context)
     def test_user_detail_nonexistent_user(self):
         """Test user_detail with nonexistent user"""
-        self.client.force_login(self.lab_manager_user)
+        self.client.force_login(self.lab_admin_user)
         response = self.client.get(reverse('person:user_detail', kwargs={'user_id': 99999}))
         self.assertEqual(response.status_code, 404)  # Not found
 
@@ -1118,12 +1122,12 @@ class UserRoleEditViewTest(PersonViewTest):
         response = self.client.get(reverse('person:user_role_edit', kwargs={'user_id': self.lab_member_user.id}))
         self.assertEqual(response.status_code, 403)  # Forbidden
         # Test with lab_manager role
-        self.client.force_login(self.lab_manager_user)
+        self.client.force_login(self.lab_admin_user)
         response = self.client.get(reverse('person:user_role_edit', kwargs={'user_id': self.lab_member_user.id}))
         self.assertEqual(response.status_code, 200)  # OK
     def test_user_role_edit_get_request(self):
         """Test user_role_edit GET request"""
-        self.client.force_login(self.lab_manager_user)
+        self.client.force_login(self.lab_admin_user)
         response = self.client.get(reverse('person:user_role_edit', kwargs={'user_id': self.lab_member_user.id}))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'person/user_role_edit.html')
@@ -1133,7 +1137,7 @@ class UserRoleEditViewTest(PersonViewTest):
         self.assertEqual(response.context['user_role'], self.lab_member_role)
     def test_user_role_edit_post_valid_data(self):
         """Test user_role_edit POST with valid data"""
-        self.client.force_login(self.lab_manager_user)
+        self.client.force_login(self.lab_admin_user)
         form_data = {
             'role': 'lab_manager',
             'department': 'Updated Research',
@@ -1153,7 +1157,7 @@ class UserRoleEditViewTest(PersonViewTest):
         self.assertEqual(self.lab_member_role.lab_unit, 'Lab B')
         # Check that audit log was created
         audit_log = UserAuditLog.objects.filter(
-            user=self.lab_manager_user,
+            user=self.lab_admin_user,  # The user who performed the action
             action='role_changed',
             target_type='User',
             target_id=self.lab_member_user.id
@@ -1171,12 +1175,12 @@ class PermissionListViewTest(PersonViewTest):
         response = self.client.get(reverse('person:permission_list'))
         self.assertEqual(response.status_code, 403)  # Forbidden
         # Test with lab_manager role
-        self.client.force_login(self.lab_manager_user)
+        self.client.force_login(self.lab_admin_user)
         response = self.client.get(reverse('person:permission_list'))
         self.assertEqual(response.status_code, 200)  # OK
     def test_permission_list_get_request(self):
         """Test permission_list GET request"""
-        self.client.force_login(self.lab_manager_user)
+        self.client.force_login(self.lab_admin_user)
         response = self.client.get(reverse('person:permission_list'))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'person/permission_list.html')
@@ -1184,7 +1188,7 @@ class PermissionListViewTest(PersonViewTest):
         self.assertIn('total_permissions', response.context)
     def test_permission_list_with_filters(self):
         """Test permission_list with filters"""
-        self.client.force_login(self.lab_manager_user)
+        self.client.force_login(self.lab_admin_user)
         # Filter by user
         response = self.client.get(reverse('person:permission_list'), {'user': 'lab_member'})
         self.assertEqual(response.status_code, 200)
@@ -1205,12 +1209,12 @@ class GrantPermissionViewTest(PersonViewTest):
         response = self.client.get(reverse('person:grant_permission'))
         self.assertEqual(response.status_code, 403)  # Forbidden
         # Test with lab_manager role
-        self.client.force_login(self.lab_manager_user)
+        self.client.force_login(self.lab_admin_user)
         response = self.client.get(reverse('person:grant_permission'))
         self.assertEqual(response.status_code, 200)  # OK
     def test_grant_permission_get_request(self):
         """Test grant_permission GET request"""
-        self.client.force_login(self.lab_manager_user)
+        self.client.force_login(self.lab_admin_user)
         response = self.client.get(reverse('person:grant_permission'))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'person/permission_form.html')
@@ -1219,7 +1223,7 @@ class GrantPermissionViewTest(PersonViewTest):
         self.assertEqual(response.context['title'], 'Grant Permission')
     def test_grant_permission_post_valid_data(self):
         """Test grant_permission POST with valid data"""
-        self.client.force_login(self.lab_manager_user)
+        self.client.force_login(self.lab_admin_user)
         content_type = ContentType.objects.get_for_model(Sample)
         form_data = {
             'user': self.lab_member_user.id,
@@ -1238,7 +1242,7 @@ class GrantPermissionViewTest(PersonViewTest):
             permission_type='view'
         ).first()
         self.assertIsNotNone(permission)
-        self.assertEqual(permission.granted_by, self.lab_manager_user)
+        self.assertEqual(permission.granted_by, self.lab_admin_user)
 
 
 class BulkGrantPermissionViewTest(PersonViewTest):
@@ -1250,12 +1254,12 @@ class BulkGrantPermissionViewTest(PersonViewTest):
         response = self.client.get(reverse('person:bulk_grant_permission'))
         self.assertEqual(response.status_code, 403)  # Forbidden
         # Test with lab_manager role
-        self.client.force_login(self.lab_manager_user)
+        self.client.force_login(self.lab_admin_user)
         response = self.client.get(reverse('person:bulk_grant_permission'))
         self.assertEqual(response.status_code, 200)  # OK
     def test_bulk_grant_permission_get_request(self):
         """Test bulk_grant_permission GET request"""
-        self.client.force_login(self.lab_manager_user)
+        self.client.force_login(self.lab_admin_user)
         response = self.client.get(reverse('person:bulk_grant_permission'))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'person/bulk_permission_form.html')
@@ -1264,7 +1268,7 @@ class BulkGrantPermissionViewTest(PersonViewTest):
         self.assertEqual(response.context['title'], 'Bulk Grant Permissions')
     def test_bulk_grant_permission_post_valid_data(self):
         """Test bulk_grant_permission POST with valid data"""
-        self.client.force_login(self.lab_manager_user)
+        self.client.force_login(self.lab_admin_user)
         content_type = ContentType.objects.get_for_model(Sample)
         form_data = {
             'users': [self.lab_member_user.id],
@@ -1283,18 +1287,22 @@ class BulkGrantPermissionViewTest(PersonViewTest):
             permission_type='view'
         ).first()
         self.assertIsNotNone(permission)
-        self.assertEqual(permission.granted_by, self.lab_manager_user)
+        self.assertEqual(permission.granted_by, self.lab_admin_user)
 
 
 class AuditLogViewTest(PersonViewTest):
     """Test cases for the audit_log view"""
-    def test_audit_log_requires_lab_admin_role(self):
-        """Test that audit_log requires lab_admin role"""
-        # Test with lab_manager role
-        self.client.force_login(self.lab_manager_user)
+    def test_audit_log_requires_lab_manager_role(self):
+        """Test that audit_log requires lab_manager role or higher"""
+        # Test with lab_member role (should be forbidden)
+        self.client.force_login(self.lab_member_user)
         response = self.client.get(reverse('person:audit_log'))
         self.assertEqual(response.status_code, 403)  # Forbidden
-        # Test with lab_admin role
+        # Test with lab_manager role (should be allowed)
+        self.client.force_login(self.lab_manager_user)
+        response = self.client.get(reverse('person:audit_log'))
+        self.assertEqual(response.status_code, 200)  # OK
+        # Test with lab_admin role (should be allowed)
         self.client.force_login(self.lab_admin_user)
         response = self.client.get(reverse('person:audit_log'))
         self.assertEqual(response.status_code, 200)  # OK
@@ -1331,12 +1339,12 @@ class UserPermissionsApiViewTest(PersonViewTest):
         response = self.client.get(reverse('person:user_permissions_api', kwargs={'user_id': self.lab_member_user.id}))
         self.assertEqual(response.status_code, 403)  # Forbidden
         # Test with lab_manager role
-        self.client.force_login(self.lab_manager_user)
+        self.client.force_login(self.lab_admin_user)
         response = self.client.get(reverse('person:user_permissions_api', kwargs={'user_id': self.lab_member_user.id}))
         self.assertEqual(response.status_code, 200)  # OK
     def test_user_permissions_api_get_request(self):
         """Test user_permissions_api GET request"""
-        self.client.force_login(self.lab_manager_user)
+        self.client.force_login(self.lab_admin_user)
         response = self.client.get(reverse('person:user_permissions_api', kwargs={'user_id': self.lab_member_user.id}))
         self.assertEqual(response.status_code, 200)
         data = response.json()
@@ -1350,7 +1358,7 @@ class UserPermissionsApiViewTest(PersonViewTest):
         self.assertEqual(data['user']['role'], 'lab_member')
     def test_user_permissions_api_nonexistent_user(self):
         """Test user_permissions_api with nonexistent user"""
-        self.client.force_login(self.lab_manager_user)
+        self.client.force_login(self.lab_admin_user)
         response = self.client.get(reverse('person:user_permissions_api', kwargs={'user_id': 99999}))
         self.assertEqual(response.status_code, 404)  # Not found
 
@@ -1364,17 +1372,17 @@ class GrantObjectPermissionApiViewTest(PersonViewTest):
         response = self.client.post(reverse('person:grant_object_permission_api'))
         self.assertEqual(response.status_code, 403)  # Forbidden
         # Test with lab_manager role
-        self.client.force_login(self.lab_manager_user)
+        self.client.force_login(self.lab_admin_user)
         response = self.client.post(reverse('person:grant_object_permission_api'))
         self.assertEqual(response.status_code, 400)  # Bad request (missing parameters)
     def test_grant_object_permission_api_requires_post(self):
         """Test that grant_object_permission_api only accepts POST requests"""
-        self.client.force_login(self.lab_manager_user)
+        self.client.force_login(self.lab_admin_user)
         response = self.client.get(reverse('person:grant_object_permission_api'))
         self.assertEqual(response.status_code, 405)  # Method not allowed
     def test_grant_object_permission_api_missing_parameters(self):
         """Test grant_object_permission_api with missing parameters"""
-        self.client.force_login(self.lab_manager_user)
+        self.client.force_login(self.lab_admin_user)
         response = self.client.post(reverse('person:grant_object_permission_api'))
         self.assertEqual(response.status_code, 400)
         data = response.json()
@@ -1382,7 +1390,7 @@ class GrantObjectPermissionApiViewTest(PersonViewTest):
         self.assertEqual(data['error'], 'Missing required parameters')
     def test_grant_object_permission_api_invalid_model(self):
         """Test grant_object_permission_api with invalid model"""
-        self.client.force_login(self.lab_manager_user)
+        self.client.force_login(self.lab_admin_user)
         form_data = {
             'user_id': self.lab_member_user.id,
             'model_name': 'InvalidModel',
@@ -1405,17 +1413,17 @@ class RevokeObjectPermissionApiViewTest(PersonViewTest):
         response = self.client.post(reverse('person:revoke_object_permission_api'))
         self.assertEqual(response.status_code, 403)  # Forbidden
         # Test with lab_manager role
-        self.client.force_login(self.lab_manager_user)
+        self.client.force_login(self.lab_admin_user)
         response = self.client.post(reverse('person:revoke_object_permission_api'))
         self.assertEqual(response.status_code, 400)  # Bad request (missing parameters)
     def test_revoke_object_permission_api_requires_post(self):
         """Test that revoke_object_permission_api only accepts POST requests"""
-        self.client.force_login(self.lab_manager_user)
+        self.client.force_login(self.lab_admin_user)
         response = self.client.get(reverse('person:revoke_object_permission_api'))
         self.assertEqual(response.status_code, 405)  # Method not allowed
     def test_revoke_object_permission_api_missing_parameters(self):
         """Test revoke_object_permission_api with missing parameters"""
-        self.client.force_login(self.lab_manager_user)
+        self.client.force_login(self.lab_admin_user)
         response = self.client.post(reverse('person:revoke_object_permission_api'))
         self.assertEqual(response.status_code, 400)
         data = response.json()
@@ -1423,7 +1431,7 @@ class RevokeObjectPermissionApiViewTest(PersonViewTest):
         self.assertEqual(data['error'], 'Missing required parameters')
     def test_revoke_object_permission_api_invalid_model(self):
         """Test revoke_object_permission_api with invalid model"""
-        self.client.force_login(self.lab_manager_user)
+        self.client.force_login(self.lab_admin_user)
         form_data = {
             'user_id': self.lab_member_user.id,
             'model_name': 'InvalidModel',
@@ -1448,17 +1456,20 @@ class DataImportViewTest(PersonViewTest):
 MDA MB 134VI (MM134);UPMC/MJS;Sikora LN2 #1;4;F;1;1;Cells;5;In Storage;Legacy MM134 from Oesterreich Lab banks;;p+33;EXP001
 MDA MB 134VI (MM134);UPMC/MJS;Sikora LN2 #1;4;F;1;2;Cells;3;Checked Out;Legacy MM134 from Oesterreich Lab banks;Thawed by MTS on 09.04.19;p+33;EXP001"""
 
-    def test_data_import_requires_staff_member(self):
-        """Test that data import requires staff member"""
-        # Test with regular user (should redirect to login)
+    def test_data_import_requires_lab_manager_role(self):
+        """Test that data import requires lab_manager role or higher"""
+        # Test with regular user (should be forbidden)
         self.client.force_login(self.lab_member_user)
         response = self.client.get(reverse('person:data_import'))
-        self.assertEqual(response.status_code, 302)  # Redirect to login
+        self.assertEqual(response.status_code, 403)  # Forbidden
 
-        # Test with staff user
-        self.lab_manager_user.is_staff = True
-        self.lab_manager_user.save()
+        # Test with lab_manager user
         self.client.force_login(self.lab_manager_user)
+        response = self.client.get(reverse('person:data_import'))
+        self.assertEqual(response.status_code, 200)  # OK
+
+        # Test with lab_admin user
+        self.client.force_login(self.lab_admin_user)
         response = self.client.get(reverse('person:data_import'))
         self.assertEqual(response.status_code, 200)  # OK
 
@@ -1466,7 +1477,7 @@ MDA MB 134VI (MM134);UPMC/MJS;Sikora LN2 #1;4;F;1;2;Cells;3;Checked Out;Legacy M
         """Test data import GET request"""
         self.lab_manager_user.is_staff = True
         self.lab_manager_user.save()
-        self.client.force_login(self.lab_manager_user)
+        self.client.force_login(self.lab_admin_user)
 
         response = self.client.get(reverse('person:data_import'))
         self.assertEqual(response.status_code, 200)
@@ -1478,7 +1489,7 @@ MDA MB 134VI (MM134);UPMC/MJS;Sikora LN2 #1;4;F;1;2;Cells;3;Checked Out;Legacy M
         """Test data import preview mode"""
         self.lab_manager_user.is_staff = True
         self.lab_manager_user.save()
-        self.client.force_login(self.lab_manager_user)
+        self.client.force_login(self.lab_admin_user)
 
         # Create a test CSV file
         from django.core.files.uploadedfile import SimpleUploadedFile
@@ -1507,7 +1518,7 @@ MDA MB 134VI (MM134);UPMC/MJS;Sikora LN2 #1;4;F;1;2;Cells;3;Checked Out;Legacy M
         """Test data import form validation"""
         self.lab_manager_user.is_staff = True
         self.lab_manager_user.save()
-        self.client.force_login(self.lab_manager_user)
+        self.client.force_login(self.lab_admin_user)
 
         # Test with no file
         form_data = {}
@@ -1520,7 +1531,7 @@ MDA MB 134VI (MM134);UPMC/MJS;Sikora LN2 #1;4;F;1;2;Cells;3;Checked Out;Legacy M
         """Test the convert_csv_to_fixtures method"""
         self.lab_manager_user.is_staff = True
         self.lab_manager_user.save()
-        self.client.force_login(self.lab_manager_user)
+        self.client.force_login(self.lab_admin_user)
 
         # Create a temporary CSV file
         import tempfile

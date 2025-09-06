@@ -19,6 +19,7 @@ from datetime import datetime
 from collections import defaultdict
 from .models import User, UserPreference, UserRole, Permission, UserAuditLog
 from .forms import CustomUserCreationForm, CustomUserChangeForm
+from .decorators import require_minimum_role
 
 
 # Data Import Form
@@ -35,7 +36,7 @@ class DataImportForm(forms.Form):
 
 
 # Data Import Admin View
-@method_decorator(staff_member_required, name='dispatch')
+@method_decorator(require_minimum_role('lab_manager'), name='dispatch')
 class DataImportView(TemplateView):
     template_name = 'admin/data_import.html'
 
@@ -345,6 +346,20 @@ class KrillAdminSite(admin.AdminSite):
     site_header = "Krill Laboratory Management System"
     site_title = "Krill Admin"
     index_title = "Welcome to Krill Administration"
+
+    def has_permission(self, request):
+        """
+        Override to restrict admin access to lab managers and administrators only
+        """
+        if not request.user or not request.user.is_authenticated:
+            return False
+
+        # Check if user has lab_manager or lab_admin role
+        try:
+            user_role = UserRole.get_or_create_for_user(request.user)
+            return user_role.role in ['lab_manager', 'lab_admin']
+        except:
+            return False
 
     def get_urls(self):
         urls = super().get_urls()

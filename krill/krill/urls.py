@@ -27,11 +27,12 @@ from .views.auth import KrillLoginView
 from .views.home import HomeView, SettingsView, ReportsView, dashboard_stats
 from person.views import toggle_theme
 from .views.preferences import get_user_preferences, save_user_preferences
+from person.admin import admin_site
 
 admin.site.site_header = "Krill Admin"
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path('admin/', admin_site.urls),
     path('login/', KrillLoginView.as_view(), name='login'),
     path('logout/', LogoutView.as_view(next_page='login'), name='logout'),
     path('', HomeView.as_view(), name='home'),
