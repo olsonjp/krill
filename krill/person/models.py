@@ -53,6 +53,7 @@ class UserRole(models.Model):
             )
 
     class Meta:
+        ordering = ['user__username']
         verbose_name = "User Role"
         verbose_name_plural = "User Roles"
 
@@ -184,6 +185,7 @@ class Permission(models.Model):
     expires_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
+        ordering = ['user__username', 'permission_type']
         unique_together = ['user', 'permission_type', 'content_type', 'object_id']
         verbose_name = "Permission"
         verbose_name_plural = "Permissions"

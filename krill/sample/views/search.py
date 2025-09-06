@@ -16,7 +16,7 @@ def sample_search(request):
     disposition = request.GET.get('disposition', '')
 
     # Start with all samples
-    samples = Sample.objects.all()
+    samples = Sample.objects.order_by('name')
 
     if query:
         samples = samples.filter(
@@ -75,7 +75,7 @@ def aliquot_search(request):
         'aliquot_type'
     ).prefetch_related(
         'aliquotlocation_set__box'
-    ).all()
+    ).order_by('sample__name', 'id')
 
     if query:
         aliquots = aliquots.filter(
