@@ -19,5 +19,8 @@ class Sample(models.Model):
         help_text="Restrict access to specific user tiers"
     )
 
+    class Meta:
+        ordering = ['name']
+
     def __str__(self):
         return self.name
