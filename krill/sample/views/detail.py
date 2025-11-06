@@ -72,7 +72,7 @@ class ModelDetailView(DetailView):
         form = self.get_form_class()(request.POST, instance=self.object)
         if form.is_valid():
             form.save()
-            return redirect('sample:list')
+            return redirect('sample:sample_list')
         return render(request, self.template_name, {'object': self.object, 'form': form})
 
 @method_decorator(login_required, name='dispatch')

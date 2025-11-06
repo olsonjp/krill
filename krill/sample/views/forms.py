@@ -10,7 +10,7 @@ from ..forms import (
 
 class SampleFormView(View):
     template_name = 'forms/model_form.html'
-    success_url = 'sample:list'
+    success_url = 'sample:sample_list'
     def get_form_class(self):
         form_types = {
             'sample': SampleForm,
