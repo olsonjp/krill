@@ -879,12 +879,12 @@ class SampleListViewTest(SampleViewTest):
     """Test cases for the SampleListView"""
     def test_sample_list_requires_login(self):
         """Test that sample list requires login"""
-        response = self.client.get(reverse('sample:list'))
+        response = self.client.get(reverse('sample:sample_list'))
         self.assertEqual(response.status_code, 302)  # Redirect to login
     def test_sample_list_get_request_default(self):
         """Test sample list GET request with default type (sample)"""
         self.client.force_login(self.user)
-        response = self.client.get(reverse('sample:list'))
+        response = self.client.get(reverse('sample:sample_list'))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'sample/list.html')
         self.assertIn('items', response.context)
@@ -896,7 +896,7 @@ class SampleListViewTest(SampleViewTest):
     def test_sample_list_get_request_aliquot_type(self):
         """Test sample list GET request with aliquot type"""
         self.client.force_login(self.user)
-        response = self.client.get(reverse('sample:list'), {'type': 'aliquot'})
+        response = self.client.get(reverse('sample:sample_list'), {'type': 'aliquot'})
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'sample/list.html')
         self.assertIn('items', response.context)
@@ -908,7 +908,7 @@ class SampleListViewTest(SampleViewTest):
     def test_sample_list_get_request_aliquot_type_type(self):
         """Test sample list GET request with aliquot-type type"""
         self.client.force_login(self.user)
-        response = self.client.get(reverse('sample:list'), {'type': 'aliquot-type'})
+        response = self.client.get(reverse('sample:sample_list'), {'type': 'aliquot-type'})
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'sample/list.html')
         self.assertIn('items', response.context)
@@ -920,7 +920,7 @@ class SampleListViewTest(SampleViewTest):
     def test_sample_list_get_request_source_type(self):
         """Test sample list GET request with source type"""
         self.client.force_login(self.user)
-        response = self.client.get(reverse('sample:list'), {'type': 'source'})
+        response = self.client.get(reverse('sample:sample_list'), {'type': 'source'})
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'sample/list.html')
         self.assertIn('items', response.context)
@@ -996,7 +996,7 @@ class ModelCreateViewTest(SampleViewTest):
         response = self.client.post(reverse('sample:create'), form_data)
         # Should redirect to sample list
         self.assertEqual(response.status_code, 302)
-        self.assertRedirects(response, f"{reverse('sample:list')}?type=sample")
+        self.assertRedirects(response, f"{reverse('sample:sample_list')}?type=sample")
         # Check that sample was created
         new_sample = Sample.objects.get(name='New Sample')
         self.assertEqual(new_sample.source, self.source)
@@ -1013,7 +1013,7 @@ class ModelCreateViewTest(SampleViewTest):
         response = self.client.post(f"{reverse('sample:create')}?type=aliquot", form_data)
         # Should redirect to sample list with aliquot type
         self.assertEqual(response.status_code, 302)
-        self.assertRedirects(response, f"{reverse('sample:list')}?type=aliquot")
+        self.assertRedirects(response, f"{reverse('sample:sample_list')}?type=aliquot")
         # Check that aliquot was created
         new_aliquot = Aliquot.objects.get(sample=self.sample, quantity=5)
         self.assertEqual(new_aliquot.aliquotType, self.aliquot_type)
@@ -1028,7 +1028,7 @@ class ModelCreateViewTest(SampleViewTest):
         response = self.client.post(f"{reverse('sample:create')}?type=aliquot-type", form_data)
         # Should redirect to sample list with aliquot-type type
         self.assertEqual(response.status_code, 302)
-        self.assertRedirects(response, f"{reverse('sample:list')}?type=aliquot-type")
+        self.assertRedirects(response, f"{reverse('sample:sample_list')}?type=aliquot-type")
         # Check that aliquot type was created
         new_aliquot_type = AliquotType.objects.get(name='New Aliquot Type')
         self.assertEqual(new_aliquot_type.description, 'Test description')
@@ -1042,7 +1042,7 @@ class ModelCreateViewTest(SampleViewTest):
         response = self.client.post(f"{reverse('sample:create')}?type=source", form_data)
         # Should redirect to sample list with source type
         self.assertEqual(response.status_code, 302)
-        self.assertRedirects(response, f"{reverse('sample:list')}?type=source")
+        self.assertRedirects(response, f"{reverse('sample:sample_list')}?type=source")
         # Check that source was created
         new_source = Source.objects.get(name='New Source')
         self.assertEqual(new_source.description, 'Test description')
