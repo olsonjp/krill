@@ -285,6 +285,13 @@ SECURITY_MONITORING = {
 # Environment-specific settings
 ENVIRONMENT = 'production'
 
+# Sentry Configuration
+SENTRY_DSN = os.environ.get('SENTRY_DSN')
+SENTRY_ENVIRONMENT = os.environ.get('SENTRY_ENVIRONMENT', 'production')
+
+# Note: Sentry is initialized in wsgi.py and asgi.py before Django loads
+# This ensures we catch all errors, including those during Django startup
+
 # Create necessary directories
 os.makedirs(BASE_DIR / 'logs', exist_ok=True)
 os.makedirs(BASE_DIR / 'backups', exist_ok=True)
