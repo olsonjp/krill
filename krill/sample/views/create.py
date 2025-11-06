@@ -1,5 +1,5 @@
 from django.views.generic.edit import CreateView
-from django.urls import reverse_lazy
+from django.urls import reverse
 from django.shortcuts import redirect
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
@@ -23,7 +23,7 @@ class ModelCreateView(CreateView):
             return SampleForm
     def get_success_url(self):
         model_type = self.request.GET.get('type', 'sample')
-        return f"{reverse_lazy('sample:list')}?type={model_type}"
+        return f"{reverse('sample:sample_list')}?type={model_type}"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
