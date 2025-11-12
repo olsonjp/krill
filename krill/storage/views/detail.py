@@ -74,6 +74,9 @@ class StorageDetailView(DetailView):
             context['available_slots'] = context['total_slots'] - context['used_slots']
             context['storage_percentage'] = (context['used_slots'] / context['total_slots']) * 100 if context['total_slots'] > 0 else 0
             context['locations'] = locations
+            # Add available aliquots for assignment
+            from sample.models.aliquot import Aliquot
+            context['available_aliquots'] = Aliquot.objects.all().select_related('sample', 'aliquot_type').order_by('sample__name')
         return context
 
     def post(self, request, *args, **kwargs):

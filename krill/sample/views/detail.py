@@ -114,6 +114,8 @@ class TubeDetailView(DetailView):
 
         if action == 'move':
             return self._handle_move(request)
+        elif action == 'checkout':
+            return self._handle_checkout(request)
         else:
             return self._handle_edit(request)
 
@@ -141,7 +143,10 @@ class TubeDetailView(DetailView):
         move_form = AliquotTubeMoveForm(request.POST)
         if move_form.is_valid():
             # Ensure tube is in stored disposition
-            stored_disposition = AliquotDisposition.objects.get(disposition_type='stored')
+            stored_disposition, _ = AliquotDisposition.objects.get_or_create(
+                name='Stored',
+                defaults={'disposition_type': 'stored'}
+            )
             if self.object.disposition != stored_disposition:
                 self.object.disposition = stored_disposition
                 self.object.save()
@@ -171,3 +176,27 @@ class TubeDetailView(DetailView):
             context = self.get_context_data()
             context['move_form'] = move_form
             return render(request, self.template_name, context)
+
+    def _handle_checkout(self, request):
+        """Handle checkout action - change disposition to 'in_use'"""
+        # Check if tube is currently stored
+        was_stored = self.object.disposition.disposition_type == 'stored'
+
+        # Get 'in_use' disposition
+        in_use_disposition, _ = AliquotDisposition.objects.get_or_create(
+            name='In Use',
+            defaults={'disposition_type': 'in_use'}
+        )
+
+        # Change tube disposition to 'in_use'
+        self.object.disposition = in_use_disposition
+        self.object.save()
+
+        # Remove storage location if tube was stored
+        if was_stored:
+            AliquotLocation.objects.filter(
+                aliquot=self.object.aliquot,
+                tube_number=self.object.tube_number
+            ).delete()
+
+        return redirect('sample:tube_detail', pk=self.object.pk)

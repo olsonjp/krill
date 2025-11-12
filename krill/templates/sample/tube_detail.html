@@ -16,6 +16,16 @@
                 <span class="material-icons-round">move_to_inbox</span>
                 Move
             </button>
+            {% if tube.disposition.disposition_type == 'stored' %}
+            <form method="post" action="{% url 'sample:tube_detail' pk=tube.id %}" style="display: inline;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="checkout">
+                <button type="submit" class="btn btn-info" onclick="return confirm('Check out this tube? This will change its status to In Use.')">
+                    <span class="material-icons-round">shopping_cart</span>
+                    Check Out
+                </button>
+            </form>
+            {% endif %}
             <a href="{% url 'sample:detail' type='aliquot' pk=tube.aliquot.id %}" class="btn btn-secondary">
                 <span class="material-icons-round">arrow_back</span>
                 Back to Aliquot
@@ -32,7 +42,7 @@
             </div>
             <div class="detail-field">
                 <label>Aliquot Type:</label>
-                <span>{{ tube.aliquot.aliquotType.name }}</span>
+                <span>{{ tube.aliquot.aliquot_type.name|default:"Not specified" }}</span>
             </div>
             <div class="detail-field">
                 <label>Tube Number:</label>
@@ -40,7 +50,7 @@
             </div>
             <div class="detail-field">
                 <label>Status:</label>
-                <span class="status-badge {{ tube.disposition.dispositionType|lower|cut:' ' }}">{{ tube.disposition.name }}</span>
+                <span class="status-badge {{ tube.disposition.disposition_type|lower|cut:' ' }}">{{ tube.disposition.name }}</span>
             </div>
             <div class="detail-field">
                 <label>Created:</label>

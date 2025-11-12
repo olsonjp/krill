@@ -10,20 +10,60 @@
         <form method="post" class="detail-form">
             {% csrf_token %}
             {% for field in form %}
-            <div class="detail-field">
-                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                {{ field }}
-                {% if field.help_text %}
-                <small class="help-text">{{ field.help_text }}</small>
+                {% if field.name == 'assign_to_box' %}
+                    <!-- Box Assignment Section -->
+                    <div class="box-assignment-section">
+                        <div class="box-assignment-toggle">
+                            <label class="checkbox-label" for="{{ field.id_for_label }}">
+                                {{ field }}
+                                <span class="checkbox-custom"></span>
+                                <span class="checkbox-text">
+                                    <i class="material-icons-round">inventory_2</i>
+                                    {{ field.label }}
+                                </span>
+                            </label>
+                            {% if field.help_text %}
+                            <small class="help-text">{{ field.help_text }}</small>
+                            {% endif %}
+                        </div>
+                        <div class="box-assignment-fields" id="boxAssignmentFields">
+                            {% for subfield in form %}
+                                {% if subfield.name == 'box' or subfield.name == 'start_row' or subfield.name == 'start_column' %}
+                                <div class="detail-field">
+                                    <label for="{{ subfield.id_for_label }}">{{ subfield.label }}</label>
+                                    {{ subfield }}
+                                    {% if subfield.help_text %}
+                                    <small class="help-text">{{ subfield.help_text }}</small>
+                                    {% endif %}
+                                    {% if subfield.errors %}
+                                    <div class="field-errors">
+                                        {% for error in subfield.errors %}
+                                        <span class="error">{{ error }}</span>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% elif field.name != 'box' and field.name != 'start_row' and field.name != 'start_column' %}
+                    <!-- Regular form fields -->
+                    <div class="detail-field">
+                        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.help_text %}
+                        <small class="help-text">{{ field.help_text }}</small>
+                        {% endif %}
+                        {% if field.errors %}
+                        <div class="field-errors">
+                            {% for error in field.errors %}
+                            <span class="error">{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
                 {% endif %}
-                {% if field.errors %}
-                <div class="field-errors">
-                    {% for error in field.errors %}
-                    <span class="error">{{ error }}</span>
-                    {% endfor %}
-                </div>
-                {% endif %}
-            </div>
             {% endfor %}
             <div class="form-buttons">
                 <button type="submit" class="btn btn-success">
@@ -38,4 +78,155 @@
         </form>
     </div>
 </div>
+
+<style>
+/* Box Assignment Section Styles */
+.box-assignment-section {
+    margin: 2rem 0;
+    padding: 1.5rem;
+    background: var(--color-gray-light);
+    border: 2px solid var(--color-light);
+    border-radius: var(--border-radius-1);
+    transition: all 0.3s ease;
+}
+
+.box-assignment-section:has(input:checked),
+.box-assignment-section.checked {
+    background: var(--color-info-lighter);
+    border-color: var(--color-primary);
+    box-shadow: 0 4px 8px rgba(108, 155, 207, 0.15);
+}
+
+.box-assignment-toggle {
+    margin-bottom: 0;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: var(--color-dark);
+    margin-bottom: 0.5rem;
+    user-select: none;
+}
+
+.checkbox-label input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.checkbox-custom {
+    position: relative;
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--color-dark-variant);
+    border-radius: 4px;
+    background: var(--color-white);
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.checkbox-label input[type="checkbox"]:checked + .checkbox-custom {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.checkbox-label input[type="checkbox"]:checked + .checkbox-custom::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.checkbox-label:hover .checkbox-custom {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(108, 155, 207, 0.1);
+}
+
+.checkbox-text {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.checkbox-text i {
+    font-size: 20px;
+    color: var(--color-primary);
+}
+
+.box-assignment-fields {
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height 0.3s ease, opacity 0.3s ease, margin-top 0.3s ease;
+    margin-top: 0;
+}
+
+.box-assignment-section:has(input:checked) .box-assignment-fields,
+.box-assignment-section.checked .box-assignment-fields {
+    max-height: 500px;
+    opacity: 1;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--color-light);
+}
+
+.box-assignment-fields .detail-field {
+    margin-bottom: 1rem;
+}
+
+.box-assignment-fields .detail-field:last-child {
+    margin-bottom: 0;
+}
+</style>
+
+<script>
+// Show/hide box assignment fields based on checkbox
+document.addEventListener('DOMContentLoaded', function() {
+    const assignCheckbox = document.getElementById('id_assign_to_box');
+    const boxFields = ['id_box', 'id_start_row', 'id_start_column'];
+    const boxSection = document.querySelector('.box-assignment-section');
+    const boxFieldsContainer = document.getElementById('boxAssignmentFields');
+
+    function toggleBoxFields() {
+        const isChecked = assignCheckbox && assignCheckbox.checked;
+
+        // Toggle section styling (fallback for browsers without :has() support)
+        if (boxSection) {
+            if (isChecked) {
+                boxSection.classList.add('checked');
+            } else {
+                boxSection.classList.remove('checked');
+            }
+        }
+
+        // Toggle fields visibility and requirements
+        boxFields.forEach(function(fieldId) {
+            const field = document.getElementById(fieldId);
+            if (field) {
+                if (isChecked) {
+                    field.required = fieldId === 'id_box';
+                } else {
+                    field.required = false;
+                    field.value = ''; // Clear values when unchecked
+                }
+            }
+        });
+    }
+
+    if (assignCheckbox) {
+        assignCheckbox.addEventListener('change', toggleBoxFields);
+        toggleBoxFields(); // Initial state
+    }
+});
+</script>
 {% endblock %}

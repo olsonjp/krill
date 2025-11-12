@@ -18,6 +18,29 @@ class SampleForm(forms.ModelForm):
         }
 
 class AliquotForm(forms.ModelForm):
+    # Optional box assignment fields (not part of the model)
+    assign_to_box = forms.BooleanField(
+        required=False,
+        initial=False,
+        help_text='Assign tubes to a storage box immediately after creation'
+    )
+    box = forms.ModelChoiceField(
+        queryset=None,  # Will be set in __init__
+        required=False,
+        empty_label="Select a storage box",
+        help_text="Choose the box to store tubes in"
+    )
+    start_row = forms.IntegerField(
+        required=False,
+        min_value=1,
+        help_text="Starting row position (leave empty to auto-assign)"
+    )
+    start_column = forms.IntegerField(
+        required=False,
+        min_value=1,
+        help_text="Starting column position (leave empty to auto-assign)"
+    )
+
     class Meta:
         model = Aliquot
         fields = ['parent', 'sample', 'quantity', 'aliquot_type', 'access_level']
@@ -31,6 +54,11 @@ class AliquotForm(forms.ModelForm):
         widgets = {
             'quantity': forms.NumberInput(attrs={'min': 1}),
         }
+
+    def __init__(self, *args, **kwargs):
+        from storage.models.storage import Box
+        super().__init__(*args, **kwargs)
+        self.fields['box'].queryset = Box.objects.all().order_by('name')
 
 class AliquotLocationForm(forms.ModelForm):
     class Meta:

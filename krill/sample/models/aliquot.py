@@ -90,9 +90,6 @@ class Aliquot(models.Model):
 
     def create_tubes(self, auto_store=True):
         """Create individual tubes for this aliquot"""
-        from .aliquot_tube import AliquotTube
-        from .aliquot_disposition import AliquotDisposition
-
         # Get the default 'stored' disposition
         stored_disposition, _ = AliquotDisposition.objects.get_or_create(
             name='Stored',
@@ -127,8 +124,6 @@ class Aliquot(models.Model):
 
     def store_tube_in_location(self, tube_number, box, row, column):
         """Store a specific tube in a location"""
-        from .aliquot_location import AliquotLocation
-
         # Change tube disposition to stored
         stored_disposition, _ = AliquotDisposition.objects.get_or_create(
             name='Stored',

@@ -17,7 +17,10 @@ def create_aliquot_tubes(sender, instance, created, **kwargs):
     if created and not hasattr(instance, '_tubes_created'):
         # Get the default disposition (usually "Stored")
         from .models.aliquot import AliquotDisposition
-        default_disposition = AliquotDisposition.objects.get(dispositionType='stored')
+        default_disposition, _ = AliquotDisposition.objects.get_or_create(
+            name='Stored',
+            defaults={'disposition_type': 'stored'}
+        )
         # Create individual tube instances
         for tube_number in range(1, instance.quantity + 1):
             AliquotTube.objects.create(
@@ -38,7 +41,7 @@ def auto_store_aliquot_tube(sender, instance, created, **kwargs):
         return
     if created and not hasattr(instance, '_auto_store_processed'):
         # Only auto-store if disposition is "Stored"
-        if instance.disposition.dispositionType != 'stored':
+        if instance.disposition.disposition_type != 'stored':
             return
         # Check if tube already has a storage location (using the old model structure)
         if AliquotLocation.objects.filter(aliquot=instance.aliquot, tube_number=instance.tube_number).exists():
@@ -72,7 +75,7 @@ def store_old_disposition(sender, instance, **kwargs):
     if instance.pk:  # Only for existing instances
         try:
             old_instance = AliquotTube.objects.get(pk=instance.pk)
-            instance._old_disposition = old_instance.disposition.dispositionType
+            instance._old_disposition = old_instance.disposition.disposition_type
         except AliquotTube.DoesNotExist:
             instance._old_disposition = None
 
@@ -83,7 +86,7 @@ def handle_tube_disposition_change(sender, instance, created, **kwargs):
     """
     if not created and hasattr(instance, '_old_disposition'):
         old_disposition = instance._old_disposition
-        new_disposition = instance.disposition.dispositionType
+        new_disposition = instance.disposition.disposition_type
         # If disposition changed from "Stored" to something else, remove storage location
         if old_disposition == 'stored' and new_disposition != 'stored':
             # Remove storage location for this tube (using the old model structure)
