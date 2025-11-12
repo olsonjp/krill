@@ -10,7 +10,10 @@
 
     <!-- Search and Filter Form -->
     <div class="search-form-container">
-        <form id="sampleListForm" class="search-form">
+        <form id="sampleListForm" class="search-form" action="{% url 'sample:sample_list' %}" method="get">
+            {% if request.GET.type %}
+                <input type="hidden" name="type" value="{{ request.GET.type }}">
+            {% endif %}
             <div class="form-row">
                 <div class="form-group">
                     <label for="searchInput">Search</label>
@@ -40,7 +43,7 @@
                 </div>
             </div>
             <div class="form-actions">
-                <button type="button" class="btn btn-primary" onclick="performSearch()">
+                <button type="submit" class="btn btn-primary">
                     <span class="material-icons-round">search</span>
                     Search
                 </button>
