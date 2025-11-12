@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
 from django.contrib import messages
 from django.urls import reverse
+from django.db import IntegrityError
 from ..models.storage import Box
 from sample.models.aliquot import Aliquot, AliquotLocation, AliquotDisposition, AliquotTube
 
@@ -56,14 +57,19 @@ def assign_aliquot_to_box(request, box_id, row, column):
         tube_number=tube.tube_number
     ).delete()
 
-    # Create new location
-    AliquotLocation.objects.create(
-        aliquot=aliquot,
-        box=box,
-        row=row,
-        column=column,
-        tube_number=tube.tube_number
-    )
+    # Create new location with race condition handling
+    try:
+        AliquotLocation.objects.create(
+            aliquot=aliquot,
+            box=box,
+            row=row,
+            column=column,
+            tube_number=tube.tube_number
+        )
+    except IntegrityError:
+        # Race condition: position was occupied between check and create
+        messages.error(request, f"Position ({row}, {column}) is already occupied. Please try again.")
+        return redirect('storage:detail', type='box', pk=box_id)
 
     # Update tube disposition to stored
     tube.disposition = stored_disposition

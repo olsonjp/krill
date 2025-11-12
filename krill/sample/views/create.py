@@ -63,9 +63,16 @@ class ModelCreateView(CreateView):
 
             # Determine starting position
             if start_row and start_column:
-                # Use specified starting position
-                current_row = start_row
-                current_column = start_column
+                # Validate bounds (form validation should catch this, but double-check)
+                if start_row > box.rows or start_column > box.columns:
+                    # Invalid bounds - fall back to auto-assignment
+                    first_slot = available_slots[0]
+                    current_row = first_slot['row']
+                    current_column = first_slot['column']
+                else:
+                    # Use specified starting position
+                    current_row = start_row
+                    current_column = start_column
             else:
                 # Use first available slot
                 first_slot = available_slots[0]

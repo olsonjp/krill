@@ -550,3 +550,89 @@ class AliquotFormBoxAssignmentTest(TestCase):
         # Form should be valid (validation happens in view)
         # But box should be required when assign_to_box is True
         # This is handled in the view's form_valid method
+
+    def test_aliquot_form_validates_start_row_bounds(self):
+        """Test that start_row is validated against box dimensions"""
+        from sample.forms import AliquotForm
+
+        # Test with row exceeding box dimensions
+        data = {
+            'sample': self.sample.id,
+            'quantity': 1,
+            'aliquot_type': self.aliquot_type.id,
+            'access_level': 'all_members',
+            'assign_to_box': True,
+            'box': self.box.id,
+            'start_row': self.box.rows + 1,  # Exceeds box dimensions
+            'start_column': 1,
+        }
+
+        form = AliquotForm(data=data)
+        self.assertFalse(form.is_valid())
+        self.assertIn('start_row', form.errors)
+        self.assertIn('exceed box dimensions', str(form.errors['start_row']))
+
+    def test_aliquot_form_validates_start_column_bounds(self):
+        """Test that start_column is validated against box dimensions"""
+        from sample.forms import AliquotForm
+
+        # Test with column exceeding box dimensions
+        data = {
+            'sample': self.sample.id,
+            'quantity': 1,
+            'aliquot_type': self.aliquot_type.id,
+            'access_level': 'all_members',
+            'assign_to_box': True,
+            'box': self.box.id,
+            'start_row': 1,
+            'start_column': self.box.columns + 1,  # Exceeds box dimensions
+        }
+
+        form = AliquotForm(data=data)
+        self.assertFalse(form.is_valid())
+        self.assertIn('start_column', form.errors)
+        self.assertIn('exceed box dimensions', str(form.errors['start_column']))
+
+    def test_assign_aliquot_handles_race_condition(self):
+        """Test that race condition in box assignment is handled gracefully"""
+        from django.db import IntegrityError
+        from unittest.mock import patch
+
+        tube = AliquotTube.objects.filter(aliquot=self.aliquot).first()
+
+        # Create a location to simulate race condition
+        AliquotLocation.objects.create(
+            aliquot=self.aliquot,
+            box=self.box,
+            row=2,
+            column=3,
+            tube_number=tube.tube_number
+        )
+
+        # Try to assign another tube to the same position
+        # This should be caught by the check, but test the IntegrityError handling
+        url = reverse('storage:assign_aliquot', kwargs={
+            'box_id': self.box.id,
+            'row': 2,
+            'column': 3
+        })
+
+        # Create another aliquot and tube
+        aliquot2 = Aliquot.objects.create(
+            sample=self.sample,
+            quantity=1,
+            aliquot_type=self.aliquot_type
+        )
+        aliquot2.create_tubes(auto_store=False)
+        tube2 = AliquotTube.objects.filter(aliquot=aliquot2).first()
+
+        # Mock IntegrityError to simulate race condition
+        with patch('sample.models.aliquot.AliquotLocation.objects.create') as mock_create:
+            mock_create.side_effect = IntegrityError("UNIQUE constraint failed")
+            response = self.client.post(url, {
+                'aliquot_id': aliquot2.id,
+                'tube_number': tube2.tube_number
+            })
+
+            # Should redirect with error message
+            self.assertEqual(response.status_code, 302)

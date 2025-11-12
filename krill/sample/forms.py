@@ -60,6 +60,39 @@ class AliquotForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields['box'].queryset = Box.objects.all().order_by('name')
 
+    def clean(self):
+        """Validate box assignment fields"""
+        cleaned_data = super().clean()
+        assign_to_box = cleaned_data.get('assign_to_box')
+        box = cleaned_data.get('box')
+        start_row = cleaned_data.get('start_row')
+        start_column = cleaned_data.get('start_column')
+
+        if assign_to_box and box:
+            # Validate start_row if provided
+            if start_row is not None:
+                if start_row < 1:
+                    raise forms.ValidationError({
+                        'start_row': 'Row must be at least 1.'
+                    })
+                if start_row > box.rows:
+                    raise forms.ValidationError({
+                        'start_row': f'Row must not exceed box dimensions (max: {box.rows}).'
+                    })
+
+            # Validate start_column if provided
+            if start_column is not None:
+                if start_column < 1:
+                    raise forms.ValidationError({
+                        'start_column': 'Column must be at least 1.'
+                    })
+                if start_column > box.columns:
+                    raise forms.ValidationError({
+                        'start_column': f'Column must not exceed box dimensions (max: {box.columns}).'
+                    })
+
+        return cleaned_data
+
 class AliquotLocationForm(forms.ModelForm):
     class Meta:
         model = AliquotLocation
