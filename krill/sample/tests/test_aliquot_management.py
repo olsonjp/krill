@@ -157,6 +157,62 @@ class AliquotBoxAssignmentTest(TestCase):
             self.assertGreaterEqual(location.column, 1)
             self.assertLessEqual(location.column, self.box.columns)
 
+    def test_aliquot_creation_warns_when_requested_position_occupied(self):
+        """Test that user is warned when requested starting position is occupied"""
+        from django.contrib.messages import get_messages
+
+        # Create an aliquot and occupy position (1, 1)
+        existing_aliquot = Aliquot.objects.create(
+            sample=self.sample,
+            quantity=1,
+            aliquot_type=self.aliquot_type
+        )
+        existing_aliquot.create_tubes(auto_store=False)
+        tube = existing_aliquot.tubes.first()
+        stored_disposition, _ = AliquotDisposition.objects.get_or_create(
+            name='Stored',
+            defaults={'disposition_type': 'stored'}
+        )
+        tube.disposition = stored_disposition
+        tube.save()
+        AliquotLocation.objects.create(
+            aliquot=existing_aliquot,
+            box=self.box,
+            row=1,
+            column=1,
+            tube_number=tube.tube_number
+        )
+
+        # Try to create new aliquot requesting occupied position
+        url = reverse('sample:sample_create') + '?type=aliquot'
+        data = {
+            'sample': self.sample.id,
+            'quantity': 1,
+            'aliquot_type': self.aliquot_type.id,
+            'access_level': 'all_members',
+            'assign_to_box': True,
+            'box': self.box.id,
+            'start_row': 1,
+            'start_column': 1,  # This position is occupied
+        }
+
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 302)
+
+        # Check that warning message was added
+        messages_list = list(get_messages(response.wsgi_request))
+        warning_messages = [msg for msg in messages_list if 'occupied' in str(msg.message).lower()]
+        self.assertGreater(len(warning_messages), 0, "Should have warning message about occupied position")
+
+        # Check that aliquot was still created and assigned to next available position
+        new_aliquot = Aliquot.objects.filter(sample=self.sample).exclude(id=existing_aliquot.id).first()
+        self.assertIsNotNone(new_aliquot)
+        locations = AliquotLocation.objects.filter(aliquot=new_aliquot)
+        self.assertEqual(locations.count(), 1)
+        # Should not be at (1, 1) since that's occupied
+        location = locations.first()
+        self.assertFalse(location.row == 1 and location.column == 1, "Should not use occupied position")
+
 
 class AliquotCheckoutTest(TestCase):
     """Test checkout functionality for aliquots"""

@@ -4,6 +4,7 @@ from django.shortcuts import redirect
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.core.exceptions import ValidationError
+from django.contrib import messages
 from ..models.sample import Sample
 from ..models.aliquot import Aliquot, AliquotType, AliquotDisposition, AliquotLocation
 from ..models.source import Source
@@ -62,6 +63,7 @@ class ModelCreateView(CreateView):
                 return response
 
             # Determine starting position
+            requested_position_used = False
             if start_row and start_column:
                 # Validate bounds (form validation should catch this, but double-check)
                 if start_row > box.rows or start_column > box.columns:
@@ -69,10 +71,54 @@ class ModelCreateView(CreateView):
                     first_slot = available_slots[0]
                     current_row = first_slot['row']
                     current_column = first_slot['column']
+                    messages.warning(
+                        self.request,
+                        f"Requested position ({start_row}, {start_column}) exceeds box dimensions. "
+                        f"Using first available position ({current_row}, {current_column}) instead."
+                    )
                 else:
-                    # Use specified starting position
-                    current_row = start_row
-                    current_column = start_column
+                    # Check if requested position is available
+                    if AliquotLocation.objects.filter(box=box, row=start_row, column=start_column).exists():
+                        # Position is occupied - find next available slot starting from requested position
+                        # This will be handled by the assignment loop below, but we'll warn the user
+                        current_row = start_row
+                        current_column = start_column
+                        # Find the actual first available slot starting from requested position
+                        actual_start_row = None
+                        actual_start_col = None
+                        for row in range(start_row, box.rows + 1):
+                            start_col = start_column if row == start_row else 1
+                            for col in range(start_col, box.columns + 1):
+                                if not AliquotLocation.objects.filter(box=box, row=row, column=col).exists():
+                                    actual_start_row = row
+                                    actual_start_col = col
+                                    break
+                            if actual_start_row is not None:
+                                break
+
+                        if actual_start_row is not None:
+                            current_row = actual_start_row
+                            current_column = actual_start_col
+                            messages.warning(
+                                self.request,
+                                f"Requested position ({start_row}, {start_column}) is already occupied. "
+                                f"Starting from next available position ({current_row}, {current_column})."
+                            )
+                        else:
+                            # No available slots starting from requested position - use first available
+                            first_slot = available_slots[0]
+                            current_row = first_slot['row']
+                            current_column = first_slot['column']
+                            messages.warning(
+                                self.request,
+                                f"Requested position ({start_row}, {start_column}) is occupied and no slots available from that position. "
+                                f"Using first available position ({current_row}, {current_column}) instead."
+                            )
+                    else:
+                        # Use specified starting position
+                        current_row = start_row
+                        current_column = start_column
+                        requested_position_used = True
             else:
                 # Use first available slot
                 first_slot = available_slots[0]
