@@ -598,11 +598,18 @@ class AliquotFormBoxAssignmentTest(TestCase):
         from django.db import IntegrityError
         from unittest.mock import patch
 
-        tube = AliquotTube.objects.filter(aliquot=self.aliquot).first()
+        # Create aliquot and tube for this test
+        aliquot = Aliquot.objects.create(
+            sample=self.sample,
+            quantity=1,
+            aliquot_type=self.aliquot_type
+        )
+        aliquot.create_tubes(auto_store=False)
+        tube = AliquotTube.objects.filter(aliquot=aliquot).first()
 
         # Create a location to simulate race condition
         AliquotLocation.objects.create(
-            aliquot=self.aliquot,
+            aliquot=aliquot,
             box=self.box,
             row=2,
             column=3,
@@ -627,7 +634,7 @@ class AliquotFormBoxAssignmentTest(TestCase):
         tube2 = AliquotTube.objects.filter(aliquot=aliquot2).first()
 
         # Mock IntegrityError to simulate race condition
-        with patch('sample.models.aliquot.AliquotLocation.objects.create') as mock_create:
+        with patch('storage.views.assign.AliquotLocation.objects.create') as mock_create:
             mock_create.side_effect = IntegrityError("UNIQUE constraint failed")
             response = self.client.post(url, {
                 'aliquot_id': aliquot2.id,
