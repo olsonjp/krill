@@ -1,5 +1,6 @@
 from django.views.generic import ListView
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models import Q
 from ..models.sample import Sample
 from ..models.aliquot import Aliquot, AliquotType, AliquotLocation
 from ..models.source import Source
@@ -34,9 +35,8 @@ class SampleListView(LoginRequiredMixin, ListView):
         if search_query:
             if model_type == 'aliquot':
                 queryset = queryset.filter(
-                    name__icontains=search_query
-                ) | queryset.filter(
-                    sample__name__icontains=search_query
+                    Q(sample__name__icontains=search_query) |
+                    Q(aliquot_type__name__icontains=search_query)
                 )
             elif model_type == 'sample':
                 queryset = queryset.filter(name__icontains=search_query)
