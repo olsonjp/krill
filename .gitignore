@@ -33,3 +33,37 @@ db.sqlite3-journal
 # Virtualenv
 .venv
 venv
+
+# Sensitive data files
+*.csv
+!tests/data/anonymized_test_data.csv
+*.xlsx
+*.xls
+*.sql
+!init.sql
+*.db
+*.sqlite
+*.sqlite3
+
+# Environment and secrets
+.env.local
+.env.*.local
+*.key
+*.pem
+*.cert
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Backup files
+*.bak
+*.backup
+*~

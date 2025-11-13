@@ -1,6 +1,15 @@
-# Krill - A project for tracking storage of biological samples
+# Krill
 
-A Django-based application for managing biological sample storage, tracking, and reporting.
+A Django-based application for managing biological sample storage, tracking, and reporting. Krill provides a comprehensive solution for laboratories to track samples, manage storage locations, and generate audit reports.
+
+## Overview
+
+Krill is designed for research laboratories and biobanks that need to:
+- Track biological samples with detailed metadata
+- Manage storage locations, boxes, and freezer capacity
+- Control access with role-based permissions
+- Generate reports and maintain audit trails
+- Support multiple storage locations and organizational units
 
 ## Features
 
@@ -229,12 +238,16 @@ docker-compose up -d
 
 ## Contributing
 
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to contribute to this project.
+
 1. Fork the repository
-2. Create a feature branch
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes
 4. Add tests for new functionality
-5. Ensure all tests pass
-6. Submit a pull request
+5. Ensure all tests pass (`python manage.py test`)
+6. Commit your changes (`git commit -m 'Add some amazing feature'`)
+7. Push to the branch (`git push origin feature/amazing-feature`)
+8. Open a Pull Request
 
 ## Documentation
 
@@ -248,14 +261,13 @@ docker-compose up -d
 
 For issues and questions:
 
-1. Check the documentation
-2. Search existing issues
-3. Create a new issue with detailed information
-4. Contact the development team
+1. Check the [documentation](#documentation) below
+2. Search [existing issues](https://github.com/yourusername/krill/issues)
+3. Create a [new issue](https://github.com/yourusername/krill/issues/new) with detailed information
 
 ## License
 
-[License information]
+This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
 
