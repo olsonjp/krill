@@ -1566,9 +1566,9 @@ MDA MB 134VI (MM134);UPMC/MJS;Sikora LN2 #1;4;F;1;2;Cells;3;Checked Out;Legacy M
             # Check storage hierarchy structure
             storage_fixtures = {f['model']: f for f in fixtures if f['model'].startswith('storage.')}
 
-            # Verify site
+            # Verify site (should default to "Default Site" when Site column is not provided)
             self.assertIn('storage.site', storage_fixtures)
-            self.assertEqual(storage_fixtures['storage.site']['fields']['name'], 'Sikora Lab')
+            self.assertEqual(storage_fixtures['storage.site']['fields']['name'], 'Default Site')
 
             # Verify device
             self.assertIn('storage.device', storage_fixtures)

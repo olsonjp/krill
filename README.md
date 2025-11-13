@@ -252,6 +252,7 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 ## Documentation
 
 - [Database Setup Guide](DATABASE_SETUP.md) - Comprehensive database configuration
+- [Data Import Guide](DATA_IMPORT.md) - How to structure CSV files for importing sample data
 - [Production Deployment Guide](PRODUCTION_DEPLOYMENT.md) - Complete production deployment instructions
 - [DigitalOcean App Platform Quick Reference](DO_APP_PLATFORM_QUICK_REF.md) - DO-specific deployment guide
 - [Dockerfile Deployment Guide](DOCKERFILE_DEPLOYMENT.md) - How the Dockerfile handles working directory

@@ -54,7 +54,8 @@ def convert_csv_to_fixtures(csv_file):
                     else:
                         existing_sample['fields']['notes'] = current_notes
             # Create Storage hierarchy
-            site_name = 'Sikora Lab'
+            # Use Site column if provided, otherwise default to "Default Site"
+            site_name = row.get('Site', '').strip() or 'Default Site'
             freezer_name = row['Freezer Name']
             shelf_name = "Shelf 1"
             rack_name = row['Position 1']
