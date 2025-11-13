@@ -26,7 +26,7 @@ from .decorators import require_minimum_role
 class DataImportForm(forms.Form):
     csv_file = forms.FileField(
         label='CSV File',
-        help_text='Upload a CSV file with sample data. Expected format: Source;Cell Line;Experiment #;Sample Notes;Freezer Name;Position 1;Position 2;Position 3;Position 4;Aliquot Type;Current Amount;Aliquot/SubA Passage#;Aliquot Notes;Disposition'
+        help_text='Upload a CSV file with sample data. Expected format: Source;Cell Line;Experiment #;Sample Notes;Site;Freezer Name;Position 1;Position 2;Position 3;Position 4;Aliquot Type;Number of Aliquots Total;Disposition (Site is optional, defaults to "Default Site")'
     )
     dry_run = forms.BooleanField(
         label='Dry Run',
@@ -199,7 +199,8 @@ class DataImportView(TemplateView):
                 pk_counter['sample'] += 1
 
             # Create Storage hierarchy
-            site_name = 'Sikora Lab'
+            # Use Site column if provided, otherwise default to "Default Site"
+            site_name = row.get('Site', '').strip() or 'Default Site'
             freezer_name = row.get('Freezer Name')
             shelf_name = "Shelf 1"
             rack_name = row.get('Position 1')

@@ -32,7 +32,7 @@ from .decorators import require_permission, require_minimum_role, grant_object_p
 class DataImportForm(forms.Form):
     csv_file = forms.FileField(
         label='CSV File',
-        help_text='Upload a CSV file with sample data. Expected format: Source;Cell Line;Experiment #;Sample Notes;Freezer Name;Position 1;Position 2;Position 3;Position 4;Aliquot Type;Number of Aliquots Total;Disposition'
+        help_text='Upload a CSV file with sample data. Expected format: Source;Cell Line;Experiment #;Sample Notes;Site;Freezer Name;Position 1;Position 2;Position 3;Position 4;Aliquot Type;Number of Aliquots Total;Disposition (Site is optional, defaults to "Default Site")'
     )
 
 
@@ -436,7 +436,8 @@ class DataImportView(TemplateView):
                             existing_sample['fields']['notes'] = current_notes
 
                 # Create Storage hierarchy
-                site_name = 'Sikora Lab'
+                # Use Site column if provided, otherwise default to "Default Site"
+                site_name = row.get('Site', '').strip() or 'Default Site'
                 freezer_name = row['Freezer Name']
                 shelf_name = row['Position 2']  # e.g., "F"
                 rack_name = row['Position 1']   # e.g., "4"
