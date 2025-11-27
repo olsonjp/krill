@@ -4,6 +4,7 @@ from .views.detail import StorageDetailView
 from .views.create import StorageCreateView
 from .views.capacity import box_capacity
 from .views.views import StorageView
+from .views.assign import assign_aliquot_to_box
 
 app_name = 'storage'
 
@@ -15,5 +16,6 @@ urlpatterns = [
     path('detail/<str:type>/<int:pk>/', StorageDetailView.as_view(), name='detail'),
     path('create/', StorageCreateView.as_view(), name='create'),
     path('capacity/', box_capacity, name='capacity'),
+    path('box/<int:box_id>/assign/<int:row>/<int:column>/', assign_aliquot_to_box, name='assign_aliquot'),
     # ... other existing urls ...
 ]

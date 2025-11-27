@@ -46,17 +46,17 @@ class SignalHandlerTest(TestCase):
         self.source = Source.objects.create(name="Test Source")
         self.sample = Sample.objects.create(name="Test Sample", source=self.source)
         self.aliquot_type = AliquotType.objects.create(name="Test Type")
-        self.stored_disposition = AliquotDisposition.objects.create(
+        self.stored_disposition, _ = AliquotDisposition.objects.get_or_create(
             name="Stored",
-            dispositionType="stored"
+            defaults={'disposition_type': 'stored'}
         )
-        self.in_use_disposition = AliquotDisposition.objects.create(
+        self.in_use_disposition, _ = AliquotDisposition.objects.get_or_create(
             name="In Use",
-            dispositionType="in_use"
+            defaults={'disposition_type': 'in_use'}
         )
-        self.exhausted_disposition = AliquotDisposition.objects.create(
+        self.exhausted_disposition, _ = AliquotDisposition.objects.get_or_create(
             name="Exhausted",
-            dispositionType="exhausted"
+            defaults={'disposition_type': 'exhausted'}
         )
 
 
@@ -85,7 +85,7 @@ class AliquotTubeCreationSignalTest(SignalHandlerTest):
             self.assertEqual(tube_numbers, [1, 2, 3, 4, 5])
             # Check that all tubes have stored disposition
             for tube in tubes:
-                self.assertEqual(tube.disposition.dispositionType, "stored")
+                self.assertEqual(tube.disposition.disposition_type, "stored")
         finally:
             # Restore original setting
             sample.signals.AUTO_CREATE_TUBES = original_setting
@@ -472,7 +472,7 @@ class TubeDispositionChangeSignalTest(SignalHandlerTest):
             # Change to a different stored disposition
             new_stored_disposition = AliquotDisposition.objects.create(
                 name="Stored 2",
-                dispositionType="stored"
+                disposition_type="stored"
             )
             tube = AliquotTube.objects.filter(aliquot=aliquot).first()
             tube.disposition = new_stored_disposition

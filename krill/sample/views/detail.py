@@ -3,6 +3,8 @@ from django.shortcuts import get_object_or_404, render, redirect
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
+from django.db import IntegrityError, transaction
+from django.contrib import messages
 from ..models.sample import Sample
 from ..models.aliquot import Aliquot, AliquotType, AliquotLocation, AliquotTube
 from ..models.source import Source
@@ -114,6 +116,8 @@ class TubeDetailView(DetailView):
 
         if action == 'move':
             return self._handle_move(request)
+        elif action == 'checkout':
+            return self._handle_checkout(request)
         else:
             return self._handle_edit(request)
 
@@ -140,34 +144,104 @@ class TubeDetailView(DetailView):
         """Handle move form submission"""
         move_form = AliquotTubeMoveForm(request.POST)
         if move_form.is_valid():
-            # Ensure tube is in stored disposition
-            stored_disposition = AliquotDisposition.objects.get(disposition_type='stored')
-            if self.object.disposition != stored_disposition:
-                self.object.disposition = stored_disposition
-                self.object.save()
+            # Get stored disposition
+            stored_disposition, _ = AliquotDisposition.objects.get_or_create(
+                name='Stored',
+                defaults={'disposition_type': 'stored'}
+            )
 
-            # Remove any existing location for this tube
-            AliquotLocation.objects.filter(
-                aliquot=self.object.aliquot,
-                tube_number=self.object.tube_number
-            ).delete()
-
-            # Create new location
+            # Create new location with race condition handling
+            # All operations (check, create, delete old location, update disposition) must be atomic
+            # to prevent inconsistent state if any step fails
             box = move_form.cleaned_data['box']
             row = move_form.cleaned_data['row']
             column = move_form.cleaned_data['column']
 
-            AliquotLocation.objects.create(
-                aliquot=self.object.aliquot,
-                box=box,
-                row=row,
-                column=column,
-                tube_number=self.object.tube_number
-            )
+            try:
+                with transaction.atomic():
+                    # Check if position is already occupied within transaction
+                    if AliquotLocation.objects.filter(box=box, row=row, column=column).exists():
+                        messages.error(
+                            request,
+                            f"Position ({row}, {column}) is already occupied. Please select a different position."
+                        )
+                        context = self.get_context_data()
+                        context['move_form'] = move_form
+                        return render(request, self.template_name, context)
 
+                    # Create location atomically
+                    AliquotLocation.objects.create(
+                        aliquot=self.object.aliquot,
+                        box=box,
+                        row=row,
+                        column=column,
+                        tube_number=self.object.tube_number
+                    )
+
+                    # Remove any existing location for this tube (after successful creation)
+                    # This ensures we don't lose the location if creation fails
+                    AliquotLocation.objects.filter(
+                        aliquot=self.object.aliquot,
+                        tube_number=self.object.tube_number
+                    ).exclude(box=box, row=row, column=column).delete()
+
+                    # Update tube disposition to stored (within transaction)
+                    if self.object.disposition != stored_disposition:
+                        self.object.disposition = stored_disposition
+                        self.object.save()
+            except IntegrityError:
+                # Determine which constraint was violated
+                # Check if tube already has a location (unique_together: aliquot, tube_number)
+                if AliquotLocation.objects.filter(
+                    aliquot=self.object.aliquot,
+                    tube_number=self.object.tube_number
+                ).exists():
+                    messages.error(
+                        request,
+                        f"Tube {self.object.tube_number} already has a location. "
+                        "This may be due to a concurrent assignment. Please try again."
+                    )
+                else:
+                    # Position must be occupied (unique_together: box, row, column)
+                    messages.error(
+                        request,
+                        f"Position ({row}, {column}) is already occupied. Please select a different position."
+                    )
+                context = self.get_context_data()
+                context['move_form'] = move_form
+                return render(request, self.template_name, context)
+
+            messages.success(
+                request,
+                f"Tube moved to position ({row}, {column}) in {box.name}."
+            )
             return redirect('sample:tube_detail', pk=self.object.pk)
         else:
             # If form is invalid, re-render with errors
             context = self.get_context_data()
             context['move_form'] = move_form
             return render(request, self.template_name, context)
+
+    def _handle_checkout(self, request):
+        """Handle checkout action - change disposition to 'in_use'"""
+        # Check if tube is currently stored
+        was_stored = self.object.disposition.disposition_type == 'stored'
+
+        # Get 'in_use' disposition
+        in_use_disposition, _ = AliquotDisposition.objects.get_or_create(
+            name='In Use',
+            defaults={'disposition_type': 'in_use'}
+        )
+
+        # Change tube disposition to 'in_use'
+        self.object.disposition = in_use_disposition
+        self.object.save()
+
+        # Remove storage location if tube was stored
+        if was_stored:
+            AliquotLocation.objects.filter(
+                aliquot=self.object.aliquot,
+                tube_number=self.object.tube_number
+            ).delete()
+
+        return redirect('sample:tube_detail', pk=self.object.pk)

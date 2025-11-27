@@ -1,6 +1,7 @@
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from django.db import IntegrityError, transaction
 from storage.models import Box
 
 class AliquotType(models.Model):
@@ -90,9 +91,6 @@ class Aliquot(models.Model):
 
     def create_tubes(self, auto_store=True):
         """Create individual tubes for this aliquot"""
-        from .aliquot_tube import AliquotTube
-        from .aliquot_disposition import AliquotDisposition
-
         # Get the default 'stored' disposition
         stored_disposition, _ = AliquotDisposition.objects.get_or_create(
             name='Stored',
@@ -126,31 +124,58 @@ class Aliquot(models.Model):
             raise ValidationError(f"Tube {tube_number} does not exist for this aliquot")
 
     def store_tube_in_location(self, tube_number, box, row, column):
-        """Store a specific tube in a location"""
-        from .aliquot_location import AliquotLocation
-
-        # Change tube disposition to stored
+        """Store a specific tube in a location with race condition handling"""
+        # Get stored disposition
         stored_disposition, _ = AliquotDisposition.objects.get_or_create(
             name='Stored',
             defaults={'disposition_type': 'stored'}
         )
-        self.change_tube_disposition(tube_number, stored_disposition)
 
-        # Create or update location
-        location, created = AliquotLocation.objects.get_or_create(
-            aliquot=self,
-            tube_number=tube_number,
-            defaults={
-                'box': box,
-                'row': row,
-                'column': column
-            }
-        )
-        if not created:
-            location.box = box
-            location.row = row
-            location.column = column
-            location.save()
+        # All operations must be atomic to prevent inconsistent state
+        try:
+            with transaction.atomic():
+                # Check if position is already occupied within transaction
+                if AliquotLocation.objects.filter(box=box, row=row, column=column).exists():
+                    raise ValidationError(
+                        f"Position ({row}, {column}) in box {box.name} is already occupied."
+                    )
+
+                # Remove any existing location for this tube (within transaction)
+                # This allows moving a tube from one location to another
+                AliquotLocation.objects.filter(
+                    aliquot=self,
+                    tube_number=tube_number
+                ).delete()
+
+                # Create location atomically
+                location = AliquotLocation.objects.create(
+                    aliquot=self,
+                    box=box,
+                    row=row,
+                    column=column,
+                    tube_number=tube_number
+                )
+
+                # Change tube disposition to stored (within transaction)
+                self.change_tube_disposition(tube_number, stored_disposition)
+        except IntegrityError:
+            # Determine which constraint was violated
+            # Check if tube already has a location (unique_together: aliquot, tube_number)
+            # This can happen if another request assigned the tube concurrently
+            if AliquotLocation.objects.filter(
+                aliquot=self,
+                tube_number=tube_number
+            ).exists():
+                raise ValidationError(
+                    f"Tube {tube_number} already has a location. "
+                    "This may be due to a concurrent assignment. Please try again."
+                )
+            # Otherwise, position must be occupied (unique_together: box, row, column)
+            raise ValidationError(
+                f"Position ({row}, {column}) in box {box.name} is already occupied. "
+                "Please try again with a different position."
+            )
+
         return location
 
 class AliquotTube(models.Model):

@@ -1,5 +1,6 @@
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
+from django.db import IntegrityError, transaction
 from .models.aliquot import Aliquot, AliquotLocation, AliquotTube
 
 # Global flag to control automatic behavior
@@ -17,7 +18,10 @@ def create_aliquot_tubes(sender, instance, created, **kwargs):
     if created and not hasattr(instance, '_tubes_created'):
         # Get the default disposition (usually "Stored")
         from .models.aliquot import AliquotDisposition
-        default_disposition = AliquotDisposition.objects.get(dispositionType='stored')
+        default_disposition, _ = AliquotDisposition.objects.get_or_create(
+            name='Stored',
+            defaults={'disposition_type': 'stored'}
+        )
         # Create individual tube instances
         for tube_number in range(1, instance.quantity + 1):
             AliquotTube.objects.create(
@@ -38,7 +42,7 @@ def auto_store_aliquot_tube(sender, instance, created, **kwargs):
         return
     if created and not hasattr(instance, '_auto_store_processed'):
         # Only auto-store if disposition is "Stored"
-        if instance.disposition.dispositionType != 'stored':
+        if instance.disposition.disposition_type != 'stored':
             return
         # Check if tube already has a storage location (using the old model structure)
         if AliquotLocation.objects.filter(aliquot=instance.aliquot, tube_number=instance.tube_number).exists():
@@ -51,15 +55,34 @@ def auto_store_aliquot_tube(sender, instance, created, **kwargs):
         for box in auto_store_boxes:
             available_slots = box.get_available_slots()
             if available_slots:
-                # Store tube in first available slot (using the old model structure)
-                slot = available_slots[0]
-                AliquotLocation.objects.create(
-                    aliquot=instance.aliquot,
-                    box=box,
-                    row=slot['row'],
-                    column=slot['column'],
-                    tube_number=instance.tube_number
-                )
+                # Try to store tube in first available slot with race condition handling
+                # Try each available slot until we find one that's still available
+                for slot in available_slots:
+                    try:
+                        with transaction.atomic():
+                            # Double-check slot is available within transaction
+                            if AliquotLocation.objects.filter(
+                                box=box, row=slot['row'], column=slot['column']
+                            ).exists():
+                                continue  # Try next slot
+
+                            # Create location atomically
+                            AliquotLocation.objects.create(
+                                aliquot=instance.aliquot,
+                                box=box,
+                                row=slot['row'],
+                                column=slot['column'],
+                                tube_number=instance.tube_number
+                            )
+                            # Successfully stored, break out of both loops
+                            break
+                    except IntegrityError:
+                        # Race condition: slot was taken, try next slot
+                        continue
+                else:
+                    # No slots available in this box, try next box
+                    continue
+                # Successfully stored, break out of box loop
                 break
         # Mark as processed to prevent infinite loops
         instance._auto_store_processed = True
@@ -72,7 +95,7 @@ def store_old_disposition(sender, instance, **kwargs):
     if instance.pk:  # Only for existing instances
         try:
             old_instance = AliquotTube.objects.get(pk=instance.pk)
-            instance._old_disposition = old_instance.disposition.dispositionType
+            instance._old_disposition = old_instance.disposition.disposition_type
         except AliquotTube.DoesNotExist:
             instance._old_disposition = None
 
@@ -83,7 +106,7 @@ def handle_tube_disposition_change(sender, instance, created, **kwargs):
     """
     if not created and hasattr(instance, '_old_disposition'):
         old_disposition = instance._old_disposition
-        new_disposition = instance.disposition.dispositionType
+        new_disposition = instance.disposition.disposition_type
         # If disposition changed from "Stored" to something else, remove storage location
         if old_disposition == 'stored' and new_disposition != 'stored':
             # Remove storage location for this tube (using the old model structure)

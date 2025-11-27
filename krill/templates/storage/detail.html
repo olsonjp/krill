@@ -75,9 +75,10 @@
                         {% for row in box_grid %}
                         <div class="box-row">
                             {% for slot in row %}
-                            <div class="test-tube-slot {% if slot.occupied %}occupied{% else %}empty{% endif %}"
+                            <div class="test-tube-slot {% if slot.occupied %}occupied{% else %}empty clickable-slot{% endif %}"
                                  data-row="{{ slot.row }}" data-col="{{ slot.column }}"
-                                 title="{% if slot.occupied %}{{ slot.sample.name }} - {{ slot.aliquot.aliquot_type.name }}{% else %}Empty slot{% endif %}">
+                                 {% if not slot.occupied %}onclick="showAssignModal({{ slot.row }}, {{ slot.column }})"{% endif %}
+                                 title="{% if slot.occupied %}{{ slot.sample.name }} - {{ slot.aliquot.aliquot_type.name }}{% else %}Click to assign aliquot{% endif %}">
                                 {% if slot.occupied %}
                                 <a href="{% url 'sample:detail' type='aliquot' pk=slot.aliquot.id %}" class="test-tube-link">
                                 {% endif %}
@@ -93,7 +94,9 @@
                                 {% else %}
                                 <div class="empty-tube">
                                     <div class="tube-top"></div>
-                                    <div class="tube-body"></div>
+                                    <div class="tube-body">
+                                        <span class="assign-icon">+</span>
+                                    </div>
                                 </div>
                                 {% endif %}
                             </div>
@@ -127,7 +130,7 @@
                             <div class="aliquot-position">Position ({{ location.row }}, {{ location.column }}) - Tube #{{ location.tube_number }}</div>
                         </div>
                         <div class="aliquot-details">
-                            <span class="aliquot-type">{{ location.aliquot.aliquotType.name }}</span>
+                            <span class="aliquot-type">{{ location.aliquot.aliquot_type.name|default:"No type" }}</span>
                             <span class="aliquot-quantity">Aliquot: {{ location.aliquot.stored_tubes_count }}/{{ location.aliquot.quantity }} tubes</span>
                             <span class="aliquot-disposition">{{ location.aliquot.disposition.name }}</span>
                         </div>
@@ -315,5 +318,206 @@ function highlightSlot() {
 // Try to highlight immediately, then again when DOM is loaded
 highlightSlot();
 document.addEventListener('DOMContentLoaded', highlightSlot);
+
+// Assign aliquot modal functionality
+let currentRow = null;
+let currentColumn = null;
+
+function showAssignModal(row, column) {
+    currentRow = row;
+    currentColumn = column;
+    document.getElementById('assignModal').style.display = 'block';
+    document.getElementById('assignPosition').textContent = `Position (${row}, ${column})`;
+}
+
+function closeAssignModal() {
+    document.getElementById('assignModal').style.display = 'none';
+    currentRow = null;
+    currentColumn = null;
+}
+
+function assignAliquot() {
+    const aliquotSelect = document.getElementById('aliquotSelect');
+    const aliquotId = aliquotSelect.value;
+    const tubeNumber = document.getElementById('tubeNumber').value;
+
+    if (!aliquotId) {
+        alert('Please select an aliquot');
+        return;
+    }
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{% url "storage:assign_aliquot" box_id=object.id row=0 column=0 %}'.replace('/0/0/', `/${currentRow}/${currentColumn}/`);
+
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden';
+    csrfInput.name = 'csrfmiddlewaretoken';
+    csrfInput.value = csrfToken;
+    form.appendChild(csrfInput);
+
+    const aliquotInput = document.createElement('input');
+    aliquotInput.type = 'hidden';
+    aliquotInput.name = 'aliquot_id';
+    aliquotInput.value = aliquotId;
+    form.appendChild(aliquotInput);
+
+    if (tubeNumber) {
+        const tubeInput = document.createElement('input');
+        tubeInput.type = 'hidden';
+        tubeInput.name = 'tube_number';
+        tubeInput.value = tubeNumber;
+        form.appendChild(tubeInput);
+    }
+
+    document.body.appendChild(form);
+    form.submit();
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('assignModal');
+    if (event.target == modal) {
+        closeAssignModal();
+    }
+}
 </script>
+
+<!-- Assign Aliquot Modal -->
+<div id="assignModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Assign Aliquot to Box</h2>
+            <span class="close" onclick="closeAssignModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <p>Assign an aliquot to position: <strong id="assignPosition"></strong></p>
+            <div class="form-field">
+                <label for="aliquotSelect">Select Aliquot:</label>
+                <select id="aliquotSelect" class="form-control">
+                    <option value="">-- Select an aliquot --</option>
+                    {% for aliquot in available_aliquots %}
+                    <option value="{{ aliquot.id }}">{{ aliquot.sample.name }} - {{ aliquot.aliquot_type.name|default:"No type" }} ({{ aliquot.quantity }} tubes)</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-field">
+                <label for="tubeNumber">Tube Number (optional):</label>
+                <input type="number" id="tubeNumber" class="form-control" min="1" placeholder="Leave empty to use first available">
+                <small class="help-text">If not specified, the first available tube will be used</small>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-primary" onclick="assignAliquot()">Assign</button>
+            <button type="button" class="btn btn-secondary" onclick="closeAssignModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<style>
+.clickable-slot {
+    cursor: pointer;
+}
+
+.clickable-slot:hover {
+    background-color: rgba(0, 123, 255, 0.1);
+    border: 2px dashed #007bff;
+}
+
+.assign-icon {
+    font-size: 24px;
+    color: #6c757d;
+    font-weight: bold;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.4);
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 15% auto;
+    padding: 0;
+    border: 1px solid #888;
+    width: 90%;
+    max-width: 500px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.modal-header {
+    padding: 20px;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    border-radius: 8px 8px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+.close {
+    color: #aaa;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close:hover,
+.close:focus {
+    color: #000;
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.modal-footer {
+    padding: 20px;
+    background-color: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+    border-radius: 0 0 8px 8px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.form-field {
+    margin-bottom: 15px;
+}
+
+.form-field label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+.form-control {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.help-text {
+    display: block;
+    margin-top: 5px;
+    font-size: 12px;
+    color: #6c757d;
+}
+</style>
 {% endblock %}

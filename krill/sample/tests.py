@@ -323,6 +323,38 @@ class AliquotModelTest(TestCase):
         with self.assertRaises(ValueError):
             aliquot.store_tube_in_location(999, box, 1, 1)
 
+    def test_store_tube_in_location_occupied_position(self):
+        """Test that store_tube_in_location raises ValidationError for occupied position"""
+        # Create storage hierarchy
+        site = Site.objects.create(name="Test Site")
+        device = Device.objects.create(name="Test Device", site=site)
+        shelf = Shelf.objects.create(name="Test Shelf", device=device)
+        rack = Rack.objects.create(name="Test Rack", shelf=shelf)
+        box = Box.objects.create(name="Test Box", rack=rack, rows=10, columns=10)
+
+        # Create two aliquots
+        aliquot1 = Aliquot.objects.create(
+            sample=self.sample,
+            quantity=1,
+            aliquotType=self.aliquot_type
+        )
+        aliquot1.create_tubes(auto_store=False)
+
+        aliquot2 = Aliquot.objects.create(
+            sample=self.sample,
+            quantity=1,
+            aliquotType=self.aliquot_type
+        )
+        aliquot2.create_tubes(auto_store=False)
+
+        # Store first tube in a position
+        aliquot1.store_tube_in_location(1, box, 5, 5)
+
+        # Try to store second tube in same position - should raise ValidationError
+        with self.assertRaises(ValidationError) as cm:
+            aliquot2.store_tube_in_location(1, box, 5, 5)
+        self.assertIn('occupied', str(cm.exception).lower())
+
 
 class AliquotTubeModelTest(TestCase):
     """Test cases for the AliquotTube model"""
@@ -1630,3 +1662,58 @@ class TubeDetailViewMoveTest(TestCase):
         self.assertEqual(location.box, self.box)
         self.assertEqual(location.row, 1)
         self.assertEqual(location.column, 1)
+
+    def test_tube_detail_view_post_move_to_occupied_position(self):
+        """Test moving a tube to an already occupied position"""
+        from django.contrib.messages import get_messages
+
+        # Create another tube and store it in a position
+        other_tube = AliquotTube.objects.create(
+            aliquot=self.aliquot,
+            tube_number=2,
+            disposition=self.stored_disposition
+        )
+        AliquotLocation.objects.create(
+            aliquot=self.aliquot,
+            box=self.box,
+            row=2,
+            column=2,
+            tube_number=other_tube.tube_number
+        )
+
+        # Store the test tube in a different position
+        self.tube.disposition = self.stored_disposition
+        self.tube.save()
+        AliquotLocation.objects.create(
+            aliquot=self.aliquot,
+            box=self.box,
+            row=1,
+            column=1,
+            tube_number=self.tube.tube_number
+        )
+
+        self.client.force_login(self.user)
+        form_data = {
+            'action': 'move',
+            'box': self.box.id,
+            'row': 2,  # This position is occupied
+            'column': 2
+        }
+        response = self.client.post(reverse('sample:tube_detail', kwargs={'pk': self.tube.pk}), form_data)
+        self.assertEqual(response.status_code, 200)  # Should re-render form with error
+
+        # Check that error message was added
+        messages_list = list(get_messages(response.wsgi_request))
+        error_messages = [msg for msg in messages_list if 'occupied' in str(msg.message).lower()]
+        self.assertGreater(len(error_messages), 0, "Should have error message about occupied position")
+
+        # Verify tube was not moved to occupied position
+        self.assertFalse(
+            AliquotLocation.objects.filter(
+                aliquot=self.aliquot,
+                tube_number=self.tube.tube_number,
+                row=2,
+                column=2
+            ).exists(),
+            "Tube should not be moved to occupied position"
+        )
