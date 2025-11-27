@@ -144,22 +144,15 @@ class TubeDetailView(DetailView):
         """Handle move form submission"""
         move_form = AliquotTubeMoveForm(request.POST)
         if move_form.is_valid():
-            # Ensure tube is in stored disposition
+            # Get stored disposition
             stored_disposition, _ = AliquotDisposition.objects.get_or_create(
                 name='Stored',
                 defaults={'disposition_type': 'stored'}
             )
-            if self.object.disposition != stored_disposition:
-                self.object.disposition = stored_disposition
-                self.object.save()
-
-            # Remove any existing location for this tube
-            AliquotLocation.objects.filter(
-                aliquot=self.object.aliquot,
-                tube_number=self.object.tube_number
-            ).delete()
 
             # Create new location with race condition handling
+            # All operations (check, create, delete old location, update disposition) must be atomic
+            # to prevent inconsistent state if any step fails
             box = move_form.cleaned_data['box']
             row = move_form.cleaned_data['row']
             column = move_form.cleaned_data['column']
@@ -184,6 +177,18 @@ class TubeDetailView(DetailView):
                         column=column,
                         tube_number=self.object.tube_number
                     )
+
+                    # Remove any existing location for this tube (after successful creation)
+                    # This ensures we don't lose the location if creation fails
+                    AliquotLocation.objects.filter(
+                        aliquot=self.object.aliquot,
+                        tube_number=self.object.tube_number
+                    ).exclude(box=box, row=row, column=column).delete()
+
+                    # Update tube disposition to stored (within transaction)
+                    if self.object.disposition != stored_disposition:
+                        self.object.disposition = stored_disposition
+                        self.object.save()
             except IntegrityError:
                 # Race condition: position was occupied between check and create
                 messages.error(

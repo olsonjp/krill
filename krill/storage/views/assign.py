@@ -46,14 +46,9 @@ def assign_aliquot_to_box(request, box_id, row, column):
         defaults={'disposition_type': 'stored'}
     )
 
-    # Remove any existing location for this tube
-    AliquotLocation.objects.filter(
-        aliquot=aliquot,
-        tube_number=tube.tube_number
-    ).delete()
-
     # Create new location with race condition handling using atomic transaction
-    # We check and create atomically to prevent race conditions
+    # All operations (check, create, delete old location, update disposition) must be atomic
+    # to prevent inconsistent state if any step fails
     try:
         with transaction.atomic():
             # Check if position is already occupied within transaction
@@ -69,6 +64,13 @@ def assign_aliquot_to_box(request, box_id, row, column):
                 column=column,
                 tube_number=tube.tube_number
             )
+
+            # Remove any existing location for this tube (after successful creation)
+            # This ensures we don't lose the location if creation fails
+            AliquotLocation.objects.filter(
+                aliquot=aliquot,
+                tube_number=tube.tube_number
+            ).exclude(box=box, row=row, column=column).delete()
 
             # Update tube disposition to stored
             tube.disposition = stored_disposition
