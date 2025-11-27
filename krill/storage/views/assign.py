@@ -76,9 +76,23 @@ def assign_aliquot_to_box(request, box_id, row, column):
             tube.disposition = stored_disposition
             tube.save()
     except IntegrityError:
-        # Race condition: position was occupied between check and create
-        # This should be rare with atomic transaction, but handle it gracefully
-        messages.error(request, f"Position ({row}, {column}) is already occupied. Please try again.")
+        # Determine which constraint was violated
+        # Check if tube already has a location (unique_together: aliquot, tube_number)
+        if AliquotLocation.objects.filter(
+            aliquot=aliquot,
+            tube_number=tube.tube_number
+        ).exists():
+            messages.error(
+                request,
+                f"Tube {tube.tube_number} already has a location. "
+                "This may be due to a concurrent assignment. Please try again."
+            )
+        else:
+            # Position must be occupied (unique_together: box, row, column)
+            messages.error(
+                request,
+                f"Position ({row}, {column}) is already occupied. Please try again."
+            )
         return redirect('storage:detail', type='box', pk=box_id)
 
     messages.success(request, f"Aliquot {aliquot.sample.name} tube #{tube.tube_number} assigned to position ({row}, {column}).")

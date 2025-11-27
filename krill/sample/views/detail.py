@@ -190,11 +190,23 @@ class TubeDetailView(DetailView):
                         self.object.disposition = stored_disposition
                         self.object.save()
             except IntegrityError:
-                # Race condition: position was occupied between check and create
-                messages.error(
-                    request,
-                    f"Position ({row}, {column}) is already occupied. Please select a different position."
-                )
+                # Determine which constraint was violated
+                # Check if tube already has a location (unique_together: aliquot, tube_number)
+                if AliquotLocation.objects.filter(
+                    aliquot=self.object.aliquot,
+                    tube_number=self.object.tube_number
+                ).exists():
+                    messages.error(
+                        request,
+                        f"Tube {self.object.tube_number} already has a location. "
+                        "This may be due to a concurrent assignment. Please try again."
+                    )
+                else:
+                    # Position must be occupied (unique_together: box, row, column)
+                    messages.error(
+                        request,
+                        f"Position ({row}, {column}) is already occupied. Please select a different position."
+                    )
                 context = self.get_context_data()
                 context['move_form'] = move_form
                 return render(request, self.template_name, context)

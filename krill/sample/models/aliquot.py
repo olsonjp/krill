@@ -125,20 +125,13 @@ class Aliquot(models.Model):
 
     def store_tube_in_location(self, tube_number, box, row, column):
         """Store a specific tube in a location with race condition handling"""
-        # Change tube disposition to stored
+        # Get stored disposition
         stored_disposition, _ = AliquotDisposition.objects.get_or_create(
             name='Stored',
             defaults={'disposition_type': 'stored'}
         )
-        self.change_tube_disposition(tube_number, stored_disposition)
 
-        # Remove any existing location for this tube first
-        AliquotLocation.objects.filter(
-            aliquot=self,
-            tube_number=tube_number
-        ).delete()
-
-        # Create new location with race condition handling
+        # All operations must be atomic to prevent inconsistent state
         try:
             with transaction.atomic():
                 # Check if position is already occupied within transaction
@@ -146,6 +139,13 @@ class Aliquot(models.Model):
                     raise ValidationError(
                         f"Position ({row}, {column}) in box {box.name} is already occupied."
                     )
+
+                # Remove any existing location for this tube (within transaction)
+                # This allows moving a tube from one location to another
+                AliquotLocation.objects.filter(
+                    aliquot=self,
+                    tube_number=tube_number
+                ).delete()
 
                 # Create location atomically
                 location = AliquotLocation.objects.create(
@@ -155,8 +155,22 @@ class Aliquot(models.Model):
                     column=column,
                     tube_number=tube_number
                 )
+
+                # Change tube disposition to stored (within transaction)
+                self.change_tube_disposition(tube_number, stored_disposition)
         except IntegrityError:
-            # Race condition: position was occupied between check and create
+            # Determine which constraint was violated
+            # Check if tube already has a location (unique_together: aliquot, tube_number)
+            # This can happen if another request assigned the tube concurrently
+            if AliquotLocation.objects.filter(
+                aliquot=self,
+                tube_number=tube_number
+            ).exists():
+                raise ValidationError(
+                    f"Tube {tube_number} already has a location. "
+                    "This may be due to a concurrent assignment. Please try again."
+                )
+            # Otherwise, position must be occupied (unique_together: box, row, column)
             raise ValidationError(
                 f"Position ({row}, {column}) in box {box.name} is already occupied. "
                 "Please try again with a different position."
