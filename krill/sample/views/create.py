@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.core.exceptions import ValidationError
 from django.contrib import messages
+from django.db import IntegrityError, transaction
 from ..models.sample import Sample
 from ..models.aliquot import Aliquot, AliquotType, AliquotDisposition, AliquotLocation
 from ..models.source import Source
@@ -125,36 +126,66 @@ class ModelCreateView(CreateView):
                 current_row = first_slot['row']
                 current_column = first_slot['column']
 
-            # Assign tubes to box positions
+            # Assign tubes to box positions with race condition handling
             tubes = self.object.tubes.all().order_by('tube_number')
+            tubes_assigned = 0
+            max_retries = 3  # Maximum retries per tube to find available slot
+
             for tube in tubes:
                 # Find next available slot starting from current position
                 slot_found = False
-                for row in range(current_row, box.rows + 1):
-                    start_col = current_column if row == current_row else 1
-                    for col in range(start_col, box.columns + 1):
-                        # Check if slot is available
-                        if not AliquotLocation.objects.filter(box=box, row=row, column=col).exists():
-                            # Create location
-                            AliquotLocation.objects.create(
-                                aliquot=self.object,
-                                box=box,
-                                row=row,
-                                column=col,
-                                tube_number=tube.tube_number
-                            )
-                            # Update tube disposition to stored
-                            tube.disposition = stored_disposition
-                            tube.save()
-                            current_row = row
-                            current_column = col + 1
-                            slot_found = True
+                retry_count = 0
+
+                while not slot_found and retry_count < max_retries:
+                    for row in range(current_row, box.rows + 1):
+                        start_col = current_column if row == current_row else 1
+                        for col in range(start_col, box.columns + 1):
+                            # Try to create location with race condition handling
+                            try:
+                                with transaction.atomic():
+                                    # Double-check slot is available within transaction
+                                    if AliquotLocation.objects.filter(box=box, row=row, column=col).exists():
+                                        continue  # Skip to next slot
+
+                                    # Create location atomically
+                                    AliquotLocation.objects.create(
+                                        aliquot=self.object,
+                                        box=box,
+                                        row=row,
+                                        column=col,
+                                        tube_number=tube.tube_number
+                                    )
+
+                                    # Update tube disposition to stored
+                                    tube.disposition = stored_disposition
+                                    tube.save()
+
+                                    current_row = row
+                                    current_column = col + 1
+                                    slot_found = True
+                                    tubes_assigned += 1
+                                    break
+                            except IntegrityError:
+                                # Race condition: another request took this slot
+                                # Continue to next slot without incrementing retry_count
+                                # since we're already trying the next slot
+                                continue
+                        if slot_found:
                             break
-                    if slot_found:
-                        break
-                    current_column = 1
+                        current_column = 1
+
+                    if not slot_found:
+                        retry_count += 1
+                        # Reset to start of box for retry
+                        current_row = 1
+                        current_column = 1
+
                 if not slot_found:
-                    # No more available slots
+                    # No more available slots after retries
+                    messages.warning(
+                        self.request,
+                        f"Could not assign all tubes. {tubes_assigned} of {tubes.count()} tubes were assigned."
+                    )
                     break
 
         return response

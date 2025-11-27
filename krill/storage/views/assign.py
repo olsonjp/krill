@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
 from django.contrib import messages
 from django.urls import reverse
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from ..models.storage import Box
 from sample.models.aliquot import Aliquot, AliquotLocation, AliquotDisposition, AliquotTube
 
@@ -20,11 +20,6 @@ def assign_aliquot_to_box(request, box_id, row, column):
         return redirect('storage:detail', type='box', pk=box_id)
 
     aliquot = get_object_or_404(Aliquot, pk=aliquot_id)
-
-    # Check if position is already occupied
-    if AliquotLocation.objects.filter(box=box, row=row, column=column).exists():
-        messages.error(request, f"Position ({row}, {column}) is already occupied.")
-        return redirect('storage:detail', type='box', pk=box_id)
 
     # If tube_number is specified, use that tube; otherwise use first available tube
     if tube_number:
@@ -57,23 +52,32 @@ def assign_aliquot_to_box(request, box_id, row, column):
         tube_number=tube.tube_number
     ).delete()
 
-    # Create new location with race condition handling
+    # Create new location with race condition handling using atomic transaction
+    # We check and create atomically to prevent race conditions
     try:
-        AliquotLocation.objects.create(
-            aliquot=aliquot,
-            box=box,
-            row=row,
-            column=column,
-            tube_number=tube.tube_number
-        )
+        with transaction.atomic():
+            # Check if position is already occupied within transaction
+            if AliquotLocation.objects.filter(box=box, row=row, column=column).exists():
+                messages.error(request, f"Position ({row}, {column}) is already occupied.")
+                return redirect('storage:detail', type='box', pk=box_id)
+
+            # Create location atomically
+            AliquotLocation.objects.create(
+                aliquot=aliquot,
+                box=box,
+                row=row,
+                column=column,
+                tube_number=tube.tube_number
+            )
+
+            # Update tube disposition to stored
+            tube.disposition = stored_disposition
+            tube.save()
     except IntegrityError:
         # Race condition: position was occupied between check and create
+        # This should be rare with atomic transaction, but handle it gracefully
         messages.error(request, f"Position ({row}, {column}) is already occupied. Please try again.")
         return redirect('storage:detail', type='box', pk=box_id)
-
-    # Update tube disposition to stored
-    tube.disposition = stored_disposition
-    tube.save()
 
     messages.success(request, f"Aliquot {aliquot.sample.name} tube #{tube.tube_number} assigned to position ({row}, {column}).")
     return redirect('storage:detail', type='box', pk=box_id)

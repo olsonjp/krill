@@ -1,5 +1,6 @@
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
+from django.db import IntegrityError, transaction
 from .models.aliquot import Aliquot, AliquotLocation, AliquotTube
 
 # Global flag to control automatic behavior
@@ -54,15 +55,34 @@ def auto_store_aliquot_tube(sender, instance, created, **kwargs):
         for box in auto_store_boxes:
             available_slots = box.get_available_slots()
             if available_slots:
-                # Store tube in first available slot (using the old model structure)
-                slot = available_slots[0]
-                AliquotLocation.objects.create(
-                    aliquot=instance.aliquot,
-                    box=box,
-                    row=slot['row'],
-                    column=slot['column'],
-                    tube_number=instance.tube_number
-                )
+                # Try to store tube in first available slot with race condition handling
+                # Try each available slot until we find one that's still available
+                for slot in available_slots:
+                    try:
+                        with transaction.atomic():
+                            # Double-check slot is available within transaction
+                            if AliquotLocation.objects.filter(
+                                box=box, row=slot['row'], column=slot['column']
+                            ).exists():
+                                continue  # Try next slot
+
+                            # Create location atomically
+                            AliquotLocation.objects.create(
+                                aliquot=instance.aliquot,
+                                box=box,
+                                row=slot['row'],
+                                column=slot['column'],
+                                tube_number=instance.tube_number
+                            )
+                            # Successfully stored, break out of both loops
+                            break
+                    except IntegrityError:
+                        # Race condition: slot was taken, try next slot
+                        continue
+                else:
+                    # No slots available in this box, try next box
+                    continue
+                # Successfully stored, break out of box loop
                 break
         # Mark as processed to prevent infinite loops
         instance._auto_store_processed = True

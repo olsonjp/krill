@@ -3,6 +3,8 @@ from django.shortcuts import get_object_or_404, render, redirect
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
+from django.db import IntegrityError, transaction
+from django.contrib import messages
 from ..models.sample import Sample
 from ..models.aliquot import Aliquot, AliquotType, AliquotLocation, AliquotTube
 from ..models.source import Source
@@ -157,19 +159,45 @@ class TubeDetailView(DetailView):
                 tube_number=self.object.tube_number
             ).delete()
 
-            # Create new location
+            # Create new location with race condition handling
             box = move_form.cleaned_data['box']
             row = move_form.cleaned_data['row']
             column = move_form.cleaned_data['column']
 
-            AliquotLocation.objects.create(
-                aliquot=self.object.aliquot,
-                box=box,
-                row=row,
-                column=column,
-                tube_number=self.object.tube_number
-            )
+            try:
+                with transaction.atomic():
+                    # Check if position is already occupied within transaction
+                    if AliquotLocation.objects.filter(box=box, row=row, column=column).exists():
+                        messages.error(
+                            request,
+                            f"Position ({row}, {column}) is already occupied. Please select a different position."
+                        )
+                        context = self.get_context_data()
+                        context['move_form'] = move_form
+                        return render(request, self.template_name, context)
 
+                    # Create location atomically
+                    AliquotLocation.objects.create(
+                        aliquot=self.object.aliquot,
+                        box=box,
+                        row=row,
+                        column=column,
+                        tube_number=self.object.tube_number
+                    )
+            except IntegrityError:
+                # Race condition: position was occupied between check and create
+                messages.error(
+                    request,
+                    f"Position ({row}, {column}) is already occupied. Please select a different position."
+                )
+                context = self.get_context_data()
+                context['move_form'] = move_form
+                return render(request, self.template_name, context)
+
+            messages.success(
+                request,
+                f"Tube moved to position ({row}, {column}) in {box.name}."
+            )
             return redirect('sample:tube_detail', pk=self.object.pk)
         else:
             # If form is invalid, re-render with errors

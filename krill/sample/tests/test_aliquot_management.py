@@ -508,8 +508,12 @@ class BoxAssignmentViewTest(TestCase):
 
     def test_assign_aliquot_prevents_duplicate_position(self):
         """Test that assigning to occupied position fails"""
+        from django.contrib.messages import get_messages
+
         # Create first location
         tube1 = AliquotTube.objects.filter(aliquot=self.aliquot).first()
+        tube1.disposition = self.stored_disposition
+        tube1.save()
         AliquotLocation.objects.create(
             aliquot=self.aliquot,
             box=self.box,
@@ -531,9 +535,24 @@ class BoxAssignmentViewTest(TestCase):
             'tube_number': tube2.tube_number
         })
 
-        # Should redirect with error message (or return error)
-        # The view should handle this gracefully
-        self.assertIn(response.status_code, [302, 400])
+        # Should redirect with error message
+        self.assertEqual(response.status_code, 302)
+
+        # Check that error message was added
+        messages_list = list(get_messages(response.wsgi_request))
+        error_messages = [msg for msg in messages_list if 'occupied' in str(msg.message).lower()]
+        self.assertGreater(len(error_messages), 0, "Should have error message about occupied position")
+
+        # Verify second tube was not assigned to that position
+        self.assertFalse(
+            AliquotLocation.objects.filter(
+                aliquot=self.aliquot,
+                tube_number=tube2.tube_number,
+                row=1,
+                column=1
+            ).exists(),
+            "Second tube should not be assigned to occupied position"
+        )
 
 
 class AliquotFormBoxAssignmentTest(TestCase):
@@ -651,8 +670,7 @@ class AliquotFormBoxAssignmentTest(TestCase):
 
     def test_assign_aliquot_handles_race_condition(self):
         """Test that race condition in box assignment is handled gracefully"""
-        from django.db import IntegrityError
-        from unittest.mock import patch
+        from django.contrib.messages import get_messages
 
         # Create aliquot and tube for this test
         aliquot = Aliquot.objects.create(
@@ -663,7 +681,13 @@ class AliquotFormBoxAssignmentTest(TestCase):
         aliquot.create_tubes(auto_store=False)
         tube = AliquotTube.objects.filter(aliquot=aliquot).first()
 
-        # Create a location to simulate race condition
+        # Store the tube in a position
+        stored_disposition, _ = AliquotDisposition.objects.get_or_create(
+            name='Stored',
+            defaults={'disposition_type': 'stored'}
+        )
+        tube.disposition = stored_disposition
+        tube.save()
         AliquotLocation.objects.create(
             aliquot=aliquot,
             box=self.box,
@@ -673,7 +697,7 @@ class AliquotFormBoxAssignmentTest(TestCase):
         )
 
         # Try to assign another tube to the same position
-        # This should be caught by the check, but test the IntegrityError handling
+        # This should be caught by the check within the transaction
         url = reverse('storage:assign_aliquot', kwargs={
             'box_id': self.box.id,
             'row': 2,
@@ -689,13 +713,27 @@ class AliquotFormBoxAssignmentTest(TestCase):
         aliquot2.create_tubes(auto_store=False)
         tube2 = AliquotTube.objects.filter(aliquot=aliquot2).first()
 
-        # Mock IntegrityError to simulate race condition
-        with patch('storage.views.assign.AliquotLocation.objects.create') as mock_create:
-            mock_create.side_effect = IntegrityError("UNIQUE constraint failed")
-            response = self.client.post(url, {
-                'aliquot_id': aliquot2.id,
-                'tube_number': tube2.tube_number
-            })
+        # Try to assign to occupied position - should be caught by check
+        response = self.client.post(url, {
+            'aliquot_id': aliquot2.id,
+            'tube_number': tube2.tube_number
+        })
 
-            # Should redirect with error message
-            self.assertEqual(response.status_code, 302)
+        # Should redirect with error message
+        self.assertEqual(response.status_code, 302)
+
+        # Check that error message was added
+        messages_list = list(get_messages(response.wsgi_request))
+        error_messages = [msg for msg in messages_list if 'occupied' in str(msg.message).lower()]
+        self.assertGreater(len(error_messages), 0, "Should have error message about occupied position")
+
+        # Verify second tube was not assigned to that position
+        self.assertFalse(
+            AliquotLocation.objects.filter(
+                aliquot=aliquot2,
+                tube_number=tube2.tube_number,
+                row=2,
+                column=3
+            ).exists(),
+            "Second tube should not be assigned to occupied position"
+        )

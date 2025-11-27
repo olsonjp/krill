@@ -1,6 +1,7 @@
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from django.db import IntegrityError, transaction
 from storage.models import Box
 
 class AliquotType(models.Model):
@@ -123,7 +124,7 @@ class Aliquot(models.Model):
             raise ValidationError(f"Tube {tube_number} does not exist for this aliquot")
 
     def store_tube_in_location(self, tube_number, box, row, column):
-        """Store a specific tube in a location"""
+        """Store a specific tube in a location with race condition handling"""
         # Change tube disposition to stored
         stored_disposition, _ = AliquotDisposition.objects.get_or_create(
             name='Stored',
@@ -131,21 +132,36 @@ class Aliquot(models.Model):
         )
         self.change_tube_disposition(tube_number, stored_disposition)
 
-        # Create or update location
-        location, created = AliquotLocation.objects.get_or_create(
+        # Remove any existing location for this tube first
+        AliquotLocation.objects.filter(
             aliquot=self,
-            tube_number=tube_number,
-            defaults={
-                'box': box,
-                'row': row,
-                'column': column
-            }
-        )
-        if not created:
-            location.box = box
-            location.row = row
-            location.column = column
-            location.save()
+            tube_number=tube_number
+        ).delete()
+
+        # Create new location with race condition handling
+        try:
+            with transaction.atomic():
+                # Check if position is already occupied within transaction
+                if AliquotLocation.objects.filter(box=box, row=row, column=column).exists():
+                    raise ValidationError(
+                        f"Position ({row}, {column}) in box {box.name} is already occupied."
+                    )
+
+                # Create location atomically
+                location = AliquotLocation.objects.create(
+                    aliquot=self,
+                    box=box,
+                    row=row,
+                    column=column,
+                    tube_number=tube_number
+                )
+        except IntegrityError:
+            # Race condition: position was occupied between check and create
+            raise ValidationError(
+                f"Position ({row}, {column}) in box {box.name} is already occupied. "
+                "Please try again with a different position."
+            )
+
         return location
 
 class AliquotTube(models.Model):
