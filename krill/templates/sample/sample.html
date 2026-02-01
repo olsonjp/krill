@@ -115,12 +115,15 @@
         padding: 10px;
         border-radius: 5px;
         cursor: pointer;
-        transition: all 0.3s ease;
+        text-decoration: none;
+        transition: all 0.2s ease;
     }
 
     .action-btn:hover {
         background: var(--color-primary);
         color: white;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
     /* Clickable card styles */
@@ -134,17 +137,6 @@
     .stat-card.clickable:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    }
-
-    .action-btn {
-        text-decoration: none;
-        color: inherit;
-        transition: all 0.2s ease;
-    }
-
-    .action-btn:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
     /* Enhanced hover effects */
