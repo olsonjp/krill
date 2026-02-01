@@ -1,7 +1,9 @@
 import json
 import csv
 import io
+import logging
 from datetime import datetime, timedelta
+
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator
@@ -19,6 +21,8 @@ from sample.models import Sample, Aliquot
 from sample.models.aliquot import AliquotLocation
 from storage.models.storage import Device, Box
 from person.models import UserAuditLog
+
+logger = logging.getLogger(__name__)
 
 
 # Main Reports Dashboard
@@ -68,60 +72,102 @@ def reports_dashboard(request):
 # Dashboard Statistics API
 @login_required
 def dashboard_stats(request):
-    """Enhanced dashboard statistics API"""
-    try:
-        # Active samples count
-        active_samples = Sample.objects.count()
+    """Enhanced dashboard statistics API with resilient error handling"""
+    stats = {}
+    errors = []
 
-        # Storage usage calculation
+    # Active samples count
+    try:
+        active_samples = Sample.objects.count()
+        stats['active_samples'] = active_samples
+    except Exception as e:
+        logger.error(f"Error fetching active samples count: {str(e)}", exc_info=True)
+        errors.append(f"active_samples: {str(e)}")
+        stats['active_samples'] = 0
+
+    # Storage usage calculation
+    try:
         total_slots = 0
         used_slots = 0
-        boxes = Box.objects.all()
+        # Only fetch the fields we need for calculation
+        boxes = Box.objects.only('rows', 'columns')
         for box in boxes:
             total_slots += box.rows * box.columns
         used_slots = AliquotLocation.objects.count()
         storage_usage = 0
         if total_slots > 0:
             storage_usage = round((used_slots / total_slots) * 100)
+        stats['total_slots'] = total_slots
+        stats['used_slots'] = used_slots
+        stats['storage_usage'] = storage_usage
+    except Exception as e:
+        logger.error(f"Error calculating storage usage: {str(e)}", exc_info=True)
+        errors.append(f"storage_usage: {str(e)}")
+        stats['total_slots'] = 0
+        stats['used_slots'] = 0
+        stats['storage_usage'] = 0
 
-        # Recent reports count
+    # Recent reports count
+    try:
         recent_reports = Report.objects.filter(
             created_at__gte=timezone.now() - timedelta(days=7)
         ).count()
+        stats['recent_reports'] = recent_reports
+    except Exception as e:
+        logger.error(f"Error fetching recent reports count: {str(e)}", exc_info=True)
+        errors.append(f"recent_reports: {str(e)}")
+        stats['recent_reports'] = 0
 
-        # Active alerts count
+    # Active alerts count
+    try:
         active_alerts = Alert.objects.filter(status='active').count()
+        stats['alerts'] = active_alerts
+    except Exception as e:
+        logger.error(f"Error fetching active alerts count: {str(e)}", exc_info=True)
+        errors.append(f"alerts: {str(e)}")
+        stats['alerts'] = 0
 
-        # Recent activity count
+    # Recent activity count
+    try:
         recent_activity = UserAuditLog.objects.filter(
             timestamp__gte=timezone.now() - timedelta(days=1)
         ).count()
+        stats['recent_activity'] = recent_activity
+    except Exception as e:
+        logger.error(f"Error fetching recent activity count: {str(e)}", exc_info=True)
+        errors.append(f"recent_activity: {str(e)}")
+        stats['recent_activity'] = 0
 
-        # Storage device status
+    # Storage device status (Device has no is_active; all devices counted as active)
+    try:
         storage_devices = Device.objects.count()
-        # Since Device model doesn't have is_active field, all devices are considered active
         active_devices = storage_devices
+        stats['storage_devices'] = storage_devices
+        stats['active_devices'] = active_devices
+    except Exception as e:
+        logger.error(f"Error fetching storage device status: {str(e)}", exc_info=True)
+        errors.append(f"storage_devices: {str(e)}")
+        stats['storage_devices'] = 0
+        stats['active_devices'] = 0
 
-        # Sample statistics
+    # Sample statistics
+    try:
         total_aliquots = Aliquot.objects.count()
         stored_aliquots = AliquotLocation.objects.count()
-
-        stats = {
-            'active_samples': active_samples,
-            'storage_usage': storage_usage,
-            'recent_reports': recent_reports,
-            'alerts': active_alerts,
-            'total_slots': total_slots,
-            'used_slots': used_slots,
-            'recent_activity': recent_activity,
-            'storage_devices': storage_devices,
-            'active_devices': active_devices,
-            'total_aliquots': total_aliquots,
-            'stored_aliquots': stored_aliquots,
-        }
-        return JsonResponse(stats)
+        stats['total_aliquots'] = total_aliquots
+        stats['stored_aliquots'] = stored_aliquots
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        logger.error(f"Error fetching aliquot statistics: {str(e)}", exc_info=True)
+        errors.append(f"aliquot_stats: {str(e)}")
+        stats['total_aliquots'] = 0
+        stats['stored_aliquots'] = 0
+
+    # Include errors in response if any occurred (for debugging)
+    if errors:
+        stats['_errors'] = errors
+        logger.warning(f"Dashboard stats completed with {len(errors)} errors: {', '.join(errors)}")
+
+    return JsonResponse(stats)
 
 
 # Report Generation API

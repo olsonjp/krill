@@ -85,6 +85,9 @@ WSGI_APPLICATION = 'krill.wsgi.application'
 DATABASE_ENGINE = os.environ.get('DATABASE_ENGINE', 'sqlite')
 
 if DATABASE_ENGINE == 'postgresql':
+    # Statement timeout in milliseconds for all queries (default 30 seconds).
+    # Prevents long-running queries from hanging the app; override via DB_STATEMENT_TIMEOUT_MS.
+    _pg_timeout_ms = os.environ.get('DB_STATEMENT_TIMEOUT_MS', '30000')
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
@@ -95,6 +98,7 @@ if DATABASE_ENGINE == 'postgresql':
             'PORT': os.environ.get('DB_PORT', '5432'),
             'OPTIONS': {
                 'sslmode': os.environ.get('DB_SSLMODE', 'prefer'),
+                'options': f'-c statement_timeout={_pg_timeout_ms}',
             },
         }
     }
