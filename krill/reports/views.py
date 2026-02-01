@@ -413,7 +413,6 @@ def storage_dashboard(request):
             
             freezer_status.append({
                 'name': device.name,
-                'temperature': -80.0,  # Mock temperature (could be enhanced with actual temperature tracking)
                 'status': 'operational',
                 'capacity': f"{device_used_slots}/{device_total_slots}",
                 'usage_percent': device_usage_percent

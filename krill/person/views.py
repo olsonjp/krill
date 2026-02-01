@@ -15,6 +15,7 @@ from django import forms
 import csv
 import json
 import os
+import tempfile
 from datetime import datetime
 from collections import defaultdict
 
@@ -49,69 +50,75 @@ class DataImportView(TemplateView):
 
     def post(self, request, *args, **kwargs):
         form = DataImportForm(request.POST, request.FILES)
-        if form.is_valid():
-            csv_file = form.cleaned_data['csv_file']
-            proceed_with_import = request.POST.get('proceed_with_import', False)
+        proceed_with_import = request.POST.get('proceed_with_import', False)
+
+        # "Proceed with Import" submits only import_id (no file); handle it without requiring form validation
+        if proceed_with_import:
+            import_id = request.POST.get('import_id', '').strip()
+            if not import_id:
+                messages.error(request, 'Import session expired. Please upload your file again.')
+                return redirect('person:data_import')
+
+            csv_file = self.get_temp_file(import_id, request.user.id)
+            if not csv_file:
+                messages.error(request, 'Import file not found. Please upload your file again.')
+                return redirect('person:data_import')
 
             try:
-                if proceed_with_import:
-                    # Actual import - get file from temporary storage
-                    import_id = request.POST.get('import_id')
-                    if not import_id:
-                        messages.error(request, 'Import session expired. Please upload your file again.')
-                        return redirect('person:data_import')
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.info(f"Starting data import for user {request.user.username}")
 
-                    # Retrieve file from temporary storage
-                    csv_file = self.get_temp_file(import_id, request.user.id)
-                    if not csv_file:
-                        messages.error(request, 'Import file not found. Please upload your file again.')
-                        return redirect('person:data_import')
+                import_result = self.perform_import(csv_file)
+                details = import_result.get('details', {})
+                message = f'Successfully imported {import_result["total"]} records: '
+                message += f'{details.get("sources", 0)} sources, '
+                message += f'{details.get("samples", 0)} samples, '
+                message += f'{details.get("aliquots", 0)} aliquots, '
+                message += f'{details.get("tubes", 0)} tubes, '
+                message += f'{details.get("locations", 0)} locations'
 
-                    import logging
-                    logger = logging.getLogger(__name__)
-                    logger.info(f"Starting data import for user {request.user.username}")
+                logger.info(f"Import completed successfully: {message}")
 
-                    import_result = self.perform_import(csv_file)
-                    details = import_result.get('details', {})
-                    message = f'Successfully imported {import_result["total"]} records: '
-                    message += f'{details.get("sources", 0)} sources, '
-                    message += f'{details.get("samples", 0)} samples, '
-                    message += f'{details.get("aliquots", 0)} aliquots, '
-                    message += f'{details.get("tubes", 0)} tubes, '
-                    message += f'{details.get("locations", 0)} locations'
+                self.cleanup_temp_file(import_id, request.user.id)
 
-                    logger.info(f"Import completed successfully: {message}")
+                messages.success(request, message)
+                return redirect('person:user_list')
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Import failed for user {request.user.username}: {str(e)}", exc_info=True)
+                self.cleanup_temp_file(import_id, request.user.id)
+                messages.error(request, f'Import failed: {str(e)}')
+                context = self.get_context_data()
+                context['form'] = DataImportForm()
+                context['error'] = str(e)
+                return render(request, self.template_name, context)
 
-                    # Clean up temporary file
-                    self.cleanup_temp_file(import_id, request.user.id)
+        if form.is_valid():
+            csv_file = form.cleaned_data['csv_file']
+            try:
+                # Preview mode - store file temporarily and generate import ID
+                import_id = self.store_temp_file(csv_file, request.user.id)
 
-                    messages.success(request, message)
-                    return redirect('person:user_list')
-                else:
-                    # Preview mode - store file temporarily and generate import ID
-                    import_id = self.store_temp_file(csv_file, request.user.id)
+                # Reset file pointer for preview
+                csv_file.seek(0)
 
-                    # Reset file pointer for preview
-                    csv_file.seek(0)
-
-                    preview_data = self.preview_import(csv_file)
-                    context = self.get_context_data()
-                    context['preview_data'] = preview_data
-                    context['form'] = form
-                    context['import_id'] = import_id
-                    context['file_stored'] = True
-                    return render(request, self.template_name, context)
+                preview_data = self.preview_import(csv_file)
+                context = self.get_context_data()
+                context['preview_data'] = preview_data
+                context['form'] = form
+                context['import_id'] = import_id
+                context['file_stored'] = True
+                return render(request, self.template_name, context)
 
             except Exception as e:
                 import logging
                 logger = logging.getLogger(__name__)
                 logger.error(f"Import failed for user {request.user.username}: {str(e)}", exc_info=True)
-
-                # Clean up temporary file on error
                 import_id = request.POST.get('import_id')
                 if import_id:
                     self.cleanup_temp_file(import_id, request.user.id)
-
                 messages.error(request, f'Import failed: {str(e)}')
                 context = self.get_context_data()
                 context['form'] = form
@@ -135,9 +142,10 @@ class DataImportView(TemplateView):
         }
 
         try:
-            # Use Django's temp directory setting
+            # Use Django's temp directory setting (default None means use system temp)
             from django.conf import settings
-            temp_dir = getattr(settings, 'FILE_UPLOAD_TEMP_DIR', '/tmp')
+            temp_dir = getattr(settings, 'FILE_UPLOAD_TEMP_DIR', None) or tempfile.gettempdir()
+            temp_dir = os.path.abspath(os.path.expanduser(str(temp_dir)))
             os.makedirs(temp_dir, exist_ok=True)
 
             temp_csv_path = os.path.join(temp_dir, f'import_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv')
@@ -188,8 +196,9 @@ class DataImportView(TemplateView):
         # Generate unique import ID
         import_id = str(uuid.uuid4())
 
-        # Use Django's temp directory
-        temp_dir = getattr(settings, 'FILE_UPLOAD_TEMP_DIR', '/tmp')
+        # Use Django's temp directory (default None means use system temp)
+        temp_dir = getattr(settings, 'FILE_UPLOAD_TEMP_DIR', None) or tempfile.gettempdir()
+        temp_dir = os.path.abspath(os.path.expanduser(str(temp_dir)))
         os.makedirs(temp_dir, exist_ok=True)
 
         # Create user-specific subdirectory for security
@@ -223,7 +232,8 @@ class DataImportView(TemplateView):
         from django.core.files.uploadedfile import InMemoryUploadedFile
         from io import BytesIO
 
-        temp_dir = getattr(settings, 'FILE_UPLOAD_TEMP_DIR', '/tmp')
+        temp_dir = getattr(settings, 'FILE_UPLOAD_TEMP_DIR', None) or tempfile.gettempdir()
+        temp_dir = os.path.abspath(os.path.expanduser(str(temp_dir)))
         user_temp_dir = os.path.join(temp_dir, f'imports_{user_id}')
         temp_file_path = os.path.join(user_temp_dir, f'{import_id}.csv')
         metadata_path = os.path.join(user_temp_dir, f'{import_id}.meta')
@@ -262,7 +272,8 @@ class DataImportView(TemplateView):
         """Clean up temporary file and metadata"""
         from django.conf import settings
 
-        temp_dir = getattr(settings, 'FILE_UPLOAD_TEMP_DIR', '/tmp')
+        temp_dir = getattr(settings, 'FILE_UPLOAD_TEMP_DIR', None) or tempfile.gettempdir()
+        temp_dir = os.path.abspath(os.path.expanduser(str(temp_dir)))
         user_temp_dir = os.path.join(temp_dir, f'imports_{user_id}')
         temp_file_path = os.path.join(user_temp_dir, f'{import_id}.csv')
         metadata_path = os.path.join(user_temp_dir, f'{import_id}.meta')
@@ -283,9 +294,10 @@ class DataImportView(TemplateView):
         fixtures_file = None
 
         try:
-            # Use Django's temp directory setting
+            # Use Django's temp directory setting (default None means use system temp)
             from django.conf import settings
-            temp_dir = getattr(settings, 'FILE_UPLOAD_TEMP_DIR', '/tmp')
+            temp_dir = getattr(settings, 'FILE_UPLOAD_TEMP_DIR', None) or tempfile.gettempdir()
+            temp_dir = os.path.abspath(os.path.expanduser(str(temp_dir)))
             os.makedirs(temp_dir, exist_ok=True)
 
             # Save uploaded file temporarily

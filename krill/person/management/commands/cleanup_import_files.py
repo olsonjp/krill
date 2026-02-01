@@ -10,6 +10,7 @@ from datetime import timedelta
 import os
 import json
 import logging
+import tempfile
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,8 @@ class Command(BaseCommand):
         hours = options['hours']
         dry_run = options['dry_run']
 
-        temp_dir = getattr(settings, 'FILE_UPLOAD_TEMP_DIR', '/tmp')
+        temp_dir = getattr(settings, 'FILE_UPLOAD_TEMP_DIR', None) or tempfile.gettempdir()
+        temp_dir = os.path.abspath(os.path.expanduser(str(temp_dir)))
         cutoff_time = timezone.now() - timedelta(hours=hours)
 
         deleted_files = 0

@@ -12,7 +12,7 @@
             </a>
             <!-- Sample app section -->
             <div class="sidebar-section">
-                <a href="{% url 'sample:sample_list' %}" class="sidebar-toggle {% if 'sample' in request.path %}active{% endif %}">
+                <a href="{% url 'sample:sample' %}" class="sidebar-toggle {% if request.path == '/samples/' or request.path == '/samples' %}active{% endif %}">
                     <span class="material-icons-round">
                         science
                     </span>
@@ -20,7 +20,7 @@
                     <span class="material-icons-round expand-icon">expand_more</span>
                 </a>
                 <div id="sample-section" class="sidebar-submenu {% if 'sample' in request.path %}show{% endif %}">
-                    <a href="{% url 'sample:sample_list' %}" class="submenu-item {% if 'sample' in request.path and not request.GET.type and not 'detail/aliquot/' in request.path and not 'detail/aliquot-type/' in request.path and not 'detail/source/' in request.path %}active{% endif %}">
+                    <a href="{% url 'sample:sample_list' %}" class="submenu-item {% if 'sample' in request.path and 'list' in request.path and not request.GET.type and not 'detail/aliquot/' in request.path and not 'detail/aliquot-type/' in request.path and not 'detail/source/' in request.path %}active{% endif %}">
                         <span class="material-icons-round">list</span>
                         <h3>Samples</h3>
                     </a>
@@ -41,7 +41,7 @@
 
             <!-- Storage app section -->
             <div class="sidebar-section">
-                <a href="{% url 'storage:storage_list' %}" class="sidebar-toggle {% if 'storage' in request.path %}active{% endif %}">
+                <a href="{% url 'storage:storage' %}" class="sidebar-toggle {% if request.path == '/storage/' or request.path == '/storage' %}active{% endif %}">
                     <span class="material-icons-round">
                         inventory_2
                     </span>
@@ -83,7 +83,7 @@
             <!-- Admin section - Only visible to lab managers and administrators -->
             {% if user.role.role == 'lab_admin' or user.role.role == 'lab_manager' %}
             <div class="sidebar-section">
-                <a href="#" class="sidebar-toggle {% if 'admin' in request.path or 'users' in request.path or 'data-import' in request.path %}active{% endif %}" onclick="toggleSection('admin-section')">
+                <a href="#" class="sidebar-toggle" onclick="toggleSection('admin-section')">
                     <span class="material-icons-round">
                         admin_panel_settings
                     </span>
@@ -91,7 +91,7 @@
                     <span class="material-icons-round expand-icon">expand_more</span>
                 </a>
                 <div id="admin-section" class="sidebar-submenu {% if 'admin' in request.path or 'users' in request.path or 'data-import' in request.path %}show{% endif %}">
-                    <a href="{% url 'person:user_list' %}" class="submenu-item {% if 'users' in request.path and not 'audit' in request.path and not 'create' in request.path %}active{% endif %}">
+                    <a href="{% url 'person:user_list' %}" class="submenu-item {% if 'users' in request.path and not 'audit' in request.path and not 'create' in request.path and not 'data-import' in request.path and not 'permissions' in request.path %}active{% endif %}">
                         <span class="material-icons-round">people</span>
                         <h3>User Management</h3>
                     </a>

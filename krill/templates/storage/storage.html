@@ -113,12 +113,6 @@
         text-align: center;
     }
 
-    .temp-status {
-        font-size: 1.5rem;
-        color: var(--color-primary);
-        margin: 10px 0;
-    }
-
     .capacity {
         margin-bottom: 15px;
         color: var(--color-dark);
@@ -266,7 +260,6 @@ async function loadStorageData() {
                 freezerGrid.innerHTML = data.freezer_status.map(freezer => `
                     <div class="freezer-unit clickable" onclick="viewFreezerDetails('${freezer.name}')">
                         <h3>${freezer.name}</h3>
-                        <div class="temp-status">${freezer.temperature}°C</div>
                         <div class="capacity">${freezer.usage_percent}% Full</div>
                         <button class="view-details">View Contents</button>
                     </div>
