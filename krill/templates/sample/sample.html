@@ -1,23 +1,64 @@
 {% extends 'base/layout.html' %}
+{% load static %}
 
 {% block content %}
-<h1>Samples</h1>
-<!-- Samples -->
-<div class="analyse">
-    <div class="samples">
-        <div class="status">
-            <div class="info">
-                <h3>Total Samples</h3>
-                <h1>65,024</h1>
-            </div>
-            <div class="progresss">
-                <svg>
-                    <circle cx="38" cy="38" r="36"></circle>
-                </svg>
-                <div class="percentage">
-                    <p>+81%</p>
+<div class="storage-container">
+    <!-- Samples Overview Section -->
+    <div class="storage-overview">
+        <h1>Samples</h1>
+        <div class="storage-stats">
+            <a href="{% url 'sample:sample_list' %}" class="stat-card clickable">
+                <span class="material-icons-round">science</span>
+                <div class="stat-info">
+                    <h3>Samples</h3>
+                    <p>{{ sample_count }} Total</p>
                 </div>
-            </div>
+            </a>
+            <a href="{% url 'sample:sample_list' %}?type=aliquot" class="stat-card clickable">
+                <span class="material-icons-round">biotech</span>
+                <div class="stat-info">
+                    <h3>Aliquots</h3>
+                    <p>{{ aliquot_count }} Stored</p>
+                </div>
+            </a>
+            <a href="{% url 'sample:sample_list' %}?type=aliquot-type" class="stat-card clickable">
+                <span class="material-icons-round">category</span>
+                <div class="stat-info">
+                    <h3>Aliquot Types</h3>
+                    <p>{{ aliquot_type_count }} Types</p>
+                </div>
+            </a>
+            <a href="{% url 'sample:sample_list' %}?type=source" class="stat-card clickable">
+                <span class="material-icons-round">source</span>
+                <div class="stat-info">
+                    <h3>Sources</h3>
+                    <p>{{ source_count }} Sources</p>
+                </div>
+            </a>
         </div>
     </div>
+
+    <!-- Quick Actions -->
+    <div class="quick-actions">
+        <h2>Quick Actions</h2>
+        <div class="action-buttons">
+            <a href="{% url 'sample:sample_create' %}?type=aliquot" class="action-btn">
+                <span class="material-icons-round">add_circle</span>
+                New Aliquot
+            </a>
+            <a href="{% url 'sample:sample_list' %}?type=aliquot" class="action-btn">
+                <span class="material-icons-round">search</span>
+                Find Aliquot
+            </a>
+            <a href="{% url 'sample:sample_search' %}" class="action-btn">
+                <span class="material-icons-round">manage_search</span>
+                Search Samples
+            </a>
+            <a href="{% url 'sample:sample_list' %}" class="action-btn">
+                <span class="material-icons-round">list</span>
+                View All Samples
+            </a>
+        </div>
+    </div>
+</div>
 {% endblock %}

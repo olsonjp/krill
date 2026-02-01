@@ -1,3 +1,4 @@
+import unittest.mock as mock
 from django.test import TestCase, Client
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
@@ -1611,3 +1612,58 @@ MDA MB 134VI (MM134);UPMC/MJS;Sikora LN2 #1;4;F;1;2;Cells;3;Checked Out;Legacy M
             # Clean up temporary file
             if os.path.exists(temp_file_path):
                 os.unlink(temp_file_path)
+
+    def test_data_import_proceed_with_import_requires_import_id(self):
+        """Proceed with Import path: missing import_id redirects with error (no form validation)."""
+        self.lab_manager_user.is_staff = True
+        self.lab_manager_user.save()
+        self.client.force_login(self.lab_admin_user)
+
+        response = self.client.post(
+            reverse('person:data_import'),
+            {'proceed_with_import': '1'},
+            follow=True,
+        )
+        self.assertContains(response, 'Import session expired', status_code=200)
+
+    def test_data_import_proceed_with_import_invalid_import_id_redirects_with_error(self):
+        """Proceed with Import path: invalid/non-existent import_id redirects with error."""
+        self.lab_manager_user.is_staff = True
+        self.lab_manager_user.save()
+        self.client.force_login(self.lab_admin_user)
+
+        response = self.client.post(
+            reverse('person:data_import'),
+            {'proceed_with_import': '1', 'import_id': 'nonexistent-uuid-12345'},
+            follow=True,
+        )
+        self.assertContains(response, 'Import file not found', status_code=200)
+
+    def test_data_import_preview_cleanup_on_error(self):
+        """When preview fails after store_temp_file, cleanup_temp_file is called (regression)."""
+        self.lab_manager_user.is_staff = True
+        self.lab_manager_user.save()
+        self.client.force_login(self.lab_admin_user)
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        csv_file = SimpleUploadedFile(
+            "test.csv",
+            self.test_csv_content.encode('utf-8'),
+            content_type="text/csv",
+        )
+
+        fake_import_id = "test-import-id-12345"
+        with mock.patch.object(
+            DataImportView, 'store_temp_file', return_value=fake_import_id
+        ), mock.patch.object(
+            DataImportView, 'preview_import', side_effect=Exception("preview failed")
+        ), mock.patch.object(
+            DataImportView, 'cleanup_temp_file', wraps=lambda *a, **k: None
+        ) as cleanup_mock:
+            response = self.client.post(
+                reverse('person:data_import'),
+                {'csv_file': csv_file},
+            )
+            cleanup_mock.assert_called_once_with(fake_import_id, self.lab_admin_user.id)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('error', response.context)
