@@ -6,6 +6,7 @@ import json
 import logging
 
 from .models import Report, Alert
+from . import views as reports_views
 from sample.models import Sample, Aliquot
 from sample.models.aliquot import AliquotLocation
 from storage.models.storage import Device, Box
@@ -59,9 +60,9 @@ class DashboardStatsViewTest(ReportsViewTest):
         """Test that dashboard stats handles failure in sample query gracefully"""
         self.client.force_login(self.user)
 
-        with patch('krill.reports.views.Sample.objects.count') as mock_count:
-            mock_count.side_effect = Exception("Database connection error")
-
+        mock_sample = MagicMock()
+        mock_sample.objects.count.side_effect = Exception("Database connection error")
+        with patch.object(reports_views, 'Sample', mock_sample):
             response = self.client.get(reverse('reports:dashboard_stats'))
             self.assertEqual(response.status_code, 200)  # Still returns 200
             data = response.json()
@@ -81,9 +82,9 @@ class DashboardStatsViewTest(ReportsViewTest):
         """Test that dashboard stats handles failure in storage query gracefully"""
         self.client.force_login(self.user)
 
-        with patch('krill.reports.views.Box.objects.only') as mock_boxes:
-            mock_boxes.side_effect = Exception("Storage query error")
-
+        mock_box = MagicMock()
+        mock_box.objects.only.side_effect = Exception("Storage query error")
+        with patch.object(reports_views, 'Box', mock_box):
             response = self.client.get(reverse('reports:dashboard_stats'))
             self.assertEqual(response.status_code, 200)
             data = response.json()
@@ -103,14 +104,15 @@ class DashboardStatsViewTest(ReportsViewTest):
         """Test that dashboard stats handles multiple query failures"""
         self.client.force_login(self.user)
 
-        with patch('krill.reports.views.Sample.objects.count') as mock_samples, \
-             patch('krill.reports.views.Report.objects.filter') as mock_reports, \
-             patch('krill.reports.views.Alert.objects.filter') as mock_alerts:
-
-            mock_samples.side_effect = Exception("Sample error")
-            mock_reports.side_effect = Exception("Report error")
-            mock_alerts.side_effect = Exception("Alert error")
-
+        mock_sample = MagicMock()
+        mock_sample.objects.count.side_effect = Exception("Sample error")
+        mock_report = MagicMock()
+        mock_report.objects.filter.return_value.count.side_effect = Exception("Report error")
+        mock_alert = MagicMock()
+        mock_alert.objects.filter.return_value.count.side_effect = Exception("Alert error")
+        with patch.object(reports_views, 'Sample', mock_sample), \
+             patch.object(reports_views, 'Report', mock_report), \
+             patch.object(reports_views, 'Alert', mock_alert):
             response = self.client.get(reverse('reports:dashboard_stats'))
             self.assertEqual(response.status_code, 200)
             data = response.json()
@@ -131,11 +133,10 @@ class DashboardStatsViewTest(ReportsViewTest):
         """Test that errors are properly logged"""
         self.client.force_login(self.user)
 
-        with patch('krill.reports.views.logger') as mock_logger, \
-             patch('krill.reports.views.Sample.objects.count') as mock_count:
-
-            mock_count.side_effect = Exception("Test error")
-
+        mock_sample = MagicMock()
+        mock_sample.objects.count.side_effect = Exception("Test error")
+        with patch.object(reports_views, 'logger') as mock_logger, \
+             patch.object(reports_views, 'Sample', mock_sample):
             response = self.client.get(reverse('reports:dashboard_stats'))
             self.assertEqual(response.status_code, 200)
 
@@ -149,11 +150,10 @@ class DashboardStatsViewTest(ReportsViewTest):
         """Test that warning is logged when errors occur"""
         self.client.force_login(self.user)
 
-        with patch('krill.reports.views.logger') as mock_logger, \
-             patch('krill.reports.views.Sample.objects.count') as mock_count:
-
-            mock_count.side_effect = Exception("Test error")
-
+        mock_sample = MagicMock()
+        mock_sample.objects.count.side_effect = Exception("Test error")
+        with patch.object(reports_views, 'logger') as mock_logger, \
+             patch.object(reports_views, 'Sample', mock_sample):
             response = self.client.get(reverse('reports:dashboard_stats'))
             self.assertEqual(response.status_code, 200)
 
@@ -168,24 +168,30 @@ class DashboardStatsViewTest(ReportsViewTest):
         self.client.force_login(self.user)
 
         # Mock all 7 try/except blocks to fail (view uses Device.objects.count only, not filter)
-        with patch('krill.reports.views.Sample.objects.count') as mock_samples, \
-             patch('krill.reports.views.Box.objects.only') as mock_boxes, \
-             patch('krill.reports.views.Report.objects.filter') as mock_reports, \
-             patch('krill.reports.views.Alert.objects.filter') as mock_alerts, \
-             patch('krill.reports.views.UserAuditLog.objects.filter') as mock_audit, \
-             patch('krill.reports.views.Device.objects.count') as mock_devices, \
-             patch('krill.reports.views.Aliquot.objects.count') as mock_aliquots, \
-             patch('krill.reports.views.AliquotLocation.objects.count') as mock_locations:
-
-            mock_samples.side_effect = Exception("Error 1")
-            mock_boxes.side_effect = Exception("Error 2")
-            mock_reports.side_effect = Exception("Error 3")
-            mock_alerts.side_effect = Exception("Error 4")
-            mock_audit.side_effect = Exception("Error 5")
-            mock_devices.side_effect = Exception("Error 6")
-            mock_aliquots.side_effect = Exception("Error 7")
-            mock_locations.side_effect = Exception("Error 8")
-
+        mock_sample = MagicMock()
+        mock_sample.objects.count.side_effect = Exception("Error 1")
+        mock_box = MagicMock()
+        mock_box.objects.only.side_effect = Exception("Error 2")
+        mock_report = MagicMock()
+        mock_report.objects.filter.return_value.count.side_effect = Exception("Error 3")
+        mock_alert = MagicMock()
+        mock_alert.objects.filter.return_value.count.side_effect = Exception("Error 4")
+        mock_audit = MagicMock()
+        mock_audit.objects.filter.return_value.count.side_effect = Exception("Error 5")
+        mock_device = MagicMock()
+        mock_device.objects.count.side_effect = Exception("Error 6")
+        mock_aliquot = MagicMock()
+        mock_aliquot.objects.count.side_effect = Exception("Error 7")
+        mock_location = MagicMock()
+        mock_location.objects.count.side_effect = Exception("Error 8")
+        with patch.object(reports_views, 'Sample', mock_sample), \
+             patch.object(reports_views, 'Box', mock_box), \
+             patch.object(reports_views, 'Report', mock_report), \
+             patch.object(reports_views, 'Alert', mock_alert), \
+             patch.object(reports_views, 'UserAuditLog', mock_audit), \
+             patch.object(reports_views, 'Device', mock_device), \
+             patch.object(reports_views, 'Aliquot', mock_aliquot), \
+             patch.object(reports_views, 'AliquotLocation', mock_location):
             response = self.client.get(reverse('reports:dashboard_stats'))
             self.assertEqual(response.status_code, 200)  # Still 200, not 500
             data = response.json()
@@ -209,9 +215,9 @@ class DashboardStatsViewTest(ReportsViewTest):
         """Test that response structure is correct when errors occur"""
         self.client.force_login(self.user)
 
-        with patch('krill.reports.views.Sample.objects.count') as mock_count:
-            mock_count.side_effect = Exception("Test error")
-
+        mock_sample = MagicMock()
+        mock_sample.objects.count.side_effect = Exception("Test error")
+        with patch.object(reports_views, 'Sample', mock_sample):
             response = self.client.get(reverse('reports:dashboard_stats'))
             data = response.json()
 
