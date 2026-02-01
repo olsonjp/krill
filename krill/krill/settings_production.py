@@ -52,6 +52,9 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 # Database - Use PostgreSQL in production
+# Statement timeout in milliseconds for all queries (default 30 seconds).
+# Prevents long-running queries from hanging the app; override via DB_STATEMENT_TIMEOUT_MS.
+_pg_timeout_ms = os.environ.get('DB_STATEMENT_TIMEOUT_MS', '30000')
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -62,6 +65,7 @@ DATABASES = {
         'PORT': os.environ.get('DB_PORT', '5432'),
         'OPTIONS': {
             'sslmode': 'require',
+            'options': f'-c statement_timeout={_pg_timeout_ms}',
         },
     }
 }
