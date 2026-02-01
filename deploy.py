@@ -178,7 +178,7 @@ def check_file_permissions():
     # Check that sensitive files are not world-readable
     sensitive_files = [
         '.env',
-        'settings_production.py',
+        'krill/settings_production.py',
         'db.sqlite3',
     ]
 

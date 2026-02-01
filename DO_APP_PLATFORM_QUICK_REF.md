@@ -141,8 +141,6 @@ CSRF_COOKIE_SECURE=True
 
 ## App Specification (app.yaml)
 
-### Option 1: Using krill subdirectory (Recommended)
-
 ```yaml
 name: krill-app
 services:
@@ -170,36 +168,7 @@ services:
     value: require
 ```
 
-### Option 2: Using root-level WSGI file
-
-```yaml
-name: krill-app
-services:
-- name: web
-  source_dir: /
-  github:
-    repo: your-username/krill
-    branch: main
-  run_command: python manage.py migrate && gunicorn wsgi:application --bind 0.0.0.0:8000
-  environment_slug: python
-  instance_count: 1
-  instance_size_slug: basic-xxs
-  envs:
-  - key: DATABASE_ENGINE
-    value: postgresql
-  - key: DJANGO_SECRET_KEY
-    value: your-secret-key-here
-  - key: DJANGO_DEBUG
-    value: "False"
-  - key: DJANGO_SETTINGS_MODULE
-    value: krill.settings_production
-  - key: ENVIRONMENT
-    value: production
-  - key: DB_SSLMODE
-    value: require
-```
-
-**Note**: The working directory is now set in the Dockerfile (`WORKDIR /app/krill`), so you don't need to specify it in the app.yaml.
+**Note**: The working directory remains `/app` (repo root) in the Dockerfile, so you don't need to specify it in the app.yaml.
 
 ## Common Commands
 
@@ -257,19 +226,15 @@ doctl apps logs your-app-id --type build
 ```bash
 # Error: "no module named krill.wsgi"
 
-# Solution: Working directory is set in Dockerfile
-# The Dockerfile sets WORKDIR /app/krill, so commands run from the correct directory
+# Solution: Use the repo root as working directory
+# Commands should run from /app (the repo root)
 
 # Your app.yaml should use:
 run_command: python manage.py migrate && gunicorn krill.wsgi:application --bind 0.0.0.0:8000
 
-# Or if using root-level wsgi.py:
-run_command: python manage.py migrate && gunicorn wsgi:application --bind 0.0.0.0:8000
-
 # Check your project structure:
-# Your project has Django files in the krill/ subdirectory
-# So the WSGI module is at krill/krill/wsgi.py
-# The Dockerfile sets WORKDIR /app/krill to handle this automatically
+# The WSGI module is at krill/wsgi.py
+# Running from /app keeps krill/ on the Python path
 ```
 
 ### Environment Variable Issues

@@ -148,7 +148,8 @@ python manage.py migrate
 
 ```
 krill/
-├── krill/                 # Main Django project
+├── manage.py              # Django management entrypoint
+├── krill/                 # Main Django project package
 │   ├── settings.py        # Base settings (environment-based)
 │   ├── settings_local.py  # Local development overrides
 │   ├── settings_production.py  # Production settings
@@ -158,6 +159,8 @@ krill/
 ├── storage/               # Storage management app
 ├── reports/               # Reporting app
 ├── transaction/           # Transaction tracking
+├── templates/             # Shared templates
+├── static/                # Static assets
 ├── docker-compose.yml     # Docker services
 ├── env.example            # Environment template
 ├── env.production         # Production environment template

@@ -99,32 +99,32 @@ run-prod:
 # Local Development Commands
 server:
 	@echo "Starting Django development server..."
-	cd krill && python manage.py runserver
+	python manage.py runserver
 
 migrate:
 	@echo "Running database migrations..."
-	cd krill && python manage.py migrate
+	python manage.py migrate
 
 makemigrations:
 	@echo "Creating new migrations..."
-	cd krill && python manage.py makemigrations
+	python manage.py makemigrations
 
 shell:
 	@echo "Opening Django shell..."
-	cd krill && python manage.py shell
+	python manage.py shell
 
 collectstatic:
 	@echo "Collecting static files..."
-	cd krill && python manage.py collectstatic --noinput
+	python manage.py collectstatic --noinput
 
 createsuperuser:
 	@echo "Creating superuser..."
-	cd krill && python manage.py createsuperuser
+	python manage.py createsuperuser
 
 # Testing Commands
 test-local:
 	@echo "Running tests locally..."
-	cd krill && python manage.py test --verbosity=2
+	python manage.py test --verbosity=2
 
 test-docker:
 	@echo "Building and running tests in Docker..."
@@ -132,7 +132,7 @@ test-docker:
 
 security-check:
 	@echo "Running security validation..."
-	cd krill && python run_security_check.py
+	python run_security_check.py
 
 # Anonymized Data Commands
 test-data:
@@ -200,56 +200,56 @@ docker-shell:
 
 deploy-check:
 	@echo "Running deployment checks..."
-	cd krill && python manage.py check --deploy
+	python manage.py check --deploy
 
 # Additional Development Commands
 flush:
 	@echo "Flushing database..."
-	cd krill && python manage.py flush
+	python manage.py flush
 
 loaddata:
 	@echo "Loading sample data..."
-	cd krill && python manage.py loaddata sample_fixtures.json
+	python manage.py loaddata tests/fixtures/sample_fixtures.json
 
 load-testdata:
 	@echo "Loading anonymized test data..."
-	cd krill && python manage.py loaddata ../tests/fixtures/sample_fixtures.json
+	python manage.py loaddata tests/fixtures/sample_fixtures.json
 
 dbshell:
 	@echo "Opening database shell..."
-	cd krill && python manage.py dbshell
+	python manage.py dbshell
 
 showmigrations:
 	@echo "Showing migration status..."
-	cd krill && python manage.py showmigrations
+	python manage.py showmigrations
 
 check:
 	@echo "Running Django system checks..."
-	cd krill && python manage.py check
+	python manage.py check
 
 # Development Setup Commands
 setup:
 	@echo "Setting up development environment..."
-	cd krill && python manage.py migrate
+	python manage.py migrate
 	@echo "Development setup complete!"
 
 setup-test:
 	@echo "Setting up test environment with anonymized data..."
-	cd krill && python manage.py migrate
-	cd krill && python manage.py loaddata ../tests/fixtures/sample_fixtures.json
+	python manage.py migrate
+	python manage.py loaddata tests/fixtures/sample_fixtures.json
 	cd tests/scripts && python create_test_superuser.py
 	@echo "Test environment setup complete!"
 
 reset:
 	@echo "Resetting development environment..."
-	cd krill && python manage.py flush --noinput
-	cd krill && python manage.py loaddata sample_fixtures.json
+	python manage.py flush --noinput
+	python manage.py loaddata tests/fixtures/sample_fixtures.json
 	@echo "Development environment reset complete!"
 
 reset-test:
 	@echo "Resetting test environment with anonymized data..."
-	cd krill && python manage.py flush --noinput
-	cd krill && python manage.py loaddata ../tests/fixtures/sample_fixtures.json
+	python manage.py flush --noinput
+	python manage.py loaddata tests/fixtures/sample_fixtures.json
 	cd tests/scripts && python create_test_superuser.py
 	@echo "Test environment reset complete!"
 

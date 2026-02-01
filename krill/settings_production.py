@@ -83,7 +83,7 @@ CACHES = {
 
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR.parent / 'staticfiles'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Static files directories (for collectstatic)
 STATICFILES_DIRS = [

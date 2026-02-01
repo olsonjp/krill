@@ -180,12 +180,12 @@ docker run -p 8000:8000 \
 
 ### Run Specific Test Suite
 ```bash
-docker run --rm krill:testing python krill/manage.py test security_tests
+docker run --rm krill:testing python manage.py test security_tests
 ```
 
 ### Run with Coverage
 ```bash
-docker run --rm krill:testing python krill/manage.py test --verbosity=2 --coverage
+docker run --rm krill:testing python manage.py test --verbosity=2 --coverage
 ```
 
 ## 🔄 Integration with Current Workflow
@@ -202,7 +202,7 @@ The Docker setup is designed to complement your existing workflow:
 ```bash
 # Your current workflow (unchanged)
 source venv/bin/activate
-python krill/manage.py runserver
+python manage.py runserver
 
 # New container-based testing
 ./build.sh test
@@ -228,7 +228,7 @@ sudo chown -R $USER:$USER .
 **Static files not loading:**
 ```bash
 # Collect static files
-docker run --rm krill:production python krill/manage.py collectstatic --noinput
+docker run --rm krill:production python manage.py collectstatic --noinput
 ```
 
 **Memory issues:**

@@ -28,47 +28,42 @@ WORKDIR /app  # Base working directory for installing dependencies
 
 ### Production Stage
 ```dockerfile
-# Production stage sets the correct working directory
+# Production stage uses the repo root
 FROM base as production
 # ... other setup steps ...
 
-# Set working directory to krill subdirectory for production
-WORKDIR /app/krill
+# Working directory stays at /app (project root)
+WORKDIR /app
 
-# Production command - now relative to /app/krill
+# Production command
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "120", "krill.wsgi:application"]
 ```
 
 ## Directory Structure in Container
 
 ```
-/app/                    # Base container directory
-├── requirements.txt     # Python dependencies
-├── krill/              # Django project directory
-│   ├── krill/          # Django project package
-│   │   ├── wsgi.py     # WSGI application
-│   │   ├── settings.py # Django settings
-│   │   └── ...
-│   ├── manage.py       # Django management
-│   ├── person/         # Django apps
-│   ├── sample/         # Django apps
+/app/                    # Base container directory (project root)
+├── manage.py            # Django management
+├── krill/               # Django project package
+│   ├── wsgi.py          # WSGI application
+│   ├── settings.py      # Django settings
 │   └── ...
-└── media/              # User uploads
-    staticfiles/         # Collected static files
-    logs/               # Application logs
+├── person/              # Django apps
+├── sample/              # Django apps
+├── storage/             # Django apps
+├── templates/           # Shared templates
+├── static/              # Source static assets
+├── media/               # User uploads
+├── staticfiles/         # Collected static files
+└── logs/                # Application logs
 ```
 
 ## WSGI Path Resolution
 
-### With `WORKDIR /app/krill`:
+### With `WORKDIR /app` (project root):
 - **Command**: `gunicorn krill.wsgi:application`
-- **Resolves to**: `/app/krill/krill/wsgi.py`
+- **Resolves to**: `/app/krill/wsgi.py`
 - **Result**: ✅ Correct WSGI module found
-
-### Without `WORKDIR /app/krill`:
-- **Command**: `gunicorn krill.wsgi:application`
-- **Resolves to**: `/app/krill/wsgi.py` (doesn't exist)
-- **Result**: ❌ "No module named krill.wsgi" error
 
 ## Deployment Configuration
 
@@ -96,7 +91,7 @@ The same approach works for:
 
 ## Commands That Work
 
-### From `/app/krill` (Production Working Directory)
+### From `/app` (Production Working Directory)
 ```bash
 # Django management commands
 python manage.py migrate
@@ -105,15 +100,12 @@ python manage.py createsuperuser
 
 # Gunicorn with correct WSGI path
 gunicorn krill.wsgi:application --bind 0.0.0.0:8000
-
-# Alternative: Use root-level wsgi.py
-gunicorn wsgi:application --bind 0.0.0.0:8000
 ```
 
 ### File Paths
 ```bash
 # Static files
-/app/media/staticfiles/
+/app/staticfiles/
 
 # Media files
 /app/media/
@@ -121,8 +113,8 @@ gunicorn wsgi:application --bind 0.0.0.0:8000
 # Logs
 /app/logs/
 
-# Django project
-/app/krill/
+# Django project root
+/app/
 ```
 
 ## Troubleshooting
@@ -130,12 +122,12 @@ gunicorn wsgi:application --bind 0.0.0.0:8000
 ### Common Issues
 
 #### Issue: "No module named krill.wsgi"
-**Cause**: Working directory not set correctly
-**Solution**: Ensure Dockerfile has `WORKDIR /app/krill` in production stage
+**Cause**: Commands running outside the project root
+**Solution**: Ensure commands run from `/app` (the repo root)
 
 #### Issue: "manage.py not found"
 **Cause**: Commands running from wrong directory
-**Solution**: Verify `WORKDIR /app/krill` is set in Dockerfile
+**Solution**: Verify the working directory is `/app`
 
 #### Issue: Static files not found
 **Cause**: Paths relative to wrong working directory
@@ -166,10 +158,10 @@ python -c "import krill.wsgi; print('WSGI import successful')"
 ### 2. Use Absolute Paths for Critical Operations
 ```dockerfile
 # Good: Absolute path for static collection
-RUN DJANGO_SETTINGS_MODULE=krill.settings_production python krill/manage.py collectstatic --noinput
+RUN DJANGO_SETTINGS_MODULE=krill.settings_production python manage.py collectstatic --noinput
 
 # Good: Absolute path for permissions
-RUN chmod +x /app/krill/manage.py
+RUN chmod +x /app/manage.py
 ```
 
 ### 3. Test Your Configuration
@@ -179,7 +171,7 @@ docker build --target production -t krill-prod .
 docker run -it krill-prod bash
 
 # Inside container, verify working directory
-pwd  # Should show /app/krill
+pwd  # Should show /app
 ls -la  # Should show manage.py, krill/ directory, etc.
 ```
 
@@ -194,32 +186,22 @@ doctl apps logs your-app-id --follow
 
 ## Alternative Approaches
 
-### Option 1: Root-Level WSGI File
-If you prefer to use the root-level `wsgi.py`:
-```dockerfile
-# Keep WORKDIR /app/krill
-WORKDIR /app/krill
-
-# Use root-level wsgi
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "120", "wsgi:application"]
-```
-
-### Option 2: Environment Variable Override
+### Option: Environment Variable Override
 You can still override working directory in some platforms:
 ```yaml
 # Some platforms support this
-working_dir: /app/krill
+working_dir: /app
 ```
 
 But the Dockerfile approach is more reliable and portable.
 
 ## Summary
 
-Using `WORKDIR /app/krill` in the Dockerfile production stage is the most reliable way to handle the working directory for your Django application. This approach:
+Keeping the working directory at `/app` (the repo root) is the most reliable way to handle the Django project layout. This approach:
 
 1. **Eliminates platform-specific configuration issues**
 2. **Provides consistent behavior across all deployment targets**
 3. **Makes your application more portable**
 4. **Reduces deployment errors and troubleshooting time**
 
-The key is understanding that your Django project lives in the `krill/` subdirectory, so the working directory needs to be set to `/app/krill` for all Django commands to work correctly.
+The key is understanding that `manage.py` now lives at the repo root, so running commands from `/app` keeps imports and paths consistent.

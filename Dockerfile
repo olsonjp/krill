@@ -44,13 +44,13 @@ COPY . .
 RUN mkdir -p /app/media /app/staticfiles /app/logs
 
 # Set permissions
-RUN chmod +x /app/krill/manage.py
+RUN chmod +x /app/manage.py
 
 # Expose port
 EXPOSE 8000
 
 # Development command
-CMD ["python", "krill/manage.py", "runserver", "0.0.0.0:8000"]
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
 
 # Production stage
 FROM base as production
@@ -67,23 +67,20 @@ COPY . .
 RUN mkdir -p /app/media /app/staticfiles /app/logs
 
 # Set permissions
-RUN chmod +x /app/krill/manage.py
+RUN chmod +x /app/manage.py
 
 # Collect static files
-RUN DJANGO_SETTINGS_MODULE=krill.settings_production python krill/manage.py collectstatic --noinput
+RUN DJANGO_SETTINGS_MODULE=krill.settings_production python manage.py collectstatic --noinput
 
 # Create non-root user for security
 RUN groupadd -r krill && useradd -r -g krill krill
 RUN chown -R krill:krill /app
 USER krill
 
-# Set working directory to krill subdirectory for production
-WORKDIR /app/krill
-
 # Expose port
 EXPOSE 8000
 
-# Production command - now relative to /app/krill
+# Production command
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "120", "krill.wsgi:application"]
 
 # Testing stage
@@ -102,7 +99,7 @@ COPY . .
 RUN mkdir -p /app/media /app/staticfiles /app/logs
 
 # Set permissions
-RUN chmod +x /app/krill/manage.py
+RUN chmod +x /app/manage.py
 
 # Test command
-CMD ["python", "krill/manage.py", "test", "--verbosity=2"]
+CMD ["python", "manage.py", "test", "--verbosity=2"]

@@ -106,7 +106,7 @@ def check_file_permissions():
 
     sensitive_files = [
         '.env',
-        'settings_production.py',
+        'krill/settings_production.py',
         'db.sqlite3',
     ]
 
