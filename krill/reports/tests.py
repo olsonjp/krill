@@ -167,14 +167,13 @@ class DashboardStatsViewTest(ReportsViewTest):
         """Test that dashboard stats still returns response when all queries fail"""
         self.client.force_login(self.user)
 
-        # Mock all queries to fail
+        # Mock all 7 try/except blocks to fail (view uses Device.objects.count only, not filter)
         with patch('krill.reports.views.Sample.objects.count') as mock_samples, \
              patch('krill.reports.views.Box.objects.only') as mock_boxes, \
              patch('krill.reports.views.Report.objects.filter') as mock_reports, \
              patch('krill.reports.views.Alert.objects.filter') as mock_alerts, \
              patch('krill.reports.views.UserAuditLog.objects.filter') as mock_audit, \
              patch('krill.reports.views.Device.objects.count') as mock_devices, \
-             patch('krill.reports.views.Device.objects.filter') as mock_active_devices, \
              patch('krill.reports.views.Aliquot.objects.count') as mock_aliquots, \
              patch('krill.reports.views.AliquotLocation.objects.count') as mock_locations:
 
@@ -184,9 +183,8 @@ class DashboardStatsViewTest(ReportsViewTest):
             mock_alerts.side_effect = Exception("Error 4")
             mock_audit.side_effect = Exception("Error 5")
             mock_devices.side_effect = Exception("Error 6")
-            mock_active_devices.side_effect = Exception("Error 7")
-            mock_aliquots.side_effect = Exception("Error 8")
-            mock_locations.side_effect = Exception("Error 9")
+            mock_aliquots.side_effect = Exception("Error 7")
+            mock_locations.side_effect = Exception("Error 8")
 
             response = self.client.get(reverse('reports:dashboard_stats'))
             self.assertEqual(response.status_code, 200)  # Still 200, not 500
@@ -203,9 +201,9 @@ class DashboardStatsViewTest(ReportsViewTest):
             self.assertEqual(data['total_aliquots'], 0)
             self.assertEqual(data['stored_aliquots'], 0)
 
-            # Errors should be tracked
+            # Exactly 7 try/except blocks in the view can produce errors
             self.assertIn('_errors', data)
-            self.assertGreaterEqual(len(data['_errors']), 8)
+            self.assertEqual(len(data['_errors']), 7)
 
     def test_dashboard_stats_response_structure_with_errors(self):
         """Test that response structure is correct when errors occur"""
