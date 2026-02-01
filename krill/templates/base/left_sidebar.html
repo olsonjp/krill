@@ -1,4 +1,5 @@
 {% load static %}
+{% load sample_tags %}
 
 {# Display left sidebar for navigation #}
 <div class=container>
@@ -12,6 +13,7 @@
             </a>
             <!-- Sample app section -->
             <div class="sidebar-section">
+                {% is_samples_list_active as samples_list_active %}
                 <a href="{% url 'sample:sample' %}" class="sidebar-toggle {% if request.path == '/samples/' or request.path == '/samples' %}active{% endif %}">
                     <span class="material-icons-round">
                         science
@@ -20,7 +22,7 @@
                     <span class="material-icons-round expand-icon">expand_more</span>
                 </a>
                 <div id="sample-section" class="sidebar-submenu {% if 'sample' in request.path %}show{% endif %}">
-                    <a href="{% url 'sample:sample_list' %}" class="submenu-item {% if 'sample' in request.path and not 'detail/aliquot/' in request.path and not 'detail/aliquot-type/' in request.path and not 'detail/source/' in request.path and 'list' in request.path and not request.GET.type or 'sample' in request.path and not 'detail/aliquot/' in request.path and not 'detail/aliquot-type/' in request.path and not 'detail/source/' in request.path and 'detail/sample/' in request.path %}active{% endif %}">
+                    <a href="{% url 'sample:sample_list' %}" class="submenu-item {% if samples_list_active %}active{% endif %}">
                         <span class="material-icons-round">list</span>
                         <h3>Samples</h3>
                     </a>
