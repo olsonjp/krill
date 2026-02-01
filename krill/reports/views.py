@@ -386,7 +386,8 @@ def storage_dashboard(request):
     try:
         # Device statistics
         total_devices = Device.objects.count()
-        active_devices = Device.objects.filter(is_active=True).count()
+        # Since Device model doesn't have is_active field, all devices are considered active
+        active_devices = total_devices
 
         # Box statistics
         total_boxes = Box.objects.count()
@@ -401,15 +402,21 @@ def storage_dashboard(request):
             total_slots += box.rows * box.columns
         used_slots = AliquotLocation.objects.count()
 
-        # Freezer status (mock data for now)
+        # Freezer status - calculate per device
         freezer_status = []
-        for device in Device.objects.filter(device_type='freezer')[:4]:
+        for device in Device.objects.all()[:4]:
+            # Calculate device-specific capacity
+            device_boxes = Box.objects.filter(rack__shelf__device=device)
+            device_total_slots = sum(box.rows * box.columns for box in device_boxes)
+            device_used_slots = AliquotLocation.objects.filter(box__rack__shelf__device=device).count()
+            device_usage_percent = round((device_used_slots / device_total_slots * 100) if device_total_slots > 0 else 0)
+            
             freezer_status.append({
                 'name': device.name,
-                'temperature': -80.0,  # Mock temperature
+                'temperature': -80.0,  # Mock temperature (could be enhanced with actual temperature tracking)
                 'status': 'operational',
-                'capacity': f"{used_slots}/{total_slots}",
-                'usage_percent': round((used_slots / total_slots * 100) if total_slots > 0 else 0)
+                'capacity': f"{device_used_slots}/{device_total_slots}",
+                'usage_percent': device_usage_percent
             })
 
         stats = {
@@ -420,6 +427,7 @@ def storage_dashboard(request):
             'available_boxes': available_boxes,
             'total_slots': total_slots,
             'used_slots': used_slots,
+            'stored_aliquots': used_slots,  # Alias for JavaScript compatibility
             'freezer_status': freezer_status,
         }
         return JsonResponse(stats)
