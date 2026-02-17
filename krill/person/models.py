@@ -215,6 +215,11 @@ class UserAuditLog(models.Model):
         ('permission_revoked', 'Permission Revoked'),
         ('role_changed', 'Role Changed'),
         ('password_changed', 'Password Changed'),
+        ('sample_created', 'Sample Created'),
+        ('sample_updated', 'Sample Updated'),
+        ('sample_deleted', 'Sample Deleted'),
+        ('aliquot_created', 'Aliquot Created'),
+        ('aliquot_updated', 'Aliquot Updated'),
     ]
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='audit_logs')
     action = models.CharField(max_length=20, choices=ACTION_CHOICES)
