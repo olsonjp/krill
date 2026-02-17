@@ -75,7 +75,7 @@ class AliquotTubeCreationSignalTest(SignalHandlerTest):
             aliquot = Aliquot.objects.create(
                 sample=self.sample,
                 quantity=5,
-                aliquotType=self.aliquot_type
+                aliquot_type=self.aliquot_type
             )
             # Check that 5 tubes were created
             tubes = AliquotTube.objects.filter(aliquot=aliquot)
@@ -103,7 +103,7 @@ class AliquotTubeCreationSignalTest(SignalHandlerTest):
                 aliquot = Aliquot.objects.create(
                     sample=self.sample,
                     quantity=quantity,
-                    aliquotType=self.aliquot_type
+                    aliquot_type=self.aliquot_type
                 )
                 # Check that correct number of tubes were created
                 tubes = AliquotTube.objects.filter(aliquot=aliquot)
@@ -128,7 +128,7 @@ class AliquotTubeCreationSignalTest(SignalHandlerTest):
             aliquot = Aliquot.objects.create(
                 sample=self.sample,
                 quantity=0,
-                aliquotType=self.aliquot_type
+                aliquot_type=self.aliquot_type
             )
             # Check that no tubes were created
             tubes = AliquotTube.objects.filter(aliquot=aliquot)
@@ -149,7 +149,7 @@ class AliquotTubeCreationSignalTest(SignalHandlerTest):
             aliquot = Aliquot.objects.create(
                 sample=self.sample,
                 quantity=3,
-                aliquotType=self.aliquot_type
+                aliquot_type=self.aliquot_type
             )
             # Check that 3 tubes were created
             tubes = AliquotTube.objects.filter(aliquot=aliquot)
@@ -181,7 +181,7 @@ class AutoStorageSignalTest(SignalHandlerTest):
             aliquot = Aliquot.objects.create(
                 sample=self.sample,
                 quantity=3,
-                aliquotType=self.aliquot_type
+                aliquot_type=self.aliquot_type
             )
             # Get the tubes that were created
             tubes = AliquotTube.objects.filter(aliquot=aliquot)
@@ -216,7 +216,7 @@ class AutoStorageSignalTest(SignalHandlerTest):
             aliquot = Aliquot.objects.create(
                 sample=self.sample,
                 quantity=3,
-                aliquotType=self.aliquot_type
+                aliquot_type=self.aliquot_type
             )
             # Change all tubes to in_use disposition
             tubes = AliquotTube.objects.filter(aliquot=aliquot)
@@ -287,7 +287,7 @@ class AutoStorageSignalTest(SignalHandlerTest):
             aliquot = Aliquot.objects.create(
                 sample=self.sample,
                 quantity=2,
-                aliquotType=self.aliquot_type
+                aliquot_type=self.aliquot_type
             )
             # Check that tubes were stored in the auto-store box
             storage_locations = AliquotLocation.objects.filter(aliquot=aliquot)
@@ -337,7 +337,7 @@ class AutoStorageSignalTest(SignalHandlerTest):
             aliquot1 = Aliquot.objects.create(
                 sample=self.sample,
                 quantity=2,
-                aliquotType=self.aliquot_type
+                aliquot_type=self.aliquot_type
             )
             # Check that 2 slots are occupied
             occupied_slots = AliquotLocation.objects.filter(box=small_box)
@@ -347,7 +347,7 @@ class AutoStorageSignalTest(SignalHandlerTest):
             aliquot2 = Aliquot.objects.create(
                 sample=sample2,
                 quantity=2,
-                aliquotType=self.aliquot_type
+                aliquot_type=self.aliquot_type
             )
             # Check that all 4 slots are now occupied
             total_occupied = AliquotLocation.objects.filter(box=small_box)
@@ -365,7 +365,7 @@ class AutoStorageSignalTest(SignalHandlerTest):
         aliquot = Aliquot.objects.create(
             sample=self.sample,
             quantity=3,
-            aliquotType=self.aliquot_type,
+            aliquot_type=self.aliquot_type,
         )
         # Check that no storage locations were created
         storage_locations = AliquotLocation.objects.filter(aliquot=aliquot)
@@ -398,7 +398,7 @@ class TubeDispositionChangeSignalTest(SignalHandlerTest):
             aliquot = Aliquot.objects.create(
                 sample=self.sample,
                 quantity=2,
-                aliquotType=self.aliquot_type
+                aliquot_type=self.aliquot_type
             )
             # Verify tubes were stored
             storage_locations = AliquotLocation.objects.filter(aliquot=aliquot)
@@ -432,7 +432,7 @@ class TubeDispositionChangeSignalTest(SignalHandlerTest):
             aliquot = Aliquot.objects.create(
                 sample=self.sample,
                 quantity=3,
-                aliquotType=self.aliquot_type
+                aliquot_type=self.aliquot_type
             )
             # Verify tubes were stored
             storage_locations = AliquotLocation.objects.filter(aliquot=aliquot)
@@ -464,7 +464,7 @@ class TubeDispositionChangeSignalTest(SignalHandlerTest):
             aliquot = Aliquot.objects.create(
                 sample=self.sample,
                 quantity=2,
-                aliquotType=self.aliquot_type
+                aliquot_type=self.aliquot_type
             )
             # Verify tubes were stored
             storage_locations = AliquotLocation.objects.filter(aliquot=aliquot)
@@ -499,7 +499,7 @@ class TubeDispositionChangeSignalTest(SignalHandlerTest):
             aliquot = Aliquot.objects.create(
                 sample=self.sample,
                 quantity=1,
-                aliquotType=self.aliquot_type
+                aliquot_type=self.aliquot_type
             )
             tube = AliquotTube.objects.filter(aliquot=aliquot).first()
             # Change disposition
@@ -521,7 +521,7 @@ class AliquotTubeManagementTest(SignalHandlerTest):
         aliquot = Aliquot.objects.create(
             sample=self.sample,
             quantity=5,
-            aliquotType=self.aliquot_type
+            aliquot_type=self.aliquot_type
         )
         # Create tubes explicitly
         aliquot.create_tubes(auto_store=False)
@@ -543,7 +543,7 @@ class AliquotTubeManagementTest(SignalHandlerTest):
         aliquot = Aliquot.objects.create(
             sample=self.sample,
             quantity=3,
-            aliquotType=self.aliquot_type
+            aliquot_type=self.aliquot_type
         )
         # Create tubes explicitly
         aliquot.create_tubes(auto_store=False)
@@ -560,7 +560,7 @@ class AliquotTubeManagementTest(SignalHandlerTest):
         aliquot = Aliquot.objects.create(
             sample=self.sample,
             quantity=3,
-            aliquotType=self.aliquot_type
+            aliquot_type=self.aliquot_type
         )
         # Create tubes explicitly
         aliquot.create_tubes(auto_store=False)
@@ -584,7 +584,7 @@ class AliquotTubeManagementTest(SignalHandlerTest):
         aliquot = Aliquot.objects.create(
             sample=self.sample,
             quantity=3,
-            aliquotType=self.aliquot_type
+            aliquot_type=self.aliquot_type
         )
         # Create tubes explicitly
         aliquot.create_tubes(auto_store=False)

@@ -169,7 +169,13 @@ class TubeDetailView(DetailView):
                         context['move_form'] = move_form
                         return render(request, self.template_name, context)
 
-                    # Create location atomically
+                    # Remove any existing location for this tube first
+                    AliquotLocation.objects.filter(
+                        aliquot=self.object.aliquot,
+                        tube_number=self.object.tube_number
+                    ).delete()
+
+                    # Create new location atomically
                     AliquotLocation.objects.create(
                         aliquot=self.object.aliquot,
                         box=box,
@@ -177,13 +183,6 @@ class TubeDetailView(DetailView):
                         column=column,
                         tube_number=self.object.tube_number
                     )
-
-                    # Remove any existing location for this tube (after successful creation)
-                    # This ensures we don't lose the location if creation fails
-                    AliquotLocation.objects.filter(
-                        aliquot=self.object.aliquot,
-                        tube_number=self.object.tube_number
-                    ).exclude(box=box, row=row, column=column).delete()
 
                     # Update tube disposition to stored (within transaction)
                     if self.object.disposition != stored_disposition:

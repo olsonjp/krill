@@ -104,11 +104,11 @@ class APITestCase(TestCase):
         )
         self.aliquot_disposition = AliquotDisposition.objects.create(
             name="Test Disposition",
-            dispositionType="stored"
+            disposition_type="stored"
         )
         self.aliquot = Aliquot.objects.create(
             sample=self.sample,
-            aliquotType=self.aliquot_type,
+            aliquot_type=self.aliquot_type,
             quantity=5
         )
         # Create storage hierarchy
