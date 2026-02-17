@@ -560,6 +560,14 @@ class AliquotFormBoxAssignmentTest(TestCase):
 
     def setUp(self):
         """Set up test data"""
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='testuser_form',
+            email='testform@example.com',
+            password='testpass123'
+        )
+        self.client.force_login(self.user)
+
         self.source = Source.objects.create(name="Test Source")
         self.sample = Sample.objects.create(
             name="Test Sample",

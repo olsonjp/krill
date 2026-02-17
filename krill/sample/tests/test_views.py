@@ -1,0 +1,603 @@
+from django.test import TestCase, Client
+from django.urls import reverse
+from django.contrib.auth import get_user_model
+
+from ..models.sample import Sample
+from ..models.aliquot import (
+    Aliquot, AliquotType, AliquotDisposition,
+    AliquotLocation, AliquotTube
+)
+from ..models.source import Source
+from ..forms import SampleForm, AliquotForm, AliquotTypeForm, SourceForm
+from storage.models.storage import Device, Shelf, Rack, Box
+from storage.models.site import Site
+
+User = get_user_model()
+
+
+class SampleViewTest(TestCase):
+    """Base test class for sample views with common setup"""
+    def setUp(self):
+        """Set up test data"""
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='testuser',
+            email='test@example.com',
+            password='testpass123'
+        )
+        self.user_role = self.user.role
+        self.user_role.role = 'lab_member'
+        self.user_role.save()
+        self.source = Source.objects.create(name="Test Source")
+        self.sample = Sample.objects.create(
+            name="Test Sample",
+            source=self.source
+        )
+        self.aliquot_type = AliquotType.objects.create(name="Test Type")
+        self.aliquot = Aliquot.objects.create(
+            sample=self.sample,
+            quantity=3,
+            aliquot_type=self.aliquot_type
+        )
+        self.site = Site.objects.create(name="Test Site")
+        self.device = Device.objects.create(name="Test Device", site=self.site)
+        self.shelf = Shelf.objects.create(name="Test Shelf", device=self.device)
+        self.rack = Rack.objects.create(name="Test Rack", shelf=self.shelf)
+        self.box = Box.objects.create(
+            name="Test Box",
+            rack=self.rack,
+            rows=10,
+            columns=10
+        )
+
+
+class SampleListViewTest(SampleViewTest):
+    """Test cases for the SampleListView"""
+    def test_sample_list_requires_login(self):
+        """Test that sample list requires login"""
+        response = self.client.get(reverse('sample:sample_list'))
+        self.assertEqual(response.status_code, 302)
+    def test_sample_list_get_request_default(self):
+        """Test sample list GET request with default type (sample)"""
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:sample_list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'sample/list.html')
+        self.assertIn('items', response.context)
+        self.assertIn('model_name', response.context)
+        self.assertEqual(response.context['model_name'], 'Samples')
+        items = response.context['items']
+        self.assertIn(self.sample, items)
+    def test_sample_list_get_request_aliquot_type(self):
+        """Test sample list GET request with aliquot type"""
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:sample_list'), {'type': 'aliquot'})
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'sample/list.html')
+        self.assertIn('items', response.context)
+        self.assertIn('model_name', response.context)
+        self.assertEqual(response.context['model_name'], 'Aliquots')
+        items = response.context['items']
+        self.assertIn(self.aliquot, items)
+    def test_sample_list_get_request_aliquot_type_type(self):
+        """Test sample list GET request with aliquot-type type"""
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:sample_list'), {'type': 'aliquot-type'})
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'sample/list.html')
+        self.assertIn('items', response.context)
+        self.assertIn('model_name', response.context)
+        self.assertEqual(response.context['model_name'], 'Aliquot Types')
+        items = response.context['items']
+        self.assertIn(self.aliquot_type, items)
+    def test_sample_list_get_request_source_type(self):
+        """Test sample list GET request with source type"""
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:sample_list'), {'type': 'source'})
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'sample/list.html')
+        self.assertIn('items', response.context)
+        self.assertIn('model_name', response.context)
+        self.assertEqual(response.context['model_name'], 'Sources')
+        items = response.context['items']
+        self.assertIn(self.source, items)
+
+
+class ModelCreateViewTest(SampleViewTest):
+    """Test cases for the ModelCreateView"""
+    def test_model_create_requires_login(self):
+        """Test that model create requires login"""
+        response = self.client.get(reverse('sample:sample_create'))
+        self.assertEqual(response.status_code, 302)
+    def test_model_create_get_request_default(self):
+        """Test model create GET request with default type (sample)"""
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:sample_create'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'sample/create.html')
+        self.assertIn('form', response.context)
+        self.assertIn('model_type', response.context)
+        self.assertIn('model_name', response.context)
+        self.assertEqual(response.context['model_type'], 'sample')
+        self.assertEqual(response.context['model_name'], 'Sample')
+        self.assertIsInstance(response.context['form'], SampleForm)
+    def test_model_create_get_request_aliquot_type(self):
+        """Test model create GET request with aliquot type"""
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:sample_create'), {'type': 'aliquot'})
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'sample/create.html')
+        self.assertIn('form', response.context)
+        self.assertIn('model_type', response.context)
+        self.assertIn('model_name', response.context)
+        self.assertEqual(response.context['model_type'], 'aliquot')
+        self.assertEqual(response.context['model_name'], 'Aliquot')
+        self.assertIsInstance(response.context['form'], AliquotForm)
+    def test_model_create_get_request_aliquot_type_type(self):
+        """Test model create GET request with aliquot-type type"""
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:sample_create'), {'type': 'aliquot-type'})
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'sample/create.html')
+        self.assertIn('form', response.context)
+        self.assertIn('model_type', response.context)
+        self.assertIn('model_name', response.context)
+        self.assertEqual(response.context['model_type'], 'aliquot-type')
+        self.assertEqual(response.context['model_name'], 'Aliquot Type')
+        self.assertIsInstance(response.context['form'], AliquotTypeForm)
+    def test_model_create_get_request_source_type(self):
+        """Test model create GET request with source type"""
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:sample_create'), {'type': 'source'})
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'sample/create.html')
+        self.assertIn('form', response.context)
+        self.assertIn('model_type', response.context)
+        self.assertIn('model_name', response.context)
+        self.assertEqual(response.context['model_type'], 'source')
+        self.assertEqual(response.context['model_name'], 'Source')
+        self.assertIsInstance(response.context['form'], SourceForm)
+    def test_model_create_post_valid_sample_data(self):
+        """Test model create POST with valid sample data"""
+        self.client.force_login(self.user)
+        form_data = {
+            'name': 'New Sample',
+            'source': self.source.id,
+            'notes': 'Test notes',
+            'access_level': 'all_members',
+        }
+        response = self.client.post(reverse('sample:sample_create'), form_data)
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, f"{reverse('sample:sample_list')}?type=sample")
+        new_sample = Sample.objects.get(name='New Sample')
+        self.assertEqual(new_sample.source, self.source)
+        self.assertEqual(new_sample.notes, 'Test notes')
+    def test_model_create_post_valid_aliquot_data(self):
+        """Test model create POST with valid aliquot data"""
+        self.client.force_login(self.user)
+        form_data = {
+            'sample': self.sample.id,
+            'quantity': 5,
+            'aliquot_type': self.aliquot_type.id,
+            'access_level': 'all_members',
+        }
+        response = self.client.post(f"{reverse('sample:sample_create')}?type=aliquot", form_data)
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, f"{reverse('sample:sample_list')}?type=aliquot")
+        new_aliquot = Aliquot.objects.get(sample=self.sample, quantity=5)
+        self.assertEqual(new_aliquot.aliquot_type, self.aliquot_type)
+    def test_model_create_post_valid_aliquot_type_data(self):
+        """Test model create POST with valid aliquot type data"""
+        self.client.force_login(self.user)
+        form_data = {
+            'name': 'New Aliquot Type',
+            'description': 'Test description'
+        }
+        response = self.client.post(f"{reverse('sample:sample_create')}?type=aliquot-type", form_data)
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, f"{reverse('sample:sample_list')}?type=aliquot-type")
+        new_aliquot_type = AliquotType.objects.get(name='New Aliquot Type')
+        self.assertEqual(new_aliquot_type.description, 'Test description')
+    def test_model_create_post_valid_source_data(self):
+        """Test model create POST with valid source data"""
+        self.client.force_login(self.user)
+        form_data = {
+            'name': 'New Source',
+            'description': 'Test description'
+        }
+        response = self.client.post(f"{reverse('sample:sample_create')}?type=source", form_data)
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, f"{reverse('sample:sample_list')}?type=source")
+        new_source = Source.objects.get(name='New Source')
+        self.assertEqual(new_source.description, 'Test description')
+    def test_model_create_post_invalid_data(self):
+        """Test model create POST with invalid data"""
+        self.client.force_login(self.user)
+        form_data = {
+            'name': '',
+            'source': self.source.id
+        }
+        response = self.client.post(reverse('sample:sample_create'), form_data)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'sample/create.html')
+        self.assertIn('form', response.context)
+        self.assertFalse(response.context['form'].is_valid())
+
+
+class TubeDetailViewTest(TestCase):
+    """Test cases for the TubeDetailView"""
+
+    def setUp(self):
+        """Set up test data"""
+        self.source = Source.objects.create(
+            name="Test Source",
+            description="A test source for samples"
+        )
+        self.sample = Sample.objects.create(
+            name="Test Sample",
+            source=self.source
+        )
+        self.aliquot_type = AliquotType.objects.create(
+            name="Test Type",
+            description="A test aliquot type"
+        )
+        self.aliquot = Aliquot.objects.create(
+            sample=self.sample,
+            quantity=3,
+            aliquot_type=self.aliquot_type
+        )
+        self.stored_disposition = AliquotDisposition.objects.create(
+            name="Stored",
+            disposition_type="stored"
+        )
+        self.in_use_disposition = AliquotDisposition.objects.create(
+            name="In Use",
+            disposition_type="in_use"
+        )
+        self.exhausted_disposition = AliquotDisposition.objects.create(
+            name="Exhausted",
+            disposition_type="exhausted"
+        )
+        self.tube = AliquotTube.objects.create(
+            aliquot=self.aliquot,
+            tube_number=1,
+            disposition=self.stored_disposition
+        )
+        self.user = get_user_model().objects.create_user(
+            username='testuser',
+            password='testpass123'
+        )
+        self.client = Client()
+
+    def test_tube_detail_view_get(self):
+        """Test tube detail view GET request"""
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:tube_detail', kwargs={'pk': self.tube.pk}))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'sample/tube_detail.html')
+        self.assertIn('tube', response.context)
+        self.assertEqual(response.context['tube'], self.tube)
+        self.assertIn('form', response.context)
+        from ..forms import AliquotTubeForm
+        self.assertIsInstance(response.context['form'], AliquotTubeForm)
+
+    def test_tube_detail_view_get_unauthenticated(self):
+        """Test tube detail view GET request without authentication"""
+        response = self.client.get(reverse('sample:tube_detail', kwargs={'pk': self.tube.pk}))
+        self.assertEqual(response.status_code, 302)
+
+    def test_tube_detail_view_post_valid_disposition_change(self):
+        """Test tube detail view POST with valid disposition change"""
+        self.client.force_login(self.user)
+        form_data = {
+            'disposition': self.in_use_disposition.id
+        }
+        response = self.client.post(reverse('sample:tube_detail', kwargs={'pk': self.tube.pk}), form_data)
+        self.assertEqual(response.status_code, 302)
+        self.tube.refresh_from_db()
+        self.assertEqual(self.tube.disposition, self.in_use_disposition)
+
+    def test_tube_detail_view_post_invalid_data(self):
+        """Test tube detail view POST with invalid data"""
+        self.client.force_login(self.user)
+        form_data = {
+            'disposition': 99999
+        }
+        response = self.client.post(reverse('sample:tube_detail', kwargs={'pk': self.tube.pk}), form_data)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'sample/tube_detail.html')
+        self.assertIn('form', response.context)
+        self.assertFalse(response.context['form'].is_valid())
+
+    def test_tube_detail_view_post_stored_to_non_stored_removes_location(self):
+        """Test that changing from stored to non-stored removes storage location"""
+        self.client.force_login(self.user)
+
+        site = Site.objects.create(name="Test Site", description="Test site")
+        device = Device.objects.create(name="Test Device", site=site, description="Test device")
+        shelf = Shelf.objects.create(name="Test Shelf", device=device, description="Test shelf")
+        rack = Rack.objects.create(name="Test Rack", shelf=shelf, description="Test rack")
+        box = Box.objects.create(name="Test Box", rack=rack, rows=8, columns=12, description="Test box")
+
+        location = AliquotLocation.objects.create(
+            aliquot=self.aliquot,
+            box=box,
+            row=1,
+            column=1,
+            tube_number=self.tube.tube_number
+        )
+
+        form_data = {
+            'disposition': self.in_use_disposition.id
+        }
+        response = self.client.post(reverse('sample:tube_detail', kwargs={'pk': self.tube.pk}), form_data)
+        self.assertEqual(response.status_code, 302)
+
+        self.tube.refresh_from_db()
+        self.assertEqual(self.tube.disposition, self.in_use_disposition)
+
+        self.assertFalse(AliquotLocation.objects.filter(
+            aliquot=self.aliquot,
+            tube_number=self.tube.tube_number
+        ).exists())
+
+    def test_tube_detail_view_context_includes_storage_location(self):
+        """Test that tube detail view includes storage location in context when tube is stored"""
+        self.client.force_login(self.user)
+
+        site = Site.objects.create(name="Test Site", description="Test site")
+        device = Device.objects.create(name="Test Device", site=site, description="Test device")
+        shelf = Shelf.objects.create(name="Test Shelf", device=device, description="Test shelf")
+        rack = Rack.objects.create(name="Test Rack", shelf=shelf, description="Test rack")
+        box = Box.objects.create(name="Test Box", rack=rack, rows=8, columns=12, description="Test box")
+
+        location = AliquotLocation.objects.create(
+            aliquot=self.aliquot,
+            box=box,
+            row=1,
+            column=1,
+            tube_number=self.tube.tube_number
+        )
+
+        response = self.client.get(reverse('sample:tube_detail', kwargs={'pk': self.tube.pk}))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('storage_location', response.context)
+        self.assertIsNotNone(response.context['storage_location'])
+        self.assertEqual(response.context['storage_location']['box'], box)
+        self.assertEqual(response.context['storage_location']['row'], 1)
+        self.assertEqual(response.context['storage_location']['column'], 1)
+
+    def test_tube_detail_view_context_no_storage_location(self):
+        """Test that tube detail view has no storage location when tube is not stored"""
+        self.tube.disposition = self.in_use_disposition
+        self.tube.save()
+
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:tube_detail', kwargs={'pk': self.tube.pk}))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('storage_location', response.context)
+        self.assertIsNone(response.context['storage_location'])
+
+
+class TubeDetailViewMoveTest(TestCase):
+    """Test cases for the TubeDetailView move functionality"""
+
+    def setUp(self):
+        """Set up test data"""
+        self.source = Source.objects.create(
+            name="Test Source",
+            description="A test source for samples"
+        )
+        self.sample = Sample.objects.create(
+            name="Test Sample",
+            source=self.source
+        )
+        self.aliquot_type = AliquotType.objects.create(
+            name="Test Type",
+            description="A test aliquot type"
+        )
+        self.aliquot = Aliquot.objects.create(
+            sample=self.sample,
+            quantity=3,
+            aliquot_type=self.aliquot_type
+        )
+        self.stored_disposition = AliquotDisposition.objects.create(
+            name="Stored",
+            disposition_type="stored"
+        )
+        self.in_use_disposition = AliquotDisposition.objects.create(
+            name="In Use",
+            disposition_type="in_use"
+        )
+        self.tube = AliquotTube.objects.create(
+            aliquot=self.aliquot,
+            tube_number=1,
+            disposition=self.stored_disposition
+        )
+
+        self.site = Site.objects.create(name="Test Site", description="Test site")
+        self.device = Device.objects.create(name="Test Device", site=self.site, description="Test device")
+        self.shelf = Shelf.objects.create(name="Test Shelf", device=self.device, description="Test shelf")
+        self.rack = Rack.objects.create(name="Test Rack", shelf=self.shelf, description="Test rack")
+        self.box = Box.objects.create(name="Test Box", rack=self.rack, rows=8, columns=12, description="Test box")
+        self.box2 = Box.objects.create(name="Test Box 2", rack=self.rack, rows=6, columns=8, description="Test box 2")
+
+        self.user = get_user_model().objects.create_user(
+            username='testuser',
+            password='testpass123'
+        )
+        self.client = Client()
+
+    def test_tube_detail_view_get_includes_move_form(self):
+        """Test that tube detail view includes move form in context"""
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:tube_detail', kwargs={'pk': self.tube.pk}))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('move_form', response.context)
+        from ..forms import AliquotTubeMoveForm
+        self.assertIsInstance(response.context['move_form'], AliquotTubeMoveForm)
+
+    def test_tube_detail_view_post_move_valid_data(self):
+        """Test tube detail view POST with valid move data"""
+        self.client.force_login(self.user)
+        form_data = {
+            'action': 'move',
+            'box': self.box2.id,
+            'row': 2,
+            'column': 3
+        }
+        response = self.client.post(reverse('sample:tube_detail', kwargs={'pk': self.tube.pk}), form_data)
+        self.assertEqual(response.status_code, 302)
+
+        location = AliquotLocation.objects.get(aliquot=self.aliquot, tube_number=self.tube.tube_number)
+        self.assertEqual(location.box, self.box2)
+        self.assertEqual(location.row, 2)
+        self.assertEqual(location.column, 3)
+
+        self.tube.refresh_from_db()
+        self.assertEqual(self.tube.disposition, self.stored_disposition)
+
+    def test_tube_detail_view_post_move_invalid_data(self):
+        """Test tube detail view POST with invalid move data (exceeds max_value)"""
+        self.client.force_login(self.user)
+        form_data = {
+            'action': 'move',
+            'box': self.box.id,
+            'row': 11,
+            'column': 1
+        }
+        response = self.client.post(reverse('sample:tube_detail', kwargs={'pk': self.tube.pk}), form_data)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'sample/tube_detail.html')
+        self.assertIn('move_form', response.context)
+        self.assertFalse(response.context['move_form'].is_valid())
+
+    def test_tube_detail_view_post_move_occupied_position(self):
+        """Test tube detail view POST with occupied position"""
+        from django.contrib.messages import get_messages
+
+        self.client.force_login(self.user)
+
+        AliquotLocation.objects.create(
+            aliquot=self.aliquot,
+            box=self.box2,
+            row=2,
+            column=3,
+            tube_number=2
+        )
+
+        form_data = {
+            'action': 'move',
+            'box': self.box2.id,
+            'row': 2,
+            'column': 3
+        }
+        response = self.client.post(reverse('sample:tube_detail', kwargs={'pk': self.tube.pk}), form_data)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'sample/tube_detail.html')
+        # Occupied position is detected at the view level, not form level
+        messages_list = list(get_messages(response.wsgi_request))
+        error_messages = [msg for msg in messages_list if 'occupied' in str(msg.message).lower()]
+        self.assertGreater(len(error_messages), 0, "Should have error message about occupied position")
+
+    def test_tube_detail_view_post_move_from_existing_location(self):
+        """Test moving a tube from an existing location to a new one"""
+        self.client.force_login(self.user)
+
+        initial_location = AliquotLocation.objects.create(
+            aliquot=self.aliquot,
+            box=self.box,
+            row=1,
+            column=1,
+            tube_number=self.tube.tube_number
+        )
+
+        form_data = {
+            'action': 'move',
+            'box': self.box2.id,
+            'row': 3,
+            'column': 4
+        }
+        response = self.client.post(reverse('sample:tube_detail', kwargs={'pk': self.tube.pk}), form_data)
+        self.assertEqual(response.status_code, 302)
+
+        self.assertFalse(AliquotLocation.objects.filter(id=initial_location.id).exists())
+
+        new_location = AliquotLocation.objects.get(aliquot=self.aliquot, tube_number=self.tube.tube_number)
+        self.assertEqual(new_location.box, self.box2)
+        self.assertEqual(new_location.row, 3)
+        self.assertEqual(new_location.column, 4)
+
+    def test_tube_detail_view_post_move_non_stored_tube(self):
+        """Test moving a tube that is not in stored disposition"""
+        self.tube.disposition = self.in_use_disposition
+        self.tube.save()
+
+        self.client.force_login(self.user)
+        form_data = {
+            'action': 'move',
+            'box': self.box.id,
+            'row': 1,
+            'column': 1
+        }
+        response = self.client.post(reverse('sample:tube_detail', kwargs={'pk': self.tube.pk}), form_data)
+        self.assertEqual(response.status_code, 302)
+
+        self.tube.refresh_from_db()
+        self.assertEqual(self.tube.disposition, self.stored_disposition)
+
+        location = AliquotLocation.objects.get(aliquot=self.aliquot, tube_number=self.tube.tube_number)
+        self.assertEqual(location.box, self.box)
+        self.assertEqual(location.row, 1)
+        self.assertEqual(location.column, 1)
+
+    def test_tube_detail_view_post_move_to_occupied_position(self):
+        """Test moving a tube to an already occupied position"""
+        from django.contrib.messages import get_messages
+
+        other_tube = AliquotTube.objects.create(
+            aliquot=self.aliquot,
+            tube_number=2,
+            disposition=self.stored_disposition
+        )
+        AliquotLocation.objects.create(
+            aliquot=self.aliquot,
+            box=self.box,
+            row=2,
+            column=2,
+            tube_number=other_tube.tube_number
+        )
+
+        self.tube.disposition = self.stored_disposition
+        self.tube.save()
+        AliquotLocation.objects.create(
+            aliquot=self.aliquot,
+            box=self.box,
+            row=1,
+            column=1,
+            tube_number=self.tube.tube_number
+        )
+
+        self.client.force_login(self.user)
+        form_data = {
+            'action': 'move',
+            'box': self.box.id,
+            'row': 2,
+            'column': 2
+        }
+        response = self.client.post(reverse('sample:tube_detail', kwargs={'pk': self.tube.pk}), form_data)
+        self.assertEqual(response.status_code, 200)
+
+        messages_list = list(get_messages(response.wsgi_request))
+        error_messages = [msg for msg in messages_list if 'occupied' in str(msg.message).lower()]
+        self.assertGreater(len(error_messages), 0, "Should have error message about occupied position")
+
+        self.assertFalse(
+            AliquotLocation.objects.filter(
+                aliquot=self.aliquot,
+                tube_number=self.tube.tube_number,
+                row=2,
+                column=2
+            ).exists(),
+            "Tube should not be moved to occupied position"
+        )

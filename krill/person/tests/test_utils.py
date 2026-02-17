@@ -6,7 +6,7 @@ import tempfile
 
 from django.test import TestCase, override_settings
 
-from .utils import get_upload_temp_dir
+from ..utils import get_upload_temp_dir
 
 
 class GetUploadTempDirTest(TestCase):
