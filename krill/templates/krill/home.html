@@ -45,12 +45,21 @@
     <div class="recent-activity">
         <div class="section-header">
             <h2>Recent Activity</h2>
-            <a href="{% url 'sample:sample_list' %}" class="view-all">View All</a>
+            <a href="{% url 'person:audit_log' %}" class="view-all">View All</a>
         </div>
         <div class="activity-list">
             {% if recent_activity %}
                 {% for activity in recent_activity %}
-                <div class="activity-item clickable" onclick="navigateToActivity('{{ activity.action_type }}', '{{ activity.target_id|default:"" }}')">
+                {% if activity.action_type == 'system_init' %}
+                <div class="activity-item">
+                    <span class="material-icons-round">info</span>
+                    <div class="activity-info">
+                        <p>{{ activity.message }}</p>
+                        <small>{{ activity.time_ago }}</small>
+                    </div>
+                </div>
+                {% else %}
+                <a href="{% if activity.target_id %}{% if 'sample' in activity.action_type or activity.target_type == 'Sample' %}{% url 'sample:detail' type='sample' pk=activity.target_id %}{% elif 'aliquot' in activity.action_type or activity.target_type == 'Aliquot' %}{% url 'sample:detail' type='aliquot' pk=activity.target_id %}{% elif activity.target_type == 'User' %}{% url 'person:user_detail' activity.target_id %}{% else %}{% url 'sample:sample_list' %}{% endif %}{% else %}{% if 'aliquot' in activity.action_type %}{% url 'sample:sample_list' %}?type=aliquot{% else %}{% url 'sample:sample_list' %}{% endif %}{% endif %}" class="activity-item clickable">
                     <span class="material-icons-round">
                         {% if activity.action_type == 'sample_created' or activity.action_type == 'aliquot_created' %}
                             add_circle
@@ -66,7 +75,8 @@
                         <p>{{ activity.message }}</p>
                         <small>{{ activity.time_ago }}</small>
                     </div>
-                </div>
+                </a>
+                {% endif %}
                 {% endfor %}
             {% else %}
                 <div class="activity-item">
@@ -139,6 +149,11 @@
     .activity-item.clickable {
         cursor: pointer;
         transition: all 0.2s ease;
+        text-decoration: none;
+        color: inherit;
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
     }
 
     .activity-item.clickable:hover {
@@ -211,28 +226,5 @@
         });
     }
 
-    // Navigate to activity-related pages
-    function navigateToActivity(actionType, targetId) {
-        if (!actionType || actionType === 'system_init') {
-            return; // Don't navigate for system activities
-        }
-
-        if (actionType.includes('sample')) {
-            if (targetId) {
-                window.location.href = `/samples/${targetId}/`;
-            } else {
-                window.location.href = '{% url "sample:sample_list" %}';
-            }
-        } else if (actionType.includes('aliquot')) {
-            if (targetId) {
-                window.location.href = `/samples/aliquots/${targetId}/`;
-            } else {
-                window.location.href = '{% url "sample:sample_list" %}';
-            }
-        } else {
-            // Default to sample list for other activities
-            window.location.href = '{% url "sample:sample_list" %}';
-        }
-    }
 </script>
 {% endblock %}

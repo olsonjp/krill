@@ -10,6 +10,7 @@ from ..models.sample import Sample
 from ..models.aliquot import Aliquot, AliquotType, AliquotDisposition, AliquotLocation
 from ..models.source import Source
 from ..forms import SampleForm, AliquotForm, AliquotTypeForm, SourceForm
+from person.models import UserAuditLog
 
 @method_decorator(login_required, name='dispatch')
 class ModelCreateView(CreateView):
@@ -38,6 +39,26 @@ class ModelCreateView(CreateView):
     def form_valid(self, form):
         """Handle form submission and box assignment if requested"""
         response = super().form_valid(form)
+
+        # Log for Recent Activity (so dashboard links work)
+        if isinstance(form, SampleForm):
+            UserAuditLog.log_action(
+                user=self.request.user,
+                action='sample_created',
+                target_type='Sample',
+                target_id=self.object.id,
+                target_name=self.object.name,
+                request=self.request,
+            )
+        elif isinstance(form, AliquotForm):
+            UserAuditLog.log_action(
+                user=self.request.user,
+                action='aliquot_created',
+                target_type='Aliquot',
+                target_id=self.object.id,
+                target_name=str(self.object),
+                request=self.request,
+            )
 
         # If this is an aliquot form, create tubes
         if isinstance(form, AliquotForm):
