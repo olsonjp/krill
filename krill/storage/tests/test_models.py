@@ -7,7 +7,7 @@ from ..models.site import Site
 from sample.models.sample import Sample
 from sample.models.aliquot import (
     Aliquot, AliquotType, AliquotDisposition,
-    AliquotLocation,
+    AliquotLocation, AliquotTube
 )
 from sample.models.source import Source
 
@@ -184,14 +184,15 @@ class BoxModelTest(TestCase):
         )
         aliquot = Aliquot.objects.create(
             sample=sample,
-            aliquot_type=aliquot_type,
-            disposition=disposition,
+            quantity=2,
+            aliquot_type=aliquot_type
         )
         AliquotLocation.objects.create(
             aliquot=aliquot,
             box=box,
             row=1,
             column=1,
+            tube_number=1
         )
         available_slots = box.get_available_slots()
         self.assertEqual(len(available_slots), 3)
@@ -257,22 +258,20 @@ class BoxModelTest(TestCase):
             name="Test Stored",
             disposition_type="stored"
         )
-        # Create 4 separate aliquots, one per slot
-        aliquots = []
-        for i in range(4):
-            a = Aliquot.objects.create(
-                sample=sample,
-                aliquot_type=aliquot_type,
-                disposition=disposition,
-            )
-            aliquots.append(a)
-        for i, (row, col) in enumerate([(1, 1), (1, 2), (2, 1), (2, 2)]):
-            AliquotLocation.objects.create(
-                aliquot=aliquots[i],
-                box=box,
-                row=row,
-                column=col,
-            )
+        aliquot = Aliquot.objects.create(
+            sample=sample,
+            quantity=4,
+            aliquot_type=aliquot_type
+        )
+        for row in range(1, 3):
+            for col in range(1, 3):
+                AliquotLocation.objects.create(
+                    aliquot=aliquot,
+                    box=box,
+                    row=row,
+                    column=col,
+                    tube_number=row * 2 + col
+                )
         self.assertFalse(box.has_available_slots())
     def test_box_aliquots_property(self):
         """Test box aliquots property"""
@@ -290,28 +289,24 @@ class BoxModelTest(TestCase):
             name="Test Stored",
             disposition_type="stored"
         )
-        # Create 2 aliquots, each with their own location
-        aliquot1 = Aliquot.objects.create(
+        aliquot = Aliquot.objects.create(
             sample=sample,
-            aliquot_type=aliquot_type,
-            disposition=disposition,
-        )
-        aliquot2 = Aliquot.objects.create(
-            sample=sample,
-            aliquot_type=aliquot_type,
-            disposition=disposition,
+            quantity=2,
+            aliquot_type=aliquot_type
         )
         AliquotLocation.objects.create(
-            aliquot=aliquot1,
+            aliquot=aliquot,
             box=box,
             row=1,
             column=1,
+            tube_number=1
         )
         AliquotLocation.objects.create(
-            aliquot=aliquot2,
+            aliquot=aliquot,
             box=box,
             row=1,
             column=2,
+            tube_number=2
         )
         self.assertEqual(len(box.aliquots), 2)
 

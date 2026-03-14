@@ -410,9 +410,8 @@ def storage_dashboard(request):
             device_total_slots = sum(box.rows * box.columns for box in device_boxes)
             device_used_slots = AliquotLocation.objects.filter(box__rack__shelf__device=device).count()
             device_usage_percent = round((device_used_slots / device_total_slots * 100) if device_total_slots > 0 else 0)
-
+            
             freezer_status.append({
-                'id': device.pk,
                 'name': device.name,
                 'status': 'operational',
                 'capacity': f"{device_used_slots}/{device_total_slots}",
@@ -470,7 +469,7 @@ def generate_storage_audit_data(parameters):
     # Get all occupied slots
     occupied_locations = AliquotLocation.objects.select_related(
         'aliquot__sample',
-        'box__rack__shelf__device__site'
+        'box__device__site'
     ).prefetch_related(
         Prefetch('aliquot__sample__aliquots', queryset=Aliquot.objects.all())
     ).all()
@@ -494,8 +493,8 @@ def generate_storage_audit_data(parameters):
     for location in audit_slots:
         slot_data = {
             'location_id': location.id,
-            'site': location.box.rack.shelf.device.site.name if location.box.rack.shelf.device.site else 'Unknown',
-            'device': location.box.rack.shelf.device.name,
+            'site': location.box.device.site.name if location.box.device.site else 'Unknown',
+            'device': location.box.device.name,
             'box': location.box.name,
             'row': location.row,
             'column': location.column,
@@ -514,7 +513,7 @@ def generate_storage_audit_data(parameters):
     empty_audit_data = []
     if include_empty_checks:
         # Get all boxes and their total capacity
-        all_boxes = Box.objects.select_related('rack__shelf__device__site').all()
+        all_boxes = Box.objects.select_related('device__site').all()
         empty_slots = []
 
         for box in all_boxes:
@@ -525,8 +524,8 @@ def generate_storage_audit_data(parameters):
                 for col in range(1, box.columns + 1):
                     if (row, col) not in occupied_set:
                         empty_slots.append({
-                            'site': box.rack.shelf.device.site.name if box.rack.shelf.device.site else 'Unknown',
-                            'device': box.rack.shelf.device.name,
+                            'site': box.device.site.name if box.device.site else 'Unknown',
+                            'device': box.device.name,
                             'box': box.name,
                             'row': row,
                             'column': col,

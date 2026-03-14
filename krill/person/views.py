@@ -156,7 +156,7 @@ class DataImportView(TemplateView):
             preview_data['dispositions'] = set([f['fields']['name'] for f in fixtures if f['model'] == 'sample.aliquotdisposition'])
             preview_data['storage_items'] = set([f['fields']['name'] for f in fixtures if f['model'] in ['storage.site', 'storage.device', 'storage.shelf', 'storage.rack', 'storage.box']])
             preview_data['aliquots'] = len([f for f in fixtures if f['model'] == 'sample.aliquot'])
-            preview_data['tubes'] = 0  # No longer separate; each aliquot is one physical item
+            preview_data['tubes'] = len([f for f in fixtures if f['model'] == 'sample.aliquottube'])
             preview_data['locations'] = len([f for f in fixtures if f['model'] == 'sample.aliquotlocation'])
 
             # Convert sets to sorted lists for display
@@ -330,7 +330,7 @@ class DataImportView(TemplateView):
                     'racks': len([f for f in fixtures if f['model'] == 'storage.rack']),
                     'boxes': len([f for f in fixtures if f['model'] == 'storage.box']),
                     'aliquots': len([f for f in fixtures if f['model'] == 'sample.aliquot']),
-                    'tubes': 0,  # No longer separate; each aliquot is one physical item
+                    'tubes': len([f for f in fixtures if f['model'] == 'sample.aliquottube']),
                     'locations': len([f for f in fixtures if f['model'] == 'sample.aliquotlocation'])
                 }
 
@@ -519,8 +519,7 @@ class DataImportView(TemplateView):
                 disposition_map = {
                     'In Storage': 'stored',
                     'Used': 'exhausted',
-                    'Checked Out': 'in_use',
-                    'Disposed': 'disposed',
+                    'Checked Out': 'in_use'
                 }
                 disposition = row['Disposition'] or 'In Storage'
                 disp_type = disposition_map.get(disposition, 'stored')
@@ -536,32 +535,43 @@ class DataImportView(TemplateView):
                     })
                     pk_counter['disposition'] += 1
 
-                # Create one Aliquot per physical item (new model: 1 row = N aliquots)
-                # Use "Number of Aliquots Total" or "Collef Aliquots Total" for count
+                # Create Aliquot
+                aliquot_pk = pk_counter['aliquot']
+                # Use "Number of Aliquots Total" or "Collef Aliquots Total" for tube count
                 quantity = int(float(row.get('Number of Aliquots Total', row.get('Collef Aliquots Total', 1)) or 1))
                 current_time = timezone.now().isoformat()
+                fixtures.append({
+                    'model': 'sample.aliquot',
+                    'pk': aliquot_pk,
+                    'fields': {
+                        'parent': None,  # Could be mapped if needed
+                        'sample': samples[sample_key],
+                        'quantity': quantity,
+                        'aliquot_type': aliquot_types[aliquot_type],
+                        'access_level': 'all_members',
+                        'created_at': current_time,
+                        'updated_at': current_time,
+                        'deleted': False
+                    }
+                })
+                pk_counter['aliquot'] += 1
 
-                # Create N aliquot records, each representing one physical item
-                first_aliquot_pk = pk_counter['aliquot']
-                for aliquot_num in range(quantity):
-                    aliquot_pk = pk_counter['aliquot']
+                # Create AliquotTube for each tube in the aliquot
+                for tube_num in range(1, quantity + 1):
                     fixtures.append({
-                        'model': 'sample.aliquot',
-                        'pk': aliquot_pk,
+                        'model': 'sample.aliquottube',
+                        'pk': pk_counter['tube'],
                         'fields': {
-                            'parent': None,  # Could be mapped if needed
-                            'sample': samples[sample_key],
+                            'aliquot': aliquot_pk,
+                            'tube_number': tube_num,
                             'disposition': dispositions[disposition],
-                            'aliquot_type': aliquot_types[aliquot_type],
-                            'access_level': 'all_members',
                             'created_at': current_time,
-                            'updated_at': current_time,
-                            'deleted': False
+                            'updated_at': current_time
                         }
                     })
-                    pk_counter['aliquot'] += 1
+                    pk_counter['tube'] += 1
 
-                # Create AliquotLocation if box exists (only for first aliquot in the batch)
+                # Create AliquotLocation if box exists (only for first tube)
                 if box_key in storage['boxes'] and row.get('Position 3') and row.get('Position 4') and quantity > 0:
                     try:
                         row_pos = int(row['Position 3'])
@@ -571,7 +581,8 @@ class DataImportView(TemplateView):
                                 'model': 'sample.aliquotlocation',
                                 'pk': pk_counter['location'],
                                 'fields': {
-                                    'aliquot': first_aliquot_pk,
+                                    'aliquot': aliquot_pk,
+                                    'tube_number': 1,  # Store first tube in the location
                                     'box': storage['boxes'][box_key],
                                     'row': row_pos,
                                     'column': col_pos,
@@ -582,7 +593,7 @@ class DataImportView(TemplateView):
                             pk_counter['location'] += 1
                     except (ValueError, TypeError) as e:
                         # Log error but continue with import
-                        print(f"Warning: Could not create location for aliquot {first_aliquot_pk}: {e}")
+                        print(f"Warning: Could not create location for aliquot {aliquot_pk}: {e}")
 
         return fixtures
 

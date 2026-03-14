@@ -6,9 +6,9 @@ from django.utils.decorators import method_decorator
 from django.db import IntegrityError, transaction
 from django.contrib import messages
 from ..models.sample import Sample
-from ..models.aliquot import Aliquot, AliquotType, AliquotLocation
+from ..models.aliquot import Aliquot, AliquotType, AliquotLocation, AliquotTube
 from ..models.source import Source
-from ..forms import SampleForm, AliquotForm, AliquotTypeForm, SourceForm, AliquotMoveForm
+from ..forms import SampleForm, AliquotForm, AliquotTypeForm, SourceForm, AliquotTubeForm, AliquotTubeMoveForm
 from ..models.aliquot import AliquotDisposition
 
 @method_decorator(login_required, name='dispatch')
@@ -41,8 +41,61 @@ class ModelDetailView(DetailView):
         context['form'] = self.get_form_class()(instance=self.object)
         # Add storage location information for aliquots
         if self.kwargs.get('type') == 'aliquot':
+            # Get all tubes for this aliquot
+            tubes = AliquotTube.objects.filter(aliquot=self.object).select_related('disposition')
+            context['tubes'] = tubes
+            # Get storage locations for stored tubes
+            stored_tubes = tubes.filter(disposition__disposition_type='stored')
+            if stored_tubes.exists():
+                locations = AliquotLocation.objects.filter(
+                    aliquot=self.object,
+                    tube_number__in=stored_tubes.values_list('tube_number', flat=True)
+                ).select_related('box__rack__shelf__device')
+                if locations.exists():
+                    context['storage_locations'] = []
+                    for location in locations:
+                        context['storage_locations'].append({
+                            'box': location.box,
+                            'row': location.row,
+                            'column': location.column,
+                            'tube_number': location.tube_number,
+                            'device': location.box.rack.shelf.device,
+                            'shelf': location.box.rack.shelf,
+                            'rack': location.box.rack,
+                        })
+                else:
+                    context['storage_locations'] = None
+            else:
+                context['storage_locations'] = None
+        return context
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        form = self.get_form_class()(request.POST, instance=self.object)
+        if form.is_valid():
+            form.save()
+            return redirect('sample:sample_list')
+        return render(request, self.template_name, {'object': self.object, 'form': form})
+
+@method_decorator(login_required, name='dispatch')
+class TubeDetailView(DetailView):
+    model = AliquotTube
+    template_name = 'sample/tube_detail.html'
+    context_object_name = 'tube'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        tube = self.object
+        # Add forms to context for editing and moving
+        context['form'] = AliquotTubeForm(instance=tube)
+        context['move_form'] = AliquotTubeMoveForm()
+        # Get storage location if tube is stored
+        if tube.disposition.disposition_type == 'stored':
             try:
-                location = self.object.location
+                location = AliquotLocation.objects.get(
+                    aliquot=tube.aliquot,
+                    tube_number=tube.tube_number
+                )
                 context['storage_location'] = {
                     'box': location.box,
                     'row': location.row,
@@ -53,48 +106,7 @@ class ModelDetailView(DetailView):
                 }
             except AliquotLocation.DoesNotExist:
                 context['storage_location'] = None
-        return context
-
-    def post(self, request, *args, **kwargs):
-        self.object = self.get_object()
-        model_type = self.kwargs.get('type', 'sample')
-        old_disposition = self.object.disposition if model_type == 'aliquot' else None
-        form = self.get_form_class()(request.POST, instance=self.object)
-        if form.is_valid():
-            form.save()
-            if model_type == 'aliquot':
-                new_disp = form.cleaned_data.get('disposition')
-                if (old_disposition and old_disposition.disposition_type == 'stored'
-                        and new_disp and new_disp.disposition_type != 'stored'):
-                    AliquotLocation.objects.filter(aliquot=self.object).delete()
-            return redirect('sample:sample_list')
-        return render(request, self.template_name, {'object': self.object, 'form': form})
-
-
-@method_decorator(login_required, name='dispatch')
-class AliquotDetailView(DetailView):
-    model = Aliquot
-    template_name = 'sample/tube_detail.html'
-    context_object_name = 'aliquot'
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        aliquot = self.object
-        # Add forms to context for editing and moving
-        context['form'] = AliquotForm(instance=aliquot)
-        context['move_form'] = AliquotMoveForm()
-        # Get storage location if aliquot is stored
-        try:
-            location = aliquot.location
-            context['storage_location'] = {
-                'box': location.box,
-                'row': location.row,
-                'column': location.column,
-                'device': location.box.rack.shelf.device,
-                'shelf': location.box.rack.shelf,
-                'rack': location.box.rack,
-            }
-        except AliquotLocation.DoesNotExist:
+        else:
             context['storage_location'] = None
         return context
 
@@ -111,30 +123,36 @@ class AliquotDetailView(DetailView):
 
     def _handle_edit(self, request):
         """Handle edit form submission"""
-        old_disposition = self.object.disposition  # capture before form.is_valid() mutates instance
-        form = AliquotForm(request.POST, instance=self.object)
+        form = AliquotTubeForm(request.POST, instance=self.object)
         if form.is_valid():
+            old_disposition = self.object.disposition
             form.save()
             # If changing from stored to non-stored, remove storage location
-            new_disp = form.cleaned_data.get('disposition')
-            if (old_disposition and old_disposition.disposition_type == 'stored'
-                    and new_disp and new_disp.disposition_type != 'stored'):
-                AliquotLocation.objects.filter(aliquot=self.object).delete()
-            return redirect('sample:aliquot_detail', pk=self.object.pk)
+            if old_disposition.disposition_type == 'stored' and form.cleaned_data['disposition'].disposition_type != 'stored':
+                AliquotLocation.objects.filter(
+                    aliquot=self.object.aliquot,
+                    tube_number=self.object.tube_number
+                ).delete()
+            return redirect('sample:tube_detail', pk=self.object.pk)
         else:
+            # If form is invalid, re-render with errors
             context = self.get_context_data()
             context['form'] = form
             return render(request, self.template_name, context)
 
     def _handle_move(self, request):
         """Handle move form submission"""
-        move_form = AliquotMoveForm(request.POST)
+        move_form = AliquotTubeMoveForm(request.POST)
         if move_form.is_valid():
+            # Get stored disposition
             stored_disposition, _ = AliquotDisposition.objects.get_or_create(
                 name='Stored',
                 defaults={'disposition_type': 'stored'}
             )
 
+            # Create new location with race condition handling
+            # All operations (check, create, delete old location, update disposition) must be atomic
+            # to prevent inconsistent state if any step fails
             box = move_form.cleaned_data['box']
             row = move_form.cleaned_data['row']
             column = move_form.cleaned_data['column']
@@ -151,29 +169,39 @@ class AliquotDetailView(DetailView):
                         context['move_form'] = move_form
                         return render(request, self.template_name, context)
 
-                    # Remove any existing location for this aliquot first
-                    AliquotLocation.objects.filter(aliquot=self.object).delete()
+                    # Remove any existing location for this tube first
+                    AliquotLocation.objects.filter(
+                        aliquot=self.object.aliquot,
+                        tube_number=self.object.tube_number
+                    ).delete()
 
                     # Create new location atomically
                     AliquotLocation.objects.create(
-                        aliquot=self.object,
+                        aliquot=self.object.aliquot,
                         box=box,
                         row=row,
                         column=column,
+                        tube_number=self.object.tube_number
                     )
 
-                    # Update aliquot disposition to stored (within transaction)
+                    # Update tube disposition to stored (within transaction)
                     if self.object.disposition != stored_disposition:
                         self.object.disposition = stored_disposition
                         self.object.save()
             except IntegrityError:
-                if AliquotLocation.objects.filter(aliquot=self.object).exists():
+                # Determine which constraint was violated
+                # Check if tube already has a location (unique_together: aliquot, tube_number)
+                if AliquotLocation.objects.filter(
+                    aliquot=self.object.aliquot,
+                    tube_number=self.object.tube_number
+                ).exists():
                     messages.error(
                         request,
-                        "This aliquot already has a location. "
+                        f"Tube {self.object.tube_number} already has a location. "
                         "This may be due to a concurrent assignment. Please try again."
                     )
                 else:
+                    # Position must be occupied (unique_together: box, row, column)
                     messages.error(
                         request,
                         f"Position ({row}, {column}) is already occupied. Please select a different position."
@@ -184,28 +212,35 @@ class AliquotDetailView(DetailView):
 
             messages.success(
                 request,
-                f"Aliquot moved to position ({row}, {column}) in {box.name}."
+                f"Tube moved to position ({row}, {column}) in {box.name}."
             )
-            return redirect('sample:aliquot_detail', pk=self.object.pk)
+            return redirect('sample:tube_detail', pk=self.object.pk)
         else:
+            # If form is invalid, re-render with errors
             context = self.get_context_data()
             context['move_form'] = move_form
             return render(request, self.template_name, context)
 
     def _handle_checkout(self, request):
         """Handle checkout action - change disposition to 'in_use'"""
+        # Check if tube is currently stored
         was_stored = self.object.disposition.disposition_type == 'stored'
 
+        # Get 'in_use' disposition
         in_use_disposition, _ = AliquotDisposition.objects.get_or_create(
             name='In Use',
             defaults={'disposition_type': 'in_use'}
         )
 
+        # Change tube disposition to 'in_use'
         self.object.disposition = in_use_disposition
         self.object.save()
 
-        # Remove storage location if aliquot was stored
+        # Remove storage location if tube was stored
         if was_stored:
-            AliquotLocation.objects.filter(aliquot=self.object).delete()
+            AliquotLocation.objects.filter(
+                aliquot=self.object.aliquot,
+                tube_number=self.object.tube_number
+            ).delete()
 
-        return redirect('sample:aliquot_detail', pk=self.object.pk)
+        return redirect('sample:tube_detail', pk=self.object.pk)

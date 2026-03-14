@@ -97,7 +97,7 @@
                                     {{ item.disposition|title|default:"Unknown" }}
                                 </span>
                             </p>
-                            <p><strong>ID:</strong> {{ item.id }}</p>
+                            <p><strong>Quantity:</strong> {{ item.quantity|default:"N/A" }}</p>
                         {% elif model_name == 'Aliquot Types' %}
                             <p><strong>Description:</strong> {{ item.description|truncatechars:100|default:"No description" }}</p>
                         {% elif model_name == 'Sources' %}

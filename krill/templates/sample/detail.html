@@ -23,8 +23,12 @@
                 <span>{{ object.aliquot_type.name|default:"Not specified" }}</span>
             </div>
             <div class="detail-field">
+                <label>Quantity:</label>
+                <span>{{ object.quantity }}</span>
+            </div>
+            <div class="detail-field">
                 <label>Disposition:</label>
-                <span class="status-badge {{ object.disposition.disposition_type|lower }}">{{ object.disposition.name }}</span>
+                <span>{{ object.disposition }}</span>
             </div>
             <div class="detail-field">
                 <label>Access Level:</label>
@@ -37,20 +41,73 @@
                     {{ object.get_access_level_display }}
                 </span>
             </div>
-            {% if storage_location %}
+            <!-- Tube Information -->
             <div class="detail-section">
-                <h3><i class="material-icons-round">location_on</i> Storage Location</h3>
+                <h3><i class="material-icons-round">science</i> Individual Tubes</h3>
                 <div class="detail-field">
-                    <span>{{ storage_location.device.name }} → {{ storage_location.shelf.name }} → {{ storage_location.rack.name }} → <a href="{% url 'storage:detail' type='box' pk=storage_location.box.id %}?highlight_row={{ storage_location.row }}&highlight_col={{ storage_location.column }}" class="box-link">{{ storage_location.box.name }}</a> ({{ storage_location.row }}, {{ storage_location.column }})</span>
+                    <label>Total Tubes:</label>
+                    <span>{{ object.quantity }}</span>
+                </div>
+                <!-- Tube Disposition Cards -->
+                <div class="disposition-cards">
+                    <div class="disposition-card stored">
+                        <div class="card-header">
+                            <i class="material-icons-round">inventory_2</i>
+                            <h4>Stored</h4>
+                        </div>
+                        <div class="card-content">
+                            <span class="count">{{ object.stored_tubes_count }}</span>
+                            <span class="label">tubes</span>
+                        </div>
+                    </div>
+                    <div class="disposition-card in_use">
+                        <div class="card-header">
+                            <i class="material-icons-round">science</i>
+                            <h4>In Use</h4>
+                        </div>
+                        <div class="card-content">
+                            <span class="count">{{ object.in_use_tubes_count }}</span>
+                            <span class="label">tubes</span>
+                        </div>
+                    </div>
+                    <div class="disposition-card exhausted">
+                        <div class="card-header">
+                            <i class="material-icons-round">block</i>
+                            <h4>Exhausted</h4>
+                        </div>
+                        <div class="card-content">
+                            <span class="count">{{ object.exhausted_tubes_count }}</span>
+                            <span class="label">tubes</span>
+                        </div>
+                    </div>
                 </div>
             </div>
-            {% endif %}
+
+            <!-- Individual Tube List -->
             <div class="detail-section">
-                <div class="detail-field">
-                    <a href="{% url 'sample:aliquot_detail' pk=object.id %}" class="btn btn-sm btn-primary">
-                        <span class="material-icons-round">edit</span>
-                        Edit / Move / Checkout
-                    </a>
+                <h3><i class="material-icons-round">list</i> Tube Details</h3>
+                <div class="tubes-list">
+                    {% for tube in object.tubes.all %}
+                    <div class="tube-item {{ tube.disposition.disposition_type|lower|cut:' ' }}">
+                        <div class="tube-header">
+                            <span class="tube-number">Tube #{{ tube.tube_number }}</span>
+                            <span class="tube-status">{{ tube.disposition.name }}</span>
+                            <div class="tube-actions">
+                                <a href="{% url 'sample:tube_detail' pk=tube.id %}" class="btn btn-sm btn-primary">
+                                    <span class="material-icons-round">edit</span>
+                                    Edit
+                                </a>
+                            </div>
+                        </div>
+                        {% for location in tube.aliquot.locations.all %}
+                            {% if location.tube_number == tube.tube_number %}
+                            <div class="tube-location">
+                                <span>{{ location.box.rack.shelf.device.name }} → {{ location.box.rack.shelf.name }} → {{ location.box.rack.name }} → <a href="{% url 'storage:detail' type='box' pk=location.box.id %}?highlight_row={{ location.row }}&highlight_col={{ location.column }}" class="box-link">{{ location.box.name }}</a> ({{ location.row }}, {{ location.column }})</span>
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    {% endfor %}
                 </div>
             </div>
         {% elif model_type == 'aliquot-type' %}

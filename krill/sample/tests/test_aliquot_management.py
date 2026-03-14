@@ -2,8 +2,8 @@
 Tests for aliquot management functionality including:
 - Box assignment during creation
 - Checkout functionality
-- Aliquot editing
-- Disposition management
+- Tube editing
+- Signal handlers using disposition_type
 """
 from django.test import TestCase, Client
 from django.urls import reverse
@@ -11,7 +11,7 @@ from django.contrib.auth import get_user_model
 from sample.models.sample import Sample
 from sample.models.aliquot import (
     Aliquot, AliquotType, AliquotDisposition,
-    AliquotLocation,
+    AliquotLocation, AliquotTube
 )
 from sample.models.source import Source
 from storage.models.storage import Device, Shelf, Rack, Box
@@ -69,13 +69,12 @@ class AliquotBoxAssignmentTest(TestCase):
         )
 
     def test_aliquot_creation_with_box_assignment(self):
-        """Test creating aliquot with box assignment (count=3 creates 3 aliquots)"""
+        """Test creating aliquot with box assignment"""
         url = reverse('sample:sample_create') + '?type=aliquot'
         data = {
             'sample': self.sample.id,
-            'count': 3,
+            'quantity': 3,
             'aliquot_type': self.aliquot_type.id,
-            'disposition': self.stored_disposition.id,
             'access_level': 'all_members',
             'assign_to_box': True,
             'box': self.box.id,
@@ -86,16 +85,20 @@ class AliquotBoxAssignmentTest(TestCase):
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, 302)  # Redirect after creation
 
-        # Check 3 aliquots were created
-        aliquots = Aliquot.objects.filter(sample=self.sample)
-        self.assertEqual(aliquots.count(), 3)
+        # Check aliquot was created
+        aliquot = Aliquot.objects.get(sample=self.sample)
+        self.assertEqual(aliquot.quantity, 3)
 
-        # Check locations were created (one per aliquot)
-        locations = AliquotLocation.objects.filter(aliquot__sample=self.sample)
+        # Check tubes were created
+        tubes = AliquotTube.objects.filter(aliquot=aliquot)
+        self.assertEqual(tubes.count(), 3)
+
+        # Check locations were created
+        locations = AliquotLocation.objects.filter(aliquot=aliquot)
         self.assertEqual(locations.count(), 3)
 
         # Check first location is at specified position
-        first_location = locations.order_by('row', 'column').first()
+        first_location = locations.order_by('tube_number').first()
         self.assertEqual(first_location.row, 1)
         self.assertEqual(first_location.column, 1)
         self.assertEqual(first_location.box, self.box)
@@ -105,9 +108,8 @@ class AliquotBoxAssignmentTest(TestCase):
         url = reverse('sample:sample_create') + '?type=aliquot'
         data = {
             'sample': self.sample.id,
-            'count': 1,
+            'quantity': 2,
             'aliquot_type': self.aliquot_type.id,
-            'disposition': self.stored_disposition.id,
             'access_level': 'all_members',
             'assign_to_box': False,
         }
@@ -117,7 +119,11 @@ class AliquotBoxAssignmentTest(TestCase):
 
         # Check aliquot was created
         aliquot = Aliquot.objects.get(sample=self.sample)
-        self.assertEqual(aliquot.disposition, self.stored_disposition)
+        self.assertEqual(aliquot.quantity, 2)
+
+        # Check tubes were created
+        tubes = AliquotTube.objects.filter(aliquot=aliquot)
+        self.assertEqual(tubes.count(), 2)
 
         # Check no locations were created
         locations = AliquotLocation.objects.filter(aliquot=aliquot)
@@ -128,9 +134,8 @@ class AliquotBoxAssignmentTest(TestCase):
         url = reverse('sample:sample_create') + '?type=aliquot'
         data = {
             'sample': self.sample.id,
-            'count': 2,
+            'quantity': 2,
             'aliquot_type': self.aliquot_type.id,
-            'disposition': self.stored_disposition.id,
             'access_level': 'all_members',
             'assign_to_box': True,
             'box': self.box.id,
@@ -140,9 +145,9 @@ class AliquotBoxAssignmentTest(TestCase):
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, 302)
 
-        # Check locations were created (one per aliquot)
-        aliquots = Aliquot.objects.filter(sample=self.sample)
-        locations = AliquotLocation.objects.filter(aliquot__in=aliquots)
+        # Check locations were created
+        aliquot = Aliquot.objects.get(sample=self.sample)
+        locations = AliquotLocation.objects.filter(aliquot=aliquot)
         self.assertEqual(locations.count(), 2)
 
         # Check positions are valid
@@ -159,23 +164,31 @@ class AliquotBoxAssignmentTest(TestCase):
         # Create an aliquot and occupy position (1, 1)
         existing_aliquot = Aliquot.objects.create(
             sample=self.sample,
-            aliquot_type=self.aliquot_type,
-            disposition=self.stored_disposition,
+            quantity=1,
+            aliquot_type=self.aliquot_type
         )
+        existing_aliquot.create_tubes(auto_store=False)
+        tube = existing_aliquot.tubes.first()
+        stored_disposition, _ = AliquotDisposition.objects.get_or_create(
+            name='Stored',
+            defaults={'disposition_type': 'stored'}
+        )
+        tube.disposition = stored_disposition
+        tube.save()
         AliquotLocation.objects.create(
             aliquot=existing_aliquot,
             box=self.box,
             row=1,
             column=1,
+            tube_number=tube.tube_number
         )
 
         # Try to create new aliquot requesting occupied position
         url = reverse('sample:sample_create') + '?type=aliquot'
         data = {
             'sample': self.sample.id,
-            'count': 1,
+            'quantity': 1,
             'aliquot_type': self.aliquot_type.id,
-            'disposition': self.stored_disposition.id,
             'access_level': 'all_members',
             'assign_to_box': True,
             'box': self.box.id,
@@ -253,44 +266,64 @@ class AliquotCheckoutTest(TestCase):
             defaults={'disposition_type': 'in_use'}
         )
 
-        # Create stored aliquot with location
+        # Create aliquot with tubes
         self.aliquot = Aliquot.objects.create(
             sample=self.sample,
-            aliquot_type=self.aliquot_type,
-            disposition=self.stored_disposition,
+            quantity=2,
+            aliquot_type=self.aliquot_type
         )
+        self.aliquot.create_tubes(auto_store=False)
+
+        # Store one tube in a box
+        self.tube = AliquotTube.objects.filter(aliquot=self.aliquot).first()
+        self.tube.disposition = self.stored_disposition
+        self.tube.save()
+
         AliquotLocation.objects.create(
             aliquot=self.aliquot,
             box=self.box,
             row=1,
             column=1,
+            tube_number=self.tube.tube_number
         )
 
-    def test_checkout_stored_aliquot(self):
-        """Test checking out a stored aliquot"""
-        # Verify aliquot is stored
-        self.assertEqual(self.aliquot.disposition.disposition_type, 'stored')
-        self.assertTrue(AliquotLocation.objects.filter(aliquot=self.aliquot).exists())
+    def test_checkout_stored_tube(self):
+        """Test checking out a stored tube"""
+        # Verify tube is stored
+        self.assertEqual(self.tube.disposition.disposition_type, 'stored')
+        self.assertTrue(
+            AliquotLocation.objects.filter(
+                aliquot=self.aliquot,
+                tube_number=self.tube.tube_number
+            ).exists()
+        )
 
-        # Checkout the aliquot
-        url = reverse('sample:aliquot_detail', kwargs={'pk': self.aliquot.id})
+        # Checkout the tube
+        url = reverse('sample:tube_detail', kwargs={'pk': self.tube.id})
         response = self.client.post(url, {'action': 'checkout'})
 
         self.assertEqual(response.status_code, 302)  # Redirect
 
         # Refresh from database
-        self.aliquot.refresh_from_db()
+        self.tube.refresh_from_db()
 
         # Verify disposition changed to 'in_use'
-        self.assertEqual(self.aliquot.disposition.disposition_type, 'in_use')
+        self.assertEqual(self.tube.disposition.disposition_type, 'in_use')
 
         # Verify storage location was removed
-        self.assertFalse(AliquotLocation.objects.filter(aliquot=self.aliquot).exists())
+        self.assertFalse(
+            AliquotLocation.objects.filter(
+                aliquot=self.aliquot,
+                tube_number=self.tube.tube_number
+            ).exists()
+        )
 
     def test_checkout_uses_correct_disposition_type_attribute(self):
-        """Test that checkout uses disposition_type correctly"""
-        url = reverse('sample:aliquot_detail', kwargs={'pk': self.aliquot.id})
+        """Test that checkout uses disposition_type (not dispositionType)"""
+        # This test ensures we don't reintroduce the camelCase bug
+        url = reverse('sample:tube_detail', kwargs={'pk': self.tube.id})
 
+        # This should not raise AttributeError
         try:
             response = self.client.post(url, {'action': 'checkout'})
             self.assertEqual(response.status_code, 302)
@@ -300,8 +333,8 @@ class AliquotCheckoutTest(TestCase):
             raise
 
 
-class AliquotDispositionDirectTest(TestCase):
-    """Test that aliquot disposition is directly on the model"""
+class SignalHandlerDispositionTypeTest(TestCase):
+    """Test signal handlers use correct disposition_type attribute"""
 
     def setUp(self):
         """Set up test data"""
@@ -312,6 +345,7 @@ class AliquotDispositionDirectTest(TestCase):
         )
         self.aliquot_type = AliquotType.objects.create(name="Test Type")
 
+        # Create dispositions
         self.stored_disposition, _ = AliquotDisposition.objects.get_or_create(
             name='Stored',
             defaults={'disposition_type': 'stored'}
@@ -321,34 +355,70 @@ class AliquotDispositionDirectTest(TestCase):
             defaults={'disposition_type': 'in_use'}
         )
 
+    def test_signal_handlers_use_disposition_type_not_dispositionType(self):
+        """Test that signal handlers use disposition_type attribute correctly"""
+        # Create aliquot and tube
+        aliquot = Aliquot.objects.create(
+            sample=self.sample,
+            quantity=1,
+            aliquot_type=self.aliquot_type
+        )
+        aliquot.create_tubes(auto_store=False)
+
+        tube = AliquotTube.objects.filter(aliquot=aliquot).first()
+
+        # Change disposition - this should trigger signals
+        # This should not raise AttributeError about dispositionType
+        try:
+            tube.disposition = self.in_use_disposition
+            tube.save()
+
+            # Verify the change worked
+            tube.refresh_from_db()
+            self.assertEqual(tube.disposition.disposition_type, 'in_use')
+        except AttributeError as e:
+            if 'dispositionType' in str(e):
+                self.fail("Signal handlers are using wrong attribute name 'dispositionType' instead of 'disposition_type'")
+            raise
+
     def test_disposition_change_removes_storage_location(self):
-        """Test that changing disposition and saving removes storage location when appropriate"""
+        """Test that changing from stored to in_use removes storage location"""
+        # Create storage
         site = Site.objects.create(name="Test Site")
         device = Device.objects.create(name="Test Device", site=site)
         shelf = Shelf.objects.create(name="Test Shelf", device=device)
         rack = Rack.objects.create(name="Test Rack", shelf=shelf)
         box = Box.objects.create(name="Test Box", rack=rack, rows=5, columns=5)
 
+        # Create aliquot and tube
         aliquot = Aliquot.objects.create(
             sample=self.sample,
-            aliquot_type=self.aliquot_type,
-            disposition=self.stored_disposition,
+            quantity=1,
+            aliquot_type=self.aliquot_type
         )
+        aliquot.create_tubes(auto_store=False)
 
+        tube = AliquotTube.objects.filter(aliquot=aliquot).first()
+        tube.disposition = self.stored_disposition
+        tube.save()
+
+        # Create storage location
         location = AliquotLocation.objects.create(
             aliquot=aliquot,
             box=box,
             row=1,
             column=1,
+            tube_number=tube.tube_number
         )
 
-        # Change to in_use directly
-        aliquot.disposition = self.in_use_disposition
-        aliquot.save()
+        # Change to in_use - should remove location
+        tube.disposition = self.in_use_disposition
+        tube.save()
 
-        # Disposition is changed but location removal is the view's responsibility
-        aliquot.refresh_from_db()
-        self.assertEqual(aliquot.disposition.disposition_type, 'in_use')
+        # Verify location was removed
+        self.assertFalse(
+            AliquotLocation.objects.filter(pk=location.pk).exists()
+        )
 
 
 class BoxAssignmentViewTest(TestCase):
@@ -393,19 +463,23 @@ class BoxAssignmentViewTest(TestCase):
         )
         self.aliquot_type = AliquotType.objects.create(name="Test Type")
 
+        self.aliquot = Aliquot.objects.create(
+            sample=self.sample,
+            quantity=2,
+            aliquot_type=self.aliquot_type
+        )
+        self.aliquot.create_tubes(auto_store=False)
+
+        # Create dispositions
         self.stored_disposition, _ = AliquotDisposition.objects.get_or_create(
             name='Stored',
             defaults={'disposition_type': 'stored'}
         )
 
-        self.aliquot = Aliquot.objects.create(
-            sample=self.sample,
-            aliquot_type=self.aliquot_type,
-            disposition=self.stored_disposition,
-        )
-
     def test_assign_aliquot_to_box_position(self):
         """Test assigning aliquot to box position via view"""
+        tube = AliquotTube.objects.filter(aliquot=self.aliquot).first()
+
         url = reverse('storage:assign_aliquot', kwargs={
             'box_id': self.box.id,
             'row': 2,
@@ -414,38 +488,42 @@ class BoxAssignmentViewTest(TestCase):
 
         response = self.client.post(url, {
             'aliquot_id': self.aliquot.id,
+            'tube_number': tube.tube_number
         })
 
         self.assertEqual(response.status_code, 302)  # Redirect
 
         # Verify location was created
-        location = AliquotLocation.objects.get(aliquot=self.aliquot)
+        location = AliquotLocation.objects.get(
+            aliquot=self.aliquot,
+            tube_number=tube.tube_number
+        )
         self.assertEqual(location.row, 2)
         self.assertEqual(location.column, 3)
         self.assertEqual(location.box, self.box)
 
-        # Verify aliquot disposition changed to stored
-        self.aliquot.refresh_from_db()
-        self.assertEqual(self.aliquot.disposition.disposition_type, 'stored')
+        # Verify tube disposition changed to stored
+        tube.refresh_from_db()
+        self.assertEqual(tube.disposition.disposition_type, 'stored')
 
     def test_assign_aliquot_prevents_duplicate_position(self):
         """Test that assigning to occupied position fails"""
         from django.contrib.messages import get_messages
 
-        # Create first location for a second aliquot
-        aliquot2 = Aliquot.objects.create(
-            sample=self.sample,
-            aliquot_type=self.aliquot_type,
-            disposition=self.stored_disposition,
-        )
+        # Create first location
+        tube1 = AliquotTube.objects.filter(aliquot=self.aliquot).first()
+        tube1.disposition = self.stored_disposition
+        tube1.save()
         AliquotLocation.objects.create(
-            aliquot=aliquot2,
+            aliquot=self.aliquot,
             box=self.box,
             row=1,
             column=1,
+            tube_number=tube1.tube_number
         )
 
-        # Try to assign self.aliquot to same position
+        # Try to assign another tube to same position
+        tube2 = AliquotTube.objects.filter(aliquot=self.aliquot).last()
         url = reverse('storage:assign_aliquot', kwargs={
             'box_id': self.box.id,
             'row': 1,
@@ -454,6 +532,7 @@ class BoxAssignmentViewTest(TestCase):
 
         response = self.client.post(url, {
             'aliquot_id': self.aliquot.id,
+            'tube_number': tube2.tube_number
         })
 
         # Should redirect with error message
@@ -464,14 +543,15 @@ class BoxAssignmentViewTest(TestCase):
         error_messages = [msg for msg in messages_list if 'occupied' in str(msg.message).lower()]
         self.assertGreater(len(error_messages), 0, "Should have error message about occupied position")
 
-        # Verify self.aliquot was not assigned to that position
+        # Verify second tube was not assigned to that position
         self.assertFalse(
             AliquotLocation.objects.filter(
                 aliquot=self.aliquot,
+                tube_number=tube2.tube_number,
                 row=1,
                 column=1
             ).exists(),
-            "Aliquot should not be assigned to occupied position"
+            "Second tube should not be assigned to occupied position"
         )
 
 
@@ -494,11 +574,6 @@ class AliquotFormBoxAssignmentTest(TestCase):
             source=self.source
         )
         self.aliquot_type = AliquotType.objects.create(name="Test Type")
-
-        self.stored_disposition, _ = AliquotDisposition.objects.get_or_create(
-            name='Stored',
-            defaults={'disposition_type': 'stored'}
-        )
 
         self.site = Site.objects.create(name="Test Site")
         self.device = Device.objects.create(name="Test Device", site=self.site)
@@ -533,22 +608,41 @@ class AliquotFormBoxAssignmentTest(TestCase):
 
         data = {
             'sample': self.sample.id,
+            'quantity': 1,
             'aliquot_type': self.aliquot_type.id,
-            'disposition': self.stored_disposition.id,
             'access_level': 'all_members',
         }
 
         form = AliquotForm(data=data)
         self.assertTrue(form.is_valid())
 
-    def test_aliquot_form_validates_start_row_bounds(self):
-        """Test that start_row is validated against box dimensions"""
+    def test_aliquot_form_requires_box_when_assign_to_box_checked(self):
+        """Test that box is required when assign_to_box is checked"""
         from sample.forms import AliquotForm
 
         data = {
             'sample': self.sample.id,
+            'quantity': 1,
             'aliquot_type': self.aliquot_type.id,
-            'disposition': self.stored_disposition.id,
+            'access_level': 'all_members',
+            'assign_to_box': True,
+            # Missing box field
+        }
+
+        form = AliquotForm(data=data)
+        # Form should be valid (validation happens in view)
+        # But box should be required when assign_to_box is True
+        # This is handled in the view's form_valid method
+
+    def test_aliquot_form_validates_start_row_bounds(self):
+        """Test that start_row is validated against box dimensions"""
+        from sample.forms import AliquotForm
+
+        # Test with row exceeding box dimensions
+        data = {
+            'sample': self.sample.id,
+            'quantity': 1,
+            'aliquot_type': self.aliquot_type.id,
             'access_level': 'all_members',
             'assign_to_box': True,
             'box': self.box.id,
@@ -565,10 +659,11 @@ class AliquotFormBoxAssignmentTest(TestCase):
         """Test that start_column is validated against box dimensions"""
         from sample.forms import AliquotForm
 
+        # Test with column exceeding box dimensions
         data = {
             'sample': self.sample.id,
+            'quantity': 1,
             'aliquot_type': self.aliquot_type.id,
-            'disposition': self.stored_disposition.id,
             'access_level': 'all_members',
             'assign_to_box': True,
             'box': self.box.id,
@@ -585,35 +680,51 @@ class AliquotFormBoxAssignmentTest(TestCase):
         """Test that race condition in box assignment is handled gracefully"""
         from django.contrib.messages import get_messages
 
-        # Create aliquot and store it in a position
+        # Create aliquot and tube for this test
         aliquot = Aliquot.objects.create(
             sample=self.sample,
-            aliquot_type=self.aliquot_type,
-            disposition=self.stored_disposition,
+            quantity=1,
+            aliquot_type=self.aliquot_type
         )
+        aliquot.create_tubes(auto_store=False)
+        tube = AliquotTube.objects.filter(aliquot=aliquot).first()
+
+        # Store the tube in a position
+        stored_disposition, _ = AliquotDisposition.objects.get_or_create(
+            name='Stored',
+            defaults={'disposition_type': 'stored'}
+        )
+        tube.disposition = stored_disposition
+        tube.save()
         AliquotLocation.objects.create(
             aliquot=aliquot,
             box=self.box,
             row=2,
             column=3,
+            tube_number=tube.tube_number
         )
 
-        # Create another aliquot
-        aliquot2 = Aliquot.objects.create(
-            sample=self.sample,
-            aliquot_type=self.aliquot_type,
-            disposition=self.stored_disposition,
-        )
-
-        # Try to assign to the same occupied position
+        # Try to assign another tube to the same position
+        # This should be caught by the check within the transaction
         url = reverse('storage:assign_aliquot', kwargs={
             'box_id': self.box.id,
             'row': 2,
             'column': 3
         })
 
+        # Create another aliquot and tube
+        aliquot2 = Aliquot.objects.create(
+            sample=self.sample,
+            quantity=1,
+            aliquot_type=self.aliquot_type
+        )
+        aliquot2.create_tubes(auto_store=False)
+        tube2 = AliquotTube.objects.filter(aliquot=aliquot2).first()
+
+        # Try to assign to occupied position - should be caught by check
         response = self.client.post(url, {
             'aliquot_id': aliquot2.id,
+            'tube_number': tube2.tube_number
         })
 
         # Should redirect with error message
@@ -624,12 +735,13 @@ class AliquotFormBoxAssignmentTest(TestCase):
         error_messages = [msg for msg in messages_list if 'occupied' in str(msg.message).lower()]
         self.assertGreater(len(error_messages), 0, "Should have error message about occupied position")
 
-        # Verify second aliquot was not assigned to that position
+        # Verify second tube was not assigned to that position
         self.assertFalse(
             AliquotLocation.objects.filter(
                 aliquot=aliquot2,
+                tube_number=tube2.tube_number,
                 row=2,
                 column=3
             ).exists(),
-            "Second aliquot should not be assigned to occupied position"
+            "Second tube should not be assigned to occupied position"
         )

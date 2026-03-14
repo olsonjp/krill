@@ -7,7 +7,7 @@ from ..models.site import Site
 from sample.models.sample import Sample
 from sample.models.aliquot import (
     Aliquot, AliquotType, AliquotDisposition,
-    AliquotLocation,
+    AliquotLocation, AliquotTube
 )
 from sample.models.source import Source
 from person.models import UserRole, UserAuditLog
@@ -51,14 +51,10 @@ class StorageViewTestBase(TestCase):
         self.source = Source.objects.create(name="Test Source")
         self.sample = Sample.objects.create(name="Test Sample", source=self.source)
         self.aliquot_type = AliquotType.objects.create(name="Test Type")
-        self.stored_disposition, _ = AliquotDisposition.objects.get_or_create(
-            name='Stored',
-            defaults={'disposition_type': 'stored'}
-        )
         self.aliquot = Aliquot.objects.create(
             sample=self.sample,
-            aliquot_type=self.aliquot_type,
-            disposition=self.stored_disposition,
+            quantity=3,
+            aliquot_type=self.aliquot_type
         )
 
 
@@ -234,23 +230,19 @@ class DashboardStatsViewTest(StorageViewTestBase):
         self.client.force_login(self.user)
         sample2 = Sample.objects.create(name="Test Sample 2", source=self.source)
         sample3 = Sample.objects.create(name="Test Sample 3", source=self.source)
-        # Create a second aliquot so we have 2 locations in the box
-        aliquot2 = Aliquot.objects.create(
-            sample=self.sample,
-            aliquot_type=self.aliquot_type,
-            disposition=self.stored_disposition,
-        )
         location1 = AliquotLocation.objects.create(
             aliquot=self.aliquot,
             box=self.box,
             row=1,
             column=1,
+            tube_number=1
         )
         location2 = AliquotLocation.objects.create(
-            aliquot=aliquot2,
+            aliquot=self.aliquot,
             box=self.box,
             row=1,
             column=2,
+            tube_number=2
         )
         response = self.client.get(reverse('dashboard_stats'))
         self.assertEqual(response.status_code, 200)

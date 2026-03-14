@@ -87,7 +87,7 @@
                                     <div class="tube-top"></div>
                                     <div class="tube-body">
                                         <div class="sample-label">{{ slot.sample.name|truncatechars:4 }}</div>
-                                        <div class="tube-number">#{{ slot.aliquot.id }}</div>
+                                        <div class="tube-number">#{{ slot.tube_number }}</div>
                                     </div>
                                 </div>
                                 </a>
@@ -127,10 +127,11 @@
                             <div class="aliquot-name">
                                 <a href="{% url 'sample:detail' type='aliquot' pk=location.aliquot.id %}">{{ location.aliquot.sample.name }}</a>
                             </div>
-                            <div class="aliquot-position">Position ({{ location.row }}, {{ location.column }}) - Aliquot #{{ location.aliquot.id }}</div>
+                            <div class="aliquot-position">Position ({{ location.row }}, {{ location.column }}) - Tube #{{ location.tube_number }}</div>
                         </div>
                         <div class="aliquot-details">
                             <span class="aliquot-type">{{ location.aliquot.aliquot_type.name|default:"No type" }}</span>
+                            <span class="aliquot-quantity">Aliquot: {{ location.aliquot.stored_tubes_count }}/{{ location.aliquot.quantity }} tubes</span>
                             <span class="aliquot-disposition">{{ location.aliquot.disposition.name }}</span>
                         </div>
                     </div>
@@ -338,6 +339,7 @@ function closeAssignModal() {
 function assignAliquot() {
     const aliquotSelect = document.getElementById('aliquotSelect');
     const aliquotId = aliquotSelect.value;
+    const tubeNumber = document.getElementById('tubeNumber').value;
 
     if (!aliquotId) {
         alert('Please select an aliquot');
@@ -360,6 +362,14 @@ function assignAliquot() {
     aliquotInput.name = 'aliquot_id';
     aliquotInput.value = aliquotId;
     form.appendChild(aliquotInput);
+
+    if (tubeNumber) {
+        const tubeInput = document.createElement('input');
+        tubeInput.type = 'hidden';
+        tubeInput.name = 'tube_number';
+        tubeInput.value = tubeNumber;
+        form.appendChild(tubeInput);
+    }
 
     document.body.appendChild(form);
     form.submit();
@@ -388,9 +398,14 @@ window.onclick = function(event) {
                 <select id="aliquotSelect" class="form-control">
                     <option value="">-- Select an aliquot --</option>
                     {% for aliquot in available_aliquots %}
-                    <option value="{{ aliquot.id }}">{{ aliquot.sample.name }} - {{ aliquot.aliquot_type.name|default:"No type" }} (Aliquot {{ aliquot.id }})</option>
+                    <option value="{{ aliquot.id }}">{{ aliquot.sample.name }} - {{ aliquot.aliquot_type.name|default:"No type" }} ({{ aliquot.quantity }} tubes)</option>
                     {% endfor %}
                 </select>
+            </div>
+            <div class="form-field">
+                <label for="tubeNumber">Tube Number (optional):</label>
+                <input type="number" id="tubeNumber" class="form-control" min="1" placeholder="Leave empty to use first available">
+                <small class="help-text">If not specified, the first available tube will be used</small>
             </div>
         </div>
         <div class="modal-footer">

@@ -164,7 +164,7 @@ async function loadStorageData() {
         if (freezerGrid) {
             if (data.freezer_status && data.freezer_status.length > 0) {
                 freezerGrid.innerHTML = data.freezer_status.map(freezer => `
-                    <div class="freezer-unit clickable" onclick="viewFreezerDetails(${freezer.id})">
+                    <div class="freezer-unit clickable" onclick="viewFreezerDetails('${freezer.name}')">
                         <h3>${freezer.name}</h3>
                         <div class="capacity">${freezer.usage_percent}% Full</div>
                         <button class="view-details">View Contents</button>
@@ -272,8 +272,9 @@ function showStorageNotification(message, type = 'info') {
 }
 
 // View freezer details
-function viewFreezerDetails(deviceId) {
-    window.location.href = `/storage/detail/device/${deviceId}/`;
+function viewFreezerDetails(freezerName) {
+    // Navigate to device list filtered by freezer name
+    window.location.href = `{% url 'storage:device_list' %}?search=${encodeURIComponent(freezerName)}`;
 }
 
 // Initialize when page loads
