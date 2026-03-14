@@ -1,113 +1,41 @@
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.db import IntegrityError, transaction
-from .models.aliquot import Aliquot, AliquotLocation, AliquotTube
+from .models.aliquot import Aliquot, AliquotLocation
 
-# Global flag to control automatic behavior
+# Global flag to control automatic behavior (kept for backward compatibility)
 AUTO_CREATE_TUBES = False
 AUTO_STORE_TUBES = False
 
-@receiver(post_save, sender=Aliquot)
-def create_aliquot_tubes(sender, instance, created, **kwargs):
-    """
-    Create individual tube instances when an aliquot is created.
-    Only runs if AUTO_CREATE_TUBES is True.
-    """
-    if not AUTO_CREATE_TUBES:
-        return
-    if created and not hasattr(instance, '_tubes_created'):
-        # Get the default disposition (usually "Stored")
-        from .models.aliquot import AliquotDisposition
-        default_disposition, _ = AliquotDisposition.objects.get_or_create(
-            name='Stored',
-            defaults={'disposition_type': 'stored'}
-        )
-        # Create individual tube instances
-        for tube_number in range(1, instance.quantity + 1):
-            AliquotTube.objects.create(
-                aliquot=instance,
-                tube_number=tube_number,
-                disposition=default_disposition
-            )
-        # Mark as processed to prevent infinite loops
-        instance._tubes_created = True
 
-@receiver(post_save, sender=AliquotTube)
-def auto_store_aliquot_tube(sender, instance, created, **kwargs):
+def auto_store_aliquot_tubes(aliquot):
     """
-    Automatically store individual tubes in auto-store enabled boxes.
-    Only stores tubes with "Stored" disposition and only if AUTO_STORE_TUBES is True.
+    Automatically store an aliquot in the first available auto-store enabled box.
+    Called explicitly when needed.
     """
-    if not AUTO_STORE_TUBES:
-        return
-    if created and not hasattr(instance, '_auto_store_processed'):
-        # Only auto-store if disposition is "Stored"
-        if instance.disposition.disposition_type != 'stored':
-            return
-        # Check if tube already has a storage location (using the old model structure)
-        if AliquotLocation.objects.filter(aliquot=instance.aliquot, tube_number=instance.tube_number).exists():
-            return
-        # Find available auto-store boxes
-        from storage.models import Box
-        auto_store_boxes = Box.objects.filter(
-            rack__shelf__device__auto_store_enabled=True
-        ).order_by('id')
-        for box in auto_store_boxes:
-            available_slots = box.get_available_slots()
-            if available_slots:
-                # Try to store tube in first available slot with race condition handling
-                # Try each available slot until we find one that's still available
-                for slot in available_slots:
-                    try:
-                        with transaction.atomic():
-                            # Double-check slot is available within transaction
-                            if AliquotLocation.objects.filter(
-                                box=box, row=slot['row'], column=slot['column']
-                            ).exists():
-                                continue  # Try next slot
-
-                            # Create location atomically
-                            AliquotLocation.objects.create(
-                                aliquot=instance.aliquot,
-                                box=box,
-                                row=slot['row'],
-                                column=slot['column'],
-                                tube_number=instance.tube_number
-                            )
-                            # Successfully stored, break out of both loops
-                            break
-                    except IntegrityError:
-                        # Race condition: slot was taken, try next slot
-                        continue
-                else:
-                    # No slots available in this box, try next box
+    from storage.models import Box
+    auto_store_boxes = Box.objects.filter(
+        rack__shelf__device__auto_store_enabled=True
+    ).order_by('id')
+    for box in auto_store_boxes:
+        available_slots = box.get_available_slots()
+        if available_slots:
+            for slot in available_slots:
+                try:
+                    with transaction.atomic():
+                        if AliquotLocation.objects.filter(
+                            box=box, row=slot['row'], column=slot['column']
+                        ).exists():
+                            continue
+                        AliquotLocation.objects.create(
+                            aliquot=aliquot,
+                            box=box,
+                            row=slot['row'],
+                            column=slot['column'],
+                        )
+                        break
+                except IntegrityError:
                     continue
-                # Successfully stored, break out of box loop
-                break
-        # Mark as processed to prevent infinite loops
-        instance._auto_store_processed = True
-
-@receiver(pre_save, sender=AliquotTube)
-def store_old_disposition(sender, instance, **kwargs):
-    """
-    Store the old disposition before saving to detect changes.
-    """
-    if instance.pk:  # Only for existing instances
-        try:
-            old_instance = AliquotTube.objects.get(pk=instance.pk)
-            instance._old_disposition = old_instance.disposition.disposition_type
-        except AliquotTube.DoesNotExist:
-            instance._old_disposition = None
-
-@receiver(post_save, sender=AliquotTube)
-def handle_tube_disposition_change(sender, instance, created, **kwargs):
-    """
-    Handle disposition changes for individual tubes - remove storage locations when tube is no longer "Stored".
-    """
-    if not created and hasattr(instance, '_old_disposition'):
-        old_disposition = instance._old_disposition
-        new_disposition = instance.disposition.disposition_type
-        # If disposition changed from "Stored" to something else, remove storage location
-        if old_disposition == 'stored' and new_disposition != 'stored':
-            # Remove storage location for this tube (using the old model structure)
-            AliquotLocation.objects.filter(aliquot=instance.aliquot, tube_number=instance.tube_number).delete()
+            else:
+                continue
+            break

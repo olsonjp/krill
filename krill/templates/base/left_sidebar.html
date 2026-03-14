@@ -85,7 +85,7 @@
             <!-- Admin section - Only visible to lab managers and administrators -->
             {% if user.role.role == 'lab_admin' or user.role.role == 'lab_manager' %}
             <div class="sidebar-section">
-                <a href="#" class="sidebar-toggle {% if 'admin' in request.path or 'users' in request.path or 'data-import' in request.path %}active{% endif %}" onclick="toggleSection('admin-section')">
+                <a href="{% url 'person:user_list' %}" class="sidebar-toggle {% if 'admin' in request.path or 'users' in request.path or 'data-import' in request.path %}active{% endif %}">
                     <span class="material-icons-round">
                         admin_panel_settings
                     </span>

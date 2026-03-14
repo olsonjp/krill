@@ -5,40 +5,20 @@ from django.contrib import messages
 from django.urls import reverse
 from django.db import IntegrityError, transaction
 from ..models.storage import Box
-from sample.models.aliquot import Aliquot, AliquotLocation, AliquotDisposition, AliquotTube
+from sample.models.aliquot import Aliquot, AliquotLocation, AliquotDisposition
 
 @login_required
 @require_http_methods(["POST"])
 def assign_aliquot_to_box(request, box_id, row, column):
-    """Assign an aliquot tube to a specific box position"""
+    """Assign an aliquot to a specific box position"""
     box = get_object_or_404(Box, pk=box_id)
     aliquot_id = request.POST.get('aliquot_id')
-    tube_number = request.POST.get('tube_number')
 
     if not aliquot_id:
         messages.error(request, "Please select an aliquot to assign.")
         return redirect('storage:detail', type='box', pk=box_id)
 
     aliquot = get_object_or_404(Aliquot, pk=aliquot_id)
-
-    # If tube_number is specified, use that tube; otherwise use first available tube
-    if tube_number:
-        try:
-            tube = aliquot.tubes.get(tube_number=int(tube_number))
-        except AliquotTube.DoesNotExist:
-            messages.error(request, f"Tube {tube_number} does not exist for this aliquot.")
-            return redirect('storage:detail', type='box', pk=box_id)
-    else:
-        # Find first tube that's not already stored
-        tube = aliquot.tubes.exclude(
-            disposition__disposition_type='stored'
-        ).first()
-        if not tube:
-            # All tubes are stored, use first tube
-            tube = aliquot.tubes.first()
-        if not tube:
-            messages.error(request, "This aliquot has no tubes. Please create tubes first.")
-            return redirect('storage:detail', type='box', pk=box_id)
 
     # Get stored disposition
     stored_disposition, _ = AliquotDisposition.objects.get_or_create(
@@ -47,8 +27,6 @@ def assign_aliquot_to_box(request, box_id, row, column):
     )
 
     # Create new location with race condition handling using atomic transaction
-    # All operations (check, create, delete old location, update disposition) must be atomic
-    # to prevent inconsistent state if any step fails
     try:
         with transaction.atomic():
             # Check if position is already occupied within transaction
@@ -56,35 +34,28 @@ def assign_aliquot_to_box(request, box_id, row, column):
                 messages.error(request, f"Position ({row}, {column}) is already occupied.")
                 return redirect('storage:detail', type='box', pk=box_id)
 
+            # Remove any existing location for this aliquot first
+            AliquotLocation.objects.filter(aliquot=aliquot).exclude(
+                box=box, row=row, column=column
+            ).delete()
+
             # Create location atomically
             AliquotLocation.objects.create(
                 aliquot=aliquot,
                 box=box,
                 row=row,
                 column=column,
-                tube_number=tube.tube_number
             )
 
-            # Remove any existing location for this tube (after successful creation)
-            # This ensures we don't lose the location if creation fails
-            AliquotLocation.objects.filter(
-                aliquot=aliquot,
-                tube_number=tube.tube_number
-            ).exclude(box=box, row=row, column=column).delete()
-
-            # Update tube disposition to stored
-            tube.disposition = stored_disposition
-            tube.save()
+            # Update aliquot disposition to stored
+            aliquot.disposition = stored_disposition
+            aliquot.save()
     except IntegrityError:
-        # Determine which constraint was violated
-        # Check if tube already has a location (unique_together: aliquot, tube_number)
-        if AliquotLocation.objects.filter(
-            aliquot=aliquot,
-            tube_number=tube.tube_number
-        ).exists():
+        # Check if aliquot already has a location (OneToOne constraint)
+        if AliquotLocation.objects.filter(aliquot=aliquot).exists():
             messages.error(
                 request,
-                f"Tube {tube.tube_number} already has a location. "
+                "This aliquot already has a location. "
                 "This may be due to a concurrent assignment. Please try again."
             )
         else:
@@ -95,5 +66,5 @@ def assign_aliquot_to_box(request, box_id, row, column):
             )
         return redirect('storage:detail', type='box', pk=box_id)
 
-    messages.success(request, f"Aliquot {aliquot.sample.name} tube #{tube.tube_number} assigned to position ({row}, {column}).")
+    messages.success(request, f"Aliquot {aliquot.sample.name} assigned to position ({row}, {column}).")
     return redirect('storage:detail', type='box', pk=box_id)

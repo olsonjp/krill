@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 from django.urls import reverse
 from person.models import UserRole
 from ..models.sample import Sample
-from ..models.aliquot import Aliquot, AliquotType
+from ..models.aliquot import Aliquot, AliquotType, AliquotDisposition
 from ..models.source import Source
 
 User = get_user_model()
@@ -92,23 +92,29 @@ class AccessLevelTestCase(TestCase):
             access_level='all_members'
         )
 
+        # Create stored disposition for aliquots
+        self.stored_disposition, _ = AliquotDisposition.objects.get_or_create(
+            name='Stored',
+            defaults={'disposition_type': 'stored'}
+        )
+
         # Create aliquots with different access levels
         self.admin_only_aliquot = Aliquot.objects.create(
             sample=self.admin_only_sample,
             aliquot_type=self.aliquot_type,
-            quantity=1,
+            disposition=self.stored_disposition,
             access_level='admins_only'
         )
         self.manager_aliquot = Aliquot.objects.create(
             sample=self.manager_sample,
             aliquot_type=self.aliquot_type,
-            quantity=1,
+            disposition=self.stored_disposition,
             access_level='admins_managers'
         )
         self.all_members_aliquot = Aliquot.objects.create(
             sample=self.all_members_sample,
             aliquot_type=self.aliquot_type,
-            quantity=1,
+            disposition=self.stored_disposition,
             access_level='all_members'
         )
 
