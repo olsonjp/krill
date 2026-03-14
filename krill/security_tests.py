@@ -449,16 +449,20 @@ class InputValidationTests(SecurityTestCase):
                 user.full_clean()
 
     def test_url_validation(self):
-        """Test URL validation"""
-        # Test that URLs are properly validated
-        malicious_urls = [
+        """Test URL validation — Django's URLValidator rejects dangerous schemes"""
+        from django.core.validators import URLValidator
+        from django.core.exceptions import ValidationError
+
+        validator = URLValidator()
+        dangerous_urls = [
             'javascript:alert("XSS")',
             'data:text/html,<script>alert("XSS")</script>',
             'file:///etc/passwd',
+            'vbscript:MsgBox(1)',
         ]
-
-        # This test would be implemented based on your URL validation logic
-        pass
+        for url in dangerous_urls:
+            with self.assertRaises(ValidationError, msg=f"URLValidator should reject: {url}"):
+                validator(url)
 
 
 class SessionSecurityTests(SecurityTestCase):
@@ -507,10 +511,14 @@ class SecurityHeadersTests(SecurityTestCase):
                          f"{header} security header should be present")
 
     def test_hsts_header(self):
-        """Test HSTS header in production"""
-        # This test would check for HSTS header in production
-        # For development, it might not be present
-        pass
+        """Test HSTS header is configured for production (skipped in development)"""
+        if settings.DEBUG:
+            self.skipTest("HSTS not enforced in DEBUG mode")
+        response = self.researcher_client.get(reverse('home'))
+        self.assertIn(
+            'Strict-Transport-Security', response.headers,
+            "HSTS header should be present in production"
+        )
 
 
 class AuditLoggingTests(SecurityTestCase):
@@ -549,11 +557,9 @@ class ConfigurationSecurityTests(TestCase):
 
     def test_debug_mode_disabled_in_production(self):
         """Test that DEBUG is False in production"""
-        # This test should be run in production environment
-        # For now, we'll check the current setting
-        if hasattr(settings, 'DEBUG'):
-            # In production, this should be False
-            pass
+        if settings.DEBUG:
+            self.skipTest("Running in development; DEBUG=True is expected")
+        self.assertFalse(settings.DEBUG, "DEBUG must be False in production")
 
     def test_secret_key_security(self):
         """Test that SECRET_KEY is properly configured"""

@@ -72,9 +72,8 @@ def aliquot_search(request):
     # Start with all aliquots
     aliquots = Aliquot.objects.select_related(
         'sample',
-        'aliquot_type'
-    ).prefetch_related(
-        'aliquotlocation_set__box'
+        'aliquot_type',
+        'disposition',
     ).order_by('sample__name', 'id')
 
     if query:
@@ -87,9 +86,10 @@ def aliquot_search(request):
         aliquots = aliquots.filter(aliquot_type__name__icontains=sample_type)
 
     if disposition:
-        # Filter by disposition (this is a computed property, so we need to filter differently)
-        # For now, we'll skip disposition filtering in the search
-        pass
+        # Filter by disposition directly on aliquot
+        aliquots = aliquots.filter(
+            disposition__disposition_type=disposition
+        )
 
     # Pagination
     paginator = Paginator(aliquots, 20)
@@ -105,8 +105,7 @@ def aliquot_search(request):
                 'name': str(aliquot),
                 'sample_name': aliquot.sample.name,
                 'aliquot_type': aliquot.aliquot_type.name if aliquot.aliquot_type else 'Unknown',
-                'disposition': aliquot.disposition,
-                'quantity': aliquot.quantity,
+                'disposition': aliquot.disposition.name if aliquot.disposition else '',
                 'created_at': aliquot.created_at.isoformat() if hasattr(aliquot, 'created_at') else None,
             })
 

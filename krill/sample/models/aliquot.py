@@ -33,7 +33,7 @@ class Aliquot(models.Model):
 
     sample = models.ForeignKey('Sample', on_delete=models.CASCADE, related_name='aliquots')
     aliquot_type = models.ForeignKey(AliquotType, on_delete=models.PROTECT, null=True, blank=True)
-    quantity = models.IntegerField(default=1)
+    disposition = models.ForeignKey(AliquotDisposition, on_delete=models.PROTECT, null=True, blank=True)
     parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='children')
     access_level = models.CharField(
         max_length=20,
@@ -52,148 +52,44 @@ class Aliquot(models.Model):
     def __str__(self):
         return f"{self.sample.name} - Aliquot {self.id}"
 
-    @property
-    def disposition(self):
-        """Computed disposition based on individual tube dispositions"""
-        if not hasattr(self, '_disposition_cache'):
-            stored_tubes = self.tubes.filter(disposition__disposition_type='stored').count()
-            total_tubes = self.tubes.count()
-
-            if total_tubes == 0:
-                self._disposition_cache = 'exhausted'
-            elif stored_tubes == total_tubes:
-                self._disposition_cache = 'stored'
-            elif stored_tubes == 0:
-                self._disposition_cache = 'exhausted'
-            else:
-                self._disposition_cache = 'in_use'
-        return self._disposition_cache
-
-    @property
-    def stored_tubes_count(self):
-        """Count of tubes with 'stored' disposition"""
-        return self.tubes.filter(disposition__disposition_type='stored').count()
-
-    @property
-    def unstored_tubes_count(self):
-        """Count of tubes that are not 'stored'"""
-        return self.tubes.exclude(disposition__disposition_type='stored').count()
-
-    @property
-    def in_use_tubes_count(self):
-        """Count of tubes with 'in_use' disposition"""
-        return self.tubes.filter(disposition__disposition_type='in_use').count()
-
-    @property
-    def exhausted_tubes_count(self):
-        """Count of tubes with 'exhausted' disposition"""
-        return self.tubes.filter(disposition__disposition_type='exhausted').count()
-
-    def create_tubes(self, auto_store=True):
-        """Create individual tubes for this aliquot"""
-        # Get the default 'stored' disposition
+    def store_in_location(self, box, row, column):
+        """Store this aliquot in a location"""
         stored_disposition, _ = AliquotDisposition.objects.get_or_create(
             name='Stored',
             defaults={'disposition_type': 'stored'}
         )
-
-        # Create tubes
-        for i in range(1, self.quantity + 1):
-            AliquotTube.objects.create(
-                aliquot=self,
-                tube_number=i,
-                disposition=stored_disposition
-            )
-
-        # Auto-store if enabled
-        if auto_store:
-            from sample.signals import auto_store_aliquot_tubes
-            auto_store_aliquot_tubes(self)
-
-    def change_tube_disposition(self, tube_number, disposition):
-        """Change disposition of a specific tube"""
-        try:
-            tube = self.tubes.get(tube_number=tube_number)
-            tube.disposition = disposition
-            tube.save()
-            # Clear disposition cache
-            if hasattr(self, '_disposition_cache'):
-                delattr(self, '_disposition_cache')
-            return True
-        except AliquotTube.DoesNotExist:
-            raise ValidationError(f"Tube {tube_number} does not exist for this aliquot")
-
-    def store_tube_in_location(self, tube_number, box, row, column):
-        """Store a specific tube in a location with race condition handling"""
-        # Get stored disposition
-        stored_disposition, _ = AliquotDisposition.objects.get_or_create(
-            name='Stored',
-            defaults={'disposition_type': 'stored'}
-        )
-
-        # All operations must be atomic to prevent inconsistent state
         try:
             with transaction.atomic():
-                # Check if position is already occupied within transaction
                 if AliquotLocation.objects.filter(box=box, row=row, column=column).exists():
                     raise ValidationError(
                         f"Position ({row}, {column}) in box {box.name} is already occupied."
                     )
+                # Remove existing location for this aliquot (allows moving)
+                AliquotLocation.objects.filter(aliquot=self).delete()
 
-                # Remove any existing location for this tube (within transaction)
-                # This allows moving a tube from one location to another
-                AliquotLocation.objects.filter(
-                    aliquot=self,
-                    tube_number=tube_number
-                ).delete()
-
-                # Create location atomically
                 location = AliquotLocation.objects.create(
                     aliquot=self,
                     box=box,
                     row=row,
                     column=column,
-                    tube_number=tube_number
                 )
-
-                # Change tube disposition to stored (within transaction)
-                self.change_tube_disposition(tube_number, stored_disposition)
+                self.disposition = stored_disposition
+                self.save()
         except IntegrityError:
-            # Determine which constraint was violated
-            # Check if tube already has a location (unique_together: aliquot, tube_number)
-            # This can happen if another request assigned the tube concurrently
-            if AliquotLocation.objects.filter(
-                aliquot=self,
-                tube_number=tube_number
-            ).exists():
+            if AliquotLocation.objects.filter(aliquot=self).exists():
                 raise ValidationError(
-                    f"Tube {tube_number} already has a location. "
+                    "This aliquot already has a location. "
                     "This may be due to a concurrent assignment. Please try again."
                 )
-            # Otherwise, position must be occupied (unique_together: box, row, column)
             raise ValidationError(
                 f"Position ({row}, {column}) in box {box.name} is already occupied. "
                 "Please try again with a different position."
             )
-
         return location
 
-class AliquotTube(models.Model):
-    aliquot = models.ForeignKey(Aliquot, on_delete=models.CASCADE, related_name='tubes')
-    tube_number = models.IntegerField()
-    disposition = models.ForeignKey(AliquotDisposition, on_delete=models.PROTECT)
-    created_at = models.DateTimeField(default=timezone.now)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        unique_together = ['aliquot', 'tube_number']
-
-    def __str__(self):
-        return f"{self.aliquot.sample.name} - Tube {self.tube_number}"
 
 class AliquotLocation(models.Model):
-    aliquot = models.ForeignKey(Aliquot, on_delete=models.CASCADE, related_name='locations')
-    tube_number = models.IntegerField()
+    aliquot = models.OneToOneField(Aliquot, on_delete=models.CASCADE, related_name='location')
     box = models.ForeignKey(Box, on_delete=models.CASCADE)
     row = models.IntegerField()
     column = models.IntegerField()
@@ -201,7 +97,7 @@ class AliquotLocation(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = [['aliquot', 'tube_number'], ['box', 'row', 'column']]
+        unique_together = [['box', 'row', 'column']]
 
     def __str__(self):
-        return f"{self.aliquot.sample.name} - Tube {self.tube_number} at {self.box.name} ({self.row},{self.column})"
+        return f"{self.aliquot.sample.name} - Aliquot {self.aliquot.id} at {self.box.name} ({self.row},{self.column})"

@@ -17,11 +17,9 @@ class SampleListView(LoginRequiredMixin, ListView):
         if model_type == 'aliquot':
             queryset = Aliquot.objects.select_related(
                 'sample',
-                'aliquot_type'
-            ).prefetch_related(
-                'locations__box',
-                'tubes__disposition',
-                'tubes'
+                'aliquot_type',
+                'disposition',
+                'location__box',
             )
         elif model_type == 'aliquot-type':
             queryset = AliquotType.objects.all()

@@ -5,7 +5,7 @@ from django import forms
 from ..models.sample import Sample
 from ..models.aliquot import (
     Aliquot, AliquotType, AliquotDisposition,
-    AliquotLocation, AliquotTube
+    AliquotLocation,
 )
 from ..models.source import Source
 from ..forms import (
@@ -94,8 +94,8 @@ class SampleFormTest(TestCase):
     def test_sample_form_widgets_and_help_texts(self):
         """Test sample form widgets and help texts"""
         form = SampleForm()
-        self.assertIn('Unique identifier for the sample', str(form.fields['name'].help_text))
-        self.assertIn('Source of the sample', str(form.fields['source'].help_text))
+        self.assertIn('Unique identifier for', str(form.fields['name'].help_text))
+        self.assertIn('origin of the sample', str(form.fields['source'].help_text))
         self.assertIn('Additional information about the sample', str(form.fields['notes'].help_text))
         self.assertIsInstance(form.fields['notes'].widget, forms.Textarea)
         self.assertEqual(form.fields['notes'].widget.attrs['rows'], 4)
@@ -125,91 +125,85 @@ class AliquotFormTest(TestCase):
         )
         self.parent_aliquot = Aliquot.objects.create(
             sample=self.sample,
-            quantity=5,
-            aliquot_type=self.aliquot_type
+            aliquot_type=self.aliquot_type,
+            disposition=self.stored_disposition,
         )
     def test_aliquot_form_validation_with_valid_data(self):
         """Test aliquot form validation with valid data"""
         form_data = {
             'sample': self.sample.id,
-            'quantity': 3,
             'aliquot_type': self.aliquot_type.id,
+            'disposition': self.stored_disposition.id,
             'access_level': 'all_members',
         }
         form = AliquotForm(data=form_data)
         self.assertTrue(form.is_valid())
         aliquot = form.save()
         self.assertEqual(aliquot.sample, self.sample)
-        self.assertEqual(aliquot.quantity, 3)
         self.assertEqual(aliquot.aliquot_type, self.aliquot_type)
+        self.assertEqual(aliquot.disposition, self.stored_disposition)
+
     def test_aliquot_form_with_parent_selection(self):
         """Test aliquot form with parent selection"""
         form_data = {
             'parent': self.parent_aliquot.id,
             'sample': self.sample.id,
-            'quantity': 2,
             'aliquot_type': self.aliquot_type.id,
+            'disposition': self.stored_disposition.id,
             'access_level': 'all_members',
         }
         form = AliquotForm(data=form_data)
         self.assertTrue(form.is_valid())
         aliquot = form.save()
         self.assertEqual(aliquot.parent, self.parent_aliquot)
-    def test_aliquot_form_quantity_validation(self):
-        """Test aliquot form quantity validation"""
-        form_data = {
-            'sample': self.sample.id,
-            'quantity': 1,
-            'aliquot_type': self.aliquot_type.id,
-            'access_level': 'all_members',
-        }
-        form = AliquotForm(data=form_data)
-        self.assertTrue(form.is_valid())
-        form_data['quantity'] = 0
-        form = AliquotForm(data=form_data)
-        self.assertTrue(form.is_valid())
-        form_data['quantity'] = 999999999
-        form = AliquotForm(data=form_data)
-        self.assertTrue(form.is_valid())
+
     def test_aliquot_form_disposition_selection(self):
         """Test aliquot form disposition selection"""
         form_data = {
             'sample': self.sample.id,
-            'quantity': 3,
             'aliquot_type': self.aliquot_type.id,
+            'disposition': self.in_use_disposition.id,
             'access_level': 'all_members',
         }
         form = AliquotForm(data=form_data)
         self.assertTrue(form.is_valid())
         aliquot = form.save()
-        self.assertIsNotNone(aliquot.disposition)
+        self.assertEqual(aliquot.disposition, self.in_use_disposition)
+
     def test_aliquot_form_error_handling_missing_required_fields(self):
         """Test aliquot form error handling for missing required fields"""
         # Missing sample (required)
         form_data = {
-            'quantity': 3,
             'aliquot_type': self.aliquot_type.id,
+            'disposition': self.stored_disposition.id,
             'access_level': 'all_members',
         }
         form = AliquotForm(data=form_data)
         self.assertFalse(form.is_valid())
         self.assertIn('sample', form.errors)
-        # aliquot_type is optional (blank=True on model) so omitting it is valid
-        form_data = {
-            'sample': self.sample.id,
-            'quantity': 3,
-            'access_level': 'all_members',
-        }
-        form = AliquotForm(data=form_data)
-        self.assertTrue(form.is_valid())
+
     def test_aliquot_form_widgets_and_help_texts(self):
         """Test aliquot form widgets and help texts"""
         form = AliquotForm()
         self.assertIn('Parent aliquot, if this is a derivative', str(form.fields['parent'].help_text))
         self.assertIn('Sample this aliquot belongs to', str(form.fields['sample'].help_text))
-        self.assertIn('Quantity of the aliquot', str(form.fields['quantity'].help_text))
         self.assertIn('Type of aliquot', str(form.fields['aliquot_type'].help_text))
         self.assertIn('Restrict access to specific user tiers', str(form.fields['access_level'].help_text))
+
+    def test_aliquot_form_no_quantity_field(self):
+        """Test that AliquotForm does not have a quantity field"""
+        form = AliquotForm()
+        self.assertNotIn('quantity', form.fields)
+
+    def test_aliquot_form_has_count_field(self):
+        """Test that AliquotForm has a count field"""
+        form = AliquotForm()
+        self.assertIn('count', form.fields)
+
+    def test_aliquot_form_has_disposition_field(self):
+        """Test that AliquotForm has a disposition field"""
+        form = AliquotForm()
+        self.assertIn('disposition', form.fields)
 
 
 class AliquotLocationFormTest(TestCase):
@@ -219,10 +213,14 @@ class AliquotLocationFormTest(TestCase):
         self.source = Source.objects.create(name="Test Source")
         self.sample = Sample.objects.create(name="Test Sample", source=self.source)
         self.aliquot_type = AliquotType.objects.create(name="Test Type")
+        self.stored_disposition = AliquotDisposition.objects.create(
+            name="Test Stored",
+            disposition_type="stored"
+        )
         self.aliquot = Aliquot.objects.create(
             sample=self.sample,
-            quantity=3,
-            aliquot_type=self.aliquot_type
+            aliquot_type=self.aliquot_type,
+            disposition=self.stored_disposition,
         )
         self.site = Site.objects.create(name="Test Site")
         self.device = Device.objects.create(name="Test Device", site=self.site)
@@ -241,7 +239,6 @@ class AliquotLocationFormTest(TestCase):
             'box': self.box.id,
             'row': 5,
             'column': 5,
-            'tube_number': 1
         }
         form = AliquotLocationForm(data=form_data)
         self.assertTrue(form.is_valid())
@@ -250,40 +247,34 @@ class AliquotLocationFormTest(TestCase):
         self.assertEqual(location.box, self.box)
         self.assertEqual(location.row, 5)
         self.assertEqual(location.column, 5)
-        self.assertEqual(location.tube_number, 1)
+
+    def test_aliquot_location_form_no_tube_number(self):
+        """Test that AliquotLocationForm does not have a tube_number field"""
+        form = AliquotLocationForm()
+        self.assertNotIn('tube_number', form.fields)
+
     def test_aliquot_location_form_accepts_any_row(self):
-        """Test aliquot location form accepts any integer row (no bounds validation)"""
+        """Test aliquot location form accepts any integer row"""
         form_data = {
             'aliquot': self.aliquot.id,
             'box': self.box.id,
             'row': 15,
             'column': 5,
-            'tube_number': 1
         }
         form = AliquotLocationForm(data=form_data)
         self.assertTrue(form.is_valid())
+
     def test_aliquot_location_form_accepts_any_column(self):
-        """Test aliquot location form accepts any integer column (no bounds validation)"""
+        """Test aliquot location form accepts any integer column"""
         form_data = {
             'aliquot': self.aliquot.id,
             'box': self.box.id,
             'row': 5,
             'column': 15,
-            'tube_number': 1
         }
         form = AliquotLocationForm(data=form_data)
         self.assertTrue(form.is_valid())
-    def test_aliquot_location_form_error_handling_invalid_tube_number(self):
-        """Test aliquot location form error handling for invalid tube number"""
-        form_data = {
-            'aliquot': self.aliquot.id,
-            'box': self.box.id,
-            'row': 5,
-            'column': 5,
-            'tube_number': 999
-        }
-        form = AliquotLocationForm(data=form_data)
-        self.assertTrue(form.is_valid())
+
     def test_aliquot_location_form_widgets_and_help_texts(self):
         """Test aliquot location form widgets and help texts"""
         form = AliquotLocationForm()
@@ -291,7 +282,6 @@ class AliquotLocationFormTest(TestCase):
         self.assertIn('Storage box', str(form.fields['box'].help_text))
         self.assertIn('Row position (1-10)', str(form.fields['row'].help_text))
         self.assertIn('Column position (1-10)', str(form.fields['column'].help_text))
-        self.assertIn('Tube number within the aliquot', str(form.fields['tube_number'].help_text))
 
 
 class AliquotTypeFormTest(TestCase):
@@ -412,8 +402,8 @@ class SourceFormTest(TestCase):
         self.assertEqual(source.description, '')
 
 
-class AliquotTubeFormTest(TestCase):
-    """Test cases for the AliquotTubeForm"""
+class AliquotMoveFormTest(TestCase):
+    """Test cases for the AliquotMoveForm (replaces AliquotTubeMoveForm)"""
 
     def setUp(self):
         """Set up test data"""
@@ -429,105 +419,14 @@ class AliquotTubeFormTest(TestCase):
             name="Test Type",
             description="A test aliquot type"
         )
-        self.aliquot = Aliquot.objects.create(
-            sample=self.sample,
-            quantity=3,
-            aliquot_type=self.aliquot_type
-        )
         self.stored_disposition = AliquotDisposition.objects.create(
             name="Stored",
             disposition_type="stored"
         )
-        self.in_use_disposition = AliquotDisposition.objects.create(
-            name="In Use",
-            disposition_type="in_use"
-        )
-        self.exhausted_disposition = AliquotDisposition.objects.create(
-            name="Exhausted",
-            disposition_type="exhausted"
-        )
-        self.tube = AliquotTube.objects.create(
-            aliquot=self.aliquot,
-            tube_number=1,
-            disposition=self.stored_disposition
-        )
-        self.user = get_user_model().objects.create_user(
-            username='testuser',
-            password='testpass123'
-        )
-
-    def test_aliquot_tube_form_creation(self):
-        """Test AliquotTubeForm creation with valid data"""
-        from ..forms import AliquotTubeForm
-        form = AliquotTubeForm(instance=self.tube)
-        self.assertIsInstance(form, AliquotTubeForm)
-        self.assertEqual(form.instance, self.tube)
-
-    def test_aliquot_tube_form_fields(self):
-        """Test that AliquotTubeForm has the correct fields"""
-        from ..forms import AliquotTubeForm
-        form = AliquotTubeForm(instance=self.tube)
-        self.assertIn('disposition', form.fields)
-        self.assertNotIn('aliquot', form.fields)
-        self.assertNotIn('tube_number', form.fields)
-
-    def test_aliquot_tube_form_validation(self):
-        """Test AliquotTubeForm validation with valid data"""
-        from ..forms import AliquotTubeForm
-        form_data = {
-            'disposition': self.in_use_disposition.id
-        }
-        form = AliquotTubeForm(data=form_data, instance=self.tube)
-        self.assertTrue(form.is_valid())
-
-    def test_aliquot_tube_form_invalid_data(self):
-        """Test AliquotTubeForm validation with invalid data"""
-        from ..forms import AliquotTubeForm
-        form_data = {
-            'disposition': 99999
-        }
-        form = AliquotTubeForm(data=form_data, instance=self.tube)
-        self.assertFalse(form.is_valid())
-
-
-class AliquotTubeMoveFormTest(TestCase):
-    """Test cases for the AliquotTubeMoveForm"""
-
-    def setUp(self):
-        """Set up test data"""
-        self.source = Source.objects.create(
-            name="Test Source",
-            description="A test source for samples"
-        )
-        self.sample = Sample.objects.create(
-            name="Test Sample",
-            source=self.source
-        )
-        self.aliquot_type = AliquotType.objects.create(
-            name="Test Type",
-            description="A test aliquot type"
-        )
         self.aliquot = Aliquot.objects.create(
             sample=self.sample,
-            quantity=3,
-            aliquot_type=self.aliquot_type
-        )
-        self.stored_disposition = AliquotDisposition.objects.create(
-            name="Stored",
-            disposition_type="stored"
-        )
-        self.in_use_disposition = AliquotDisposition.objects.create(
-            name="In Use",
-            disposition_type="in_use"
-        )
-        self.exhausted_disposition = AliquotDisposition.objects.create(
-            name="Exhausted",
-            disposition_type="exhausted"
-        )
-        self.tube = AliquotTube.objects.create(
-            aliquot=self.aliquot,
-            tube_number=1,
-            disposition=self.stored_disposition
+            aliquot_type=self.aliquot_type,
+            disposition=self.stored_disposition,
         )
 
         self.site = Site.objects.create(name="Test Site", description="Test site")
@@ -542,61 +441,61 @@ class AliquotTubeMoveFormTest(TestCase):
             password='testpass123'
         )
 
-    def test_aliquot_tube_move_form_creation(self):
-        """Test AliquotTubeMoveForm creation"""
-        from ..forms import AliquotTubeMoveForm
-        form = AliquotTubeMoveForm()
-        self.assertIsInstance(form, AliquotTubeMoveForm)
+    def test_aliquot_move_form_creation(self):
+        """Test AliquotMoveForm creation"""
+        from ..forms import AliquotMoveForm
+        form = AliquotMoveForm()
+        self.assertIsInstance(form, AliquotMoveForm)
 
-    def test_aliquot_tube_move_form_fields(self):
-        """Test that AliquotTubeMoveForm has the correct fields"""
-        from ..forms import AliquotTubeMoveForm
-        form = AliquotTubeMoveForm()
+    def test_aliquot_move_form_fields(self):
+        """Test that AliquotMoveForm has the correct fields"""
+        from ..forms import AliquotMoveForm
+        form = AliquotMoveForm()
         self.assertIn('box', form.fields)
         self.assertIn('row', form.fields)
         self.assertIn('column', form.fields)
 
-    def test_aliquot_tube_move_form_validation_valid_data(self):
-        """Test AliquotTubeMoveForm validation with valid data"""
-        from ..forms import AliquotTubeMoveForm
+    def test_aliquot_move_form_validation_valid_data(self):
+        """Test AliquotMoveForm validation with valid data"""
+        from ..forms import AliquotMoveForm
         form_data = {
             'box': self.box.id,
             'row': 1,
             'column': 1
         }
-        form = AliquotTubeMoveForm(data=form_data)
+        form = AliquotMoveForm(data=form_data)
         self.assertTrue(form.is_valid())
 
-    def test_aliquot_tube_move_form_validation_invalid_position(self):
-        """Test AliquotTubeMoveForm validation with row exceeding max_value"""
-        from ..forms import AliquotTubeMoveForm
+    def test_aliquot_move_form_validation_invalid_position(self):
+        """Test AliquotMoveForm validation with row exceeding max_value"""
+        from ..forms import AliquotMoveForm
         form_data = {
             'box': self.box.id,
             'row': 11,
             'column': 1
         }
-        form = AliquotTubeMoveForm(data=form_data)
+        form = AliquotMoveForm(data=form_data)
         self.assertFalse(form.is_valid())
         self.assertIn('row', form.errors)
 
-    def test_aliquot_tube_move_form_accepts_valid_position(self):
-        """Test AliquotTubeMoveForm accepts positions within max_value range"""
-        from ..forms import AliquotTubeMoveForm
+    def test_aliquot_move_form_accepts_valid_position(self):
+        """Test AliquotMoveForm accepts positions within max_value range"""
+        from ..forms import AliquotMoveForm
         form_data = {
             'box': self.box.id,
             'row': 8,
             'column': 8
         }
-        form = AliquotTubeMoveForm(data=form_data)
+        form = AliquotMoveForm(data=form_data)
         self.assertTrue(form.is_valid())
 
-    def test_aliquot_tube_move_form_validation_missing_data(self):
-        """Test AliquotTubeMoveForm validation with missing data"""
-        from ..forms import AliquotTubeMoveForm
+    def test_aliquot_move_form_validation_missing_data(self):
+        """Test AliquotMoveForm validation with missing data"""
+        from ..forms import AliquotMoveForm
         form_data = {
             'box': self.box.id,
             'row': 1
         }
-        form = AliquotTubeMoveForm(data=form_data)
+        form = AliquotMoveForm(data=form_data)
         self.assertFalse(form.is_valid())
         self.assertIn('column', form.errors)

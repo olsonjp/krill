@@ -644,7 +644,7 @@ MDA MB 134VI (MM134);UPMC/MJS;Sikora LN2 #1;4;F;1;2;Cells;3;Checked Out;Legacy M
             self.assertIn('sample.source', fixture_models)
             self.assertIn('sample.sample', fixture_models)
             self.assertIn('sample.aliquot', fixture_models)
-            self.assertIn('sample.aliquottube', fixture_models)
+            self.assertNotIn('sample.aliquottube', fixture_models)
             self.assertIn('storage.site', fixture_models)
             self.assertIn('storage.device', fixture_models)
             self.assertIn('storage.shelf', fixture_models)
@@ -675,13 +675,12 @@ MDA MB 134VI (MM134);UPMC/MJS;Sikora LN2 #1;4;F;1;2;Cells;3;Checked Out;Legacy M
                 self.assertEqual(location['fields']['row'], 1)
                 self.assertIn(location['fields']['column'], [1, 2])
 
-            tube_fixtures = [f for f in fixtures if f['model'] == 'sample.aliquottube']
-            self.assertGreater(len(tube_fixtures), 0)
+            aliquot_fixtures = [f for f in fixtures if f['model'] == 'sample.aliquot']
+            # CSV has 5 + 3 = 8 aliquots (one record per physical item)
+            self.assertEqual(len(aliquot_fixtures), 8)
 
-            self.assertEqual(len(tube_fixtures), 8)
-
-            for tube in tube_fixtures:
-                disposition_pk = tube['fields']['disposition']
+            for aliquot in aliquot_fixtures:
+                disposition_pk = aliquot['fields']['disposition']
                 disposition_fixture = next(f for f in fixtures if f['model'] == 'sample.aliquotdisposition' and f['pk'] == disposition_pk)
                 self.assertIn(disposition_fixture['fields']['disposition_type'], ['stored', 'in_use', 'exhausted'])
 
