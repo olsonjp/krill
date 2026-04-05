@@ -194,7 +194,7 @@ class AliquotDetailView(DetailView):
 
     def _handle_checkout(self, request):
         """Handle checkout action - change disposition to 'in_use'"""
-        was_stored = self.object.disposition.disposition_type == 'stored'
+        was_stored = self.object.disposition and self.object.disposition.disposition_type == 'stored'
 
         in_use_disposition, _ = AliquotDisposition.objects.get_or_create(
             name='In Use',

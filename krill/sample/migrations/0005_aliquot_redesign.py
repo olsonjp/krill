@@ -12,7 +12,7 @@ Data migration steps:
    - For each AliquotLocation that references (old_aliquot, tube_number): updates to
      point to the new Aliquot for that tube_number
 3. For Aliquots with no tubes: sets disposition to 'stored' disposition (get_or_create)
-4. Makes disposition non-nullable
+4. Disposition stays nullable at DB level (form layer enforces required)
 5. Removes AliquotTube model
 6. Removes tube_number from AliquotLocation
 7. Removes quantity from Aliquot
