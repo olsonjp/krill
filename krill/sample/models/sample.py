@@ -8,7 +8,7 @@ class Sample(models.Model):
         ('all_members', 'All Lab Members'),
     ]
 
-    name = models.CharField(max_length=200)
+    name = models.CharField(max_length=200, db_index=True)
     experiment = models.TextField(blank=True, null=True)
     source = models.ForeignKey(to='Source', on_delete=models.PROTECT)
     notes = models.TextField(blank=True, null=True)
