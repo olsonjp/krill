@@ -5,7 +5,7 @@ services:
   github:
     repo: your-username/krill
     branch: main
-  run_command: python krill/manage.py migrate && gunicorn krill.wsgi:application --bind 0.0.0.0:8000
+  run_command: python manage.py migrate && gunicorn krill.wsgi:application --bind 0.0.0.0:8000
   environment_slug: python
   instance_count: 1
   instance_size_slug: basic-xxs
