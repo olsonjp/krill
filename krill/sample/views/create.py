@@ -38,6 +38,11 @@ class ModelCreateView(CreateView):
 
     def form_valid(self, form):
         """Handle form submission and box assignment if requested"""
+        model_type = self.request.GET.get('type', 'sample')
+
+        if model_type == 'aliquot':
+            return self._handle_aliquot_creation(form)
+
         response = super().form_valid(form)
 
         # Log for Recent Activity (so dashboard links work)
@@ -50,24 +55,40 @@ class ModelCreateView(CreateView):
                 target_name=self.object.name,
                 request=self.request,
             )
-        elif isinstance(form, AliquotForm):
-            UserAuditLog.log_action(
-                user=self.request.user,
-                action='aliquot_created',
-                target_type='Aliquot',
-                target_id=self.object.id,
-                target_name=str(self.object),
-                request=self.request,
-            )
 
-        # If this is an aliquot form, create tubes
-        if isinstance(form, AliquotForm):
-            # Create tubes for the aliquot (if not already created)
-            if not hasattr(self.object, '_tubes_created'):
-                self.object.create_tubes(auto_store=False)
+        return response
+
+    def _handle_aliquot_creation(self, form):
+        """Create one or more aliquots based on count field"""
+        count = form.cleaned_data.get('count') or 1
+
+        # Save first aliquot via standard form save
+        response = super().form_valid(form)
+        first_aliquot = self.object
+
+        UserAuditLog.log_action(
+            user=self.request.user,
+            action='aliquot_created',
+            target_type='Aliquot',
+            target_id=first_aliquot.id,
+            target_name=str(first_aliquot),
+            request=self.request,
+        )
+
+        # Create additional aliquots if count > 1
+        created_aliquots = [first_aliquot]
+        for _ in range(count - 1):
+            new_aliquot = Aliquot.objects.create(
+                sample=first_aliquot.sample,
+                aliquot_type=first_aliquot.aliquot_type,
+                disposition=first_aliquot.disposition,
+                parent=first_aliquot.parent,
+                access_level=first_aliquot.access_level,
+            )
+            created_aliquots.append(new_aliquot)
 
         # If box assignment is requested
-        if isinstance(form, AliquotForm) and form.cleaned_data.get('assign_to_box') and form.cleaned_data.get('box'):
+        if form.cleaned_data.get('assign_to_box') and form.cleaned_data.get('box'):
             box = form.cleaned_data['box']
             start_row = form.cleaned_data.get('start_row')
             start_column = form.cleaned_data.get('start_column')
@@ -81,15 +102,11 @@ class ModelCreateView(CreateView):
             # Get available slots
             available_slots = box.get_available_slots()
             if not available_slots:
-                # No available slots - could add a message here
                 return response
 
             # Determine starting position
-            requested_position_used = False
             if start_row and start_column:
-                # Validate bounds (form validation should catch this, but double-check)
                 if start_row > box.rows or start_column > box.columns:
-                    # Invalid bounds - fall back to auto-assignment
                     first_slot = available_slots[0]
                     current_row = first_slot['row']
                     current_column = first_slot['column']
@@ -99,13 +116,9 @@ class ModelCreateView(CreateView):
                         f"Using first available position ({current_row}, {current_column}) instead."
                     )
                 else:
-                    # Check if requested position is available
                     if AliquotLocation.objects.filter(box=box, row=start_row, column=start_column).exists():
-                        # Position is occupied - find next available slot starting from requested position
-                        # This will be handled by the assignment loop below, but we'll warn the user
                         current_row = start_row
                         current_column = start_column
-                        # Find the actual first available slot starting from requested position
                         actual_start_row = None
                         actual_start_col = None
                         for row in range(start_row, box.rows + 1):
@@ -127,7 +140,6 @@ class ModelCreateView(CreateView):
                                 f"Starting from next available position ({current_row}, {current_column})."
                             )
                         else:
-                            # No available slots starting from requested position - use first available
                             first_slot = available_slots[0]
                             current_row = first_slot['row']
                             current_column = first_slot['column']
@@ -137,23 +149,18 @@ class ModelCreateView(CreateView):
                                 f"Using first available position ({current_row}, {current_column}) instead."
                             )
                     else:
-                        # Use specified starting position
                         current_row = start_row
                         current_column = start_column
-                        requested_position_used = True
             else:
-                # Use first available slot
                 first_slot = available_slots[0]
                 current_row = first_slot['row']
                 current_column = first_slot['column']
 
-            # Assign tubes to box positions with race condition handling
-            tubes = self.object.tubes.all().order_by('tube_number')
-            tubes_assigned = 0
-            max_retries = 3  # Maximum retries per tube to find available slot
+            # Assign aliquots to box positions
+            aliquots_assigned = 0
+            max_retries = 3
 
-            for tube in tubes:
-                # Find next available slot starting from current position
+            for aliquot in created_aliquots:
                 slot_found = False
                 retry_count = 0
 
@@ -161,35 +168,28 @@ class ModelCreateView(CreateView):
                     for row in range(current_row, box.rows + 1):
                         start_col = current_column if row == current_row else 1
                         for col in range(start_col, box.columns + 1):
-                            # Try to create location with race condition handling
                             try:
                                 with transaction.atomic():
-                                    # Double-check slot is available within transaction
                                     if AliquotLocation.objects.filter(box=box, row=row, column=col).exists():
-                                        continue  # Skip to next slot
+                                        continue
 
-                                    # Create location atomically
                                     AliquotLocation.objects.create(
-                                        aliquot=self.object,
+                                        aliquot=aliquot,
                                         box=box,
                                         row=row,
                                         column=col,
-                                        tube_number=tube.tube_number
                                     )
 
-                                    # Update tube disposition to stored
-                                    tube.disposition = stored_disposition
-                                    tube.save()
+                                    # Update aliquot disposition to stored
+                                    aliquot.disposition = stored_disposition
+                                    aliquot.save()
 
                                     current_row = row
                                     current_column = col + 1
                                     slot_found = True
-                                    tubes_assigned += 1
+                                    aliquots_assigned += 1
                                     break
                             except IntegrityError:
-                                # Race condition: another request took this slot
-                                # Continue to next slot without incrementing retry_count
-                                # since we're already trying the next slot
                                 continue
                         if slot_found:
                             break
@@ -197,15 +197,13 @@ class ModelCreateView(CreateView):
 
                     if not slot_found:
                         retry_count += 1
-                        # Reset to start of box for retry
                         current_row = 1
                         current_column = 1
 
                 if not slot_found:
-                    # No more available slots after retries
                     messages.warning(
                         self.request,
-                        f"Could not assign all tubes. {tubes_assigned} of {tubes.count()} tubes were assigned."
+                        f"Could not assign all aliquots. {aliquots_assigned} of {len(created_aliquots)} aliquots were assigned."
                     )
                     break
 

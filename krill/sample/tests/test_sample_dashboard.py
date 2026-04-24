@@ -7,7 +7,7 @@ from django.contrib.auth import get_user_model
 from django.urls import reverse
 
 from ..models.sample import Sample
-from ..models.aliquot import Aliquot, AliquotType
+from ..models.aliquot import Aliquot, AliquotType, AliquotDisposition
 from ..models.source import Source
 User = get_user_model()
 
@@ -27,10 +27,14 @@ class SampleDashboardViewTest(TestCase):
         self.source = Source.objects.create(name="Test Source")
         self.sample = Sample.objects.create(name="Test Sample", source=self.source)
         self.aliquot_type = AliquotType.objects.create(name="Test Type")
+        self.stored_disposition, _ = AliquotDisposition.objects.get_or_create(
+            name='Stored',
+            defaults={'disposition_type': 'stored'}
+        )
         self.aliquot = Aliquot.objects.create(
             sample=self.sample,
-            quantity=3,
             aliquot_type=self.aliquot_type,
+            disposition=self.stored_disposition,
         )
 
     def test_sample_dashboard_requires_login(self):

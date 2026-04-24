@@ -56,7 +56,7 @@ class StorageDetailView(DetailView):
                             'occupied': True,
                             'aliquot': location.aliquot,
                             'sample': location.aliquot.sample,
-                            'tube_number': location.tube_number
+                            'tube_number': None
                         })
                     except AliquotLocation.DoesNotExist:
                         row_data.append({

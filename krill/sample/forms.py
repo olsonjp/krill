@@ -1,15 +1,16 @@
 from django import forms
 from .models.sample import Sample
-from .models.aliquot import Aliquot, AliquotLocation, AliquotType, AliquotDisposition, AliquotTube
+from .models.aliquot import Aliquot, AliquotLocation, AliquotType, AliquotDisposition
 from .models.source import Source
 
 class SampleForm(forms.ModelForm):
     class Meta:
         model = Sample
-        fields = ['name', 'source', 'notes', 'access_level']
+        fields = ['name', 'experiment', 'source', 'notes', 'access_level']
         help_texts = {
-            'name': 'Unique identifier for the sample',
-            'source': 'Source of the sample',
+            'name': 'Unique identifier for this sample (e.g., cell line name)',
+            'experiment': 'Experiment identifier or number associated with this sample',
+            'source': 'Lab or origin of the sample',
             'notes': 'Additional information about the sample',
             'access_level': 'Restrict access to specific user tiers',
         }
@@ -18,17 +19,24 @@ class SampleForm(forms.ModelForm):
         }
 
 class AliquotForm(forms.ModelForm):
+    # count: number of aliquots to create at once (not a model field)
+    count = forms.IntegerField(
+        required=False,
+        initial=1,
+        min_value=1,
+        help_text='Number of aliquots to create at once'
+    )
     # Optional box assignment fields (not part of the model)
     assign_to_box = forms.BooleanField(
         required=False,
         initial=False,
-        help_text='Assign tubes to a storage box immediately after creation'
+        help_text='Assign aliquots to a storage box immediately after creation'
     )
     box = forms.ModelChoiceField(
         queryset=None,  # Will be set in __init__
         required=False,
         empty_label="Select a storage box",
-        help_text="Choose the box to store tubes in"
+        help_text="Choose the box to store aliquots in"
     )
     start_row = forms.IntegerField(
         required=False,
@@ -43,22 +51,20 @@ class AliquotForm(forms.ModelForm):
 
     class Meta:
         model = Aliquot
-        fields = ['parent', 'sample', 'quantity', 'aliquot_type', 'access_level']
+        fields = ['parent', 'sample', 'aliquot_type', 'disposition', 'access_level']
         help_texts = {
             'parent': 'Parent aliquot, if this is a derivative',
             'sample': 'Sample this aliquot belongs to',
-            'quantity': 'Quantity of the aliquot',
             'aliquot_type': 'Type of aliquot',
+            'disposition': 'Current status of this aliquot',
             'access_level': 'Restrict access to specific user tiers',
-        }
-        widgets = {
-            'quantity': forms.NumberInput(attrs={'min': 1}),
         }
 
     def __init__(self, *args, **kwargs):
         from storage.models.storage import Box
         super().__init__(*args, **kwargs)
         self.fields['box'].queryset = Box.objects.all().order_by('name')
+        self.fields['disposition'].required = True
 
     def clean(self):
         """Validate box assignment fields"""
@@ -96,13 +102,12 @@ class AliquotForm(forms.ModelForm):
 class AliquotLocationForm(forms.ModelForm):
     class Meta:
         model = AliquotLocation
-        fields = ['aliquot', 'box', 'row', 'column', 'tube_number']
+        fields = ['aliquot', 'box', 'row', 'column']
         help_texts = {
             'aliquot': 'Aliquot to locate',
             'box': 'Storage box',
             'row': 'Row position (1-10)',
             'column': 'Column position (1-10)',
-            'tube_number': 'Tube number within the aliquot',
         }
 
 class AliquotTypeForm(forms.ModelForm):
@@ -128,19 +133,12 @@ class SourceForm(forms.ModelForm):
         model = Source
         fields = ['name', 'description']
 
-class AliquotTubeForm(forms.ModelForm):
-    class Meta:
-        model = AliquotTube
-        fields = ['disposition']
-        help_texts = {
-            'disposition': 'Current status of this tube',
-        }
-
-class AliquotTubeMoveForm(forms.Form):
+class AliquotMoveForm(forms.Form):
+    """Form for moving an aliquot to a new storage location"""
     box = forms.ModelChoiceField(
         queryset=None,  # Will be set in __init__
         empty_label="Select a storage box",
-        help_text="Choose the box to move the tube to"
+        help_text="Choose the box to move the aliquot to"
     )
     row = forms.IntegerField(
         min_value=1,
