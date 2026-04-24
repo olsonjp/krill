@@ -77,6 +77,14 @@ class AliquotDetailView(DetailView):
     template_name = 'sample/tube_detail.html'
     context_object_name = 'aliquot'
 
+    def get_queryset(self):
+        return Aliquot.objects.select_related(
+            'sample',
+            'aliquot_type',
+            'disposition',
+            'location__box__rack__shelf__device',
+        )
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         aliquot = self.object
