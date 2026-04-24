@@ -93,6 +93,8 @@ def migrate_aliquots_backward(apps, schema_editor):
 
 class Migration(migrations.Migration):
 
+    atomic = False
+
     dependencies = [
         ('sample', '0004_alter_aliquot_options_alter_sample_options'),
     ]
