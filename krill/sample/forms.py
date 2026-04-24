@@ -64,6 +64,7 @@ class AliquotForm(forms.ModelForm):
         from storage.models.storage import Box
         super().__init__(*args, **kwargs)
         self.fields['box'].queryset = Box.objects.all().order_by('name')
+        self.fields['parent'].queryset = Aliquot.objects.select_related('sample').all()
         self.fields['disposition'].required = True
 
     def clean(self):
