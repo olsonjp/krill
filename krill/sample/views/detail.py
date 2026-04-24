@@ -83,6 +83,7 @@ class AliquotDetailView(DetailView):
         # Add forms to context for editing and moving
         context['form'] = AliquotForm(instance=aliquot)
         context['move_form'] = AliquotMoveForm()
+        context['excluded_form_fields'] = ['count', 'assign_to_box', 'box', 'start_row', 'start_column']
         # Get storage location if aliquot is stored
         try:
             location = aliquot.location

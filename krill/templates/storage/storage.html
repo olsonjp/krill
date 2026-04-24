@@ -164,7 +164,7 @@ async function loadStorageData() {
         if (freezerGrid) {
             if (data.freezer_status && data.freezer_status.length > 0) {
                 freezerGrid.innerHTML = data.freezer_status.map(freezer => `
-                    <div class="freezer-unit clickable" onclick="viewFreezerDetails(${freezer.id})">
+                    <div class="freezer-unit clickable" onclick="viewFreezerDetails(parseInt('${freezer.id}', 10))">
                         <h3>${freezer.name}</h3>
                         <div class="capacity">${freezer.usage_percent}% Full</div>
                         <button class="view-details">View Contents</button>

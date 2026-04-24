@@ -99,7 +99,7 @@
             {% csrf_token %}
             <input type="hidden" name="action" value="edit">
             {% for field in form %}
-            {% if field.name not in 'count,assign_to_box,box,start_row,start_column' %}
+            {% if field.name not in excluded_form_fields %}
             <div class="detail-field">
                 <label for="{{ field.id_for_label }}">{{ field.label }}</label>
                 {{ field }}
