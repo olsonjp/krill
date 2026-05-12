@@ -379,10 +379,37 @@ class DataImportView(TemplateView):
         aliquot_types = {}
         dispositions = {}
 
+        required_columns = {'Source', 'Cell Line', 'Freezer Name', 'Position 1', 'Position 2', 'Aliquot Type', 'Disposition'}
+
+        # Detect encoding: honour BOM if present, otherwise try UTF-8 then fall back to latin-1
+        with open(csv_file_path, 'rb') as f:
+            raw_start = f.read(4)
+        if raw_start.startswith((b'\xef\xbb\xbf',)):
+            encoding = 'utf-8-sig'
+        elif raw_start.startswith((b'\xff\xfe', b'\xfe\xff')):
+            encoding = 'utf-16'
+        else:
+            try:
+                with open(csv_file_path, 'r', encoding='utf-8') as f:
+                    f.read(4096)
+                encoding = 'utf-8'
+            except UnicodeDecodeError:
+                encoding = 'latin-1'
+
         # Read CSV file
-        with open(csv_file_path, 'r') as f:
-            reader = csv.DictReader(f, delimiter=';')
+        with open(csv_file_path, 'r', encoding=encoding) as f:
+            sample = f.read(4096)
+            f.seek(0)
+            try:
+                dialect = csv.Sniffer().sniff(sample, delimiters=',;\t|')
+                delimiter = dialect.delimiter
+            except csv.Error:
+                delimiter = ';'
+            reader = csv.DictReader(f, delimiter=delimiter)
             for row in reader:
+                missing = required_columns - row.keys()
+                if missing:
+                    raise KeyError(f"Missing required columns: {sorted(missing)}. Found: {sorted(row.keys())}")
                 # Create Source if not exists
                 source_name = row['Source'] or 'Unknown'
                 if source_name not in sources:
