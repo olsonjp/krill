@@ -583,7 +583,11 @@ class ReportListView(LoginRequiredMixin, ListView):
     model = Report
     template_name = 'reports/report_list.html'
     context_object_name = 'reports'
-    paginate_by = 20
+
+    def get_paginate_by(self, queryset):
+        if self.request.GET.get('page_size') == '20':
+            return 20
+        return 50
 
     def get_queryset(self):
         return Report.objects.filter(created_by=self.request.user).order_by('-created_at')
@@ -600,7 +604,11 @@ class AlertListView(LoginRequiredMixin, ListView):
     model = Alert
     template_name = 'reports/alert_list.html'
     context_object_name = 'alerts'
-    paginate_by = 20
+
+    def get_paginate_by(self, queryset):
+        if self.request.GET.get('page_size') == '20':
+            return 20
+        return 50
 
     def get_queryset(self):
         queryset = Alert.objects.all().order_by('-created_at')
