@@ -106,6 +106,30 @@ class SampleListViewTest(SampleViewTest):
         items = response.context['items']
         self.assertIn(self.source, items)
 
+    def test_table_view_returns_50_items_by_default(self):
+        """Table view (default) paginates at 50."""
+        Source.objects.bulk_create([Source(name=f"S{i}") for i in range(60)])
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:sample_list') + '?type=source')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['items']), 50)
+
+    def test_grid_view_returns_20_items(self):
+        """Grid view (page_size=20) paginates at 20."""
+        Source.objects.bulk_create([Source(name=f"S{i}") for i in range(30)])
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:sample_list') + '?type=source&page_size=20')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['items']), 20)
+
+    def test_invalid_page_size_falls_back_to_50(self):
+        """Invalid page_size values fall back to 50."""
+        Source.objects.bulk_create([Source(name=f"S{i}") for i in range(60)])
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:sample_list') + '?type=source&page_size=999')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['items']), 50)
+
 
 class ModelCreateViewTest(SampleViewTest):
     """Test cases for the ModelCreateView"""

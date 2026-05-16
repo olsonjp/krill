@@ -7,7 +7,6 @@ from ..models.source import Source
 
 class SampleListView(LoginRequiredMixin, ListView):
     template_name = 'sample/list.html'
-    paginate_by = 20
     context_object_name = 'items'
 
     def get_queryset(self):
@@ -88,9 +87,15 @@ class SampleListView(LoginRequiredMixin, ListView):
 
         return queryset
 
+    def get_paginate_by(self, queryset):
+        if self.request.GET.get('page_size') == '20':
+            return 20
+        return 50
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         model_type = self.request.GET.get('type', 'sample')
+        context['model_type'] = model_type
 
         # Set model name
         if model_type == 'aliquot':
