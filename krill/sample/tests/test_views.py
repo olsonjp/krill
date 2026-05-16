@@ -614,3 +614,36 @@ class AliquotDetailViewMoveTest(TestCase):
             ).exists(),
             "Aliquot should not be moved to occupied position"
         )
+
+
+class SampleSearchViewPageSizeTest(TestCase):
+    """Test dynamic page size for the sample_search FBV."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='searchtestuser',
+            email='searchtest@example.com',
+            password='testpass123',
+        )
+        self.source = Source.objects.create(name='Search Test Source')
+
+    def test_search_defaults_to_50(self):
+        """With no page_size param, sample_search paginates at 50."""
+        Sample.objects.bulk_create(
+            [Sample(name=f'Sample {i}', source=self.source) for i in range(60)]
+        )
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:sample_search'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['samples'].paginator.per_page, 50)
+
+    def test_search_grid_returns_20(self):
+        """With page_size=20, sample_search paginates at 20."""
+        Sample.objects.bulk_create(
+            [Sample(name=f'Sample {i}', source=self.source) for i in range(30)]
+        )
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:sample_search') + '?page_size=20')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['samples'].paginator.per_page, 20)
