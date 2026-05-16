@@ -67,3 +67,7 @@ Thumbs.db
 *.bak
 *.backup
 *~
+
+# Superpowers (brainstorming/planning artifacts)
+.superpowers/
+docs/superpowers/
