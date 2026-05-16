@@ -15,8 +15,8 @@ Krill supports importing sample data via CSV files. The import process creates:
 ## CSV Format Requirements
 
 ### File Format
-- **Delimiter**: Semicolon (`;`)
-- **Encoding**: UTF-8
+- **Delimiter**: Auto-detected — comma (`,`), semicolon (`;`), tab (`\t`), or pipe (`|`) all work
+- **Encoding**: Auto-detected — UTF-8, UTF-8 with BOM (Excel default), UTF-16, or Latin-1
 - **Header Row**: Required (first row must contain column names)
 
 ### Required Columns
@@ -25,7 +25,7 @@ The CSV file must include the following columns (in any order):
 
 | Column Name | Required | Description | Example |
 |------------|----------|-------------|---------|
-| `Source` | Yes | Name of the sample source/origin | "Oesterreich Lab" |
+| `Source` | Yes | Name of the sample source/origin | "Example Lab" |
 | `Cell Line` | Yes | Name/identifier of the cell line or sample | "MM134" |
 | `Experiment #` | No | Experiment identifier | "EXP_001" |
 | `Sample Notes` | No | Notes about the sample | "Legacy sample from 2017" |
@@ -112,14 +112,19 @@ The storage hierarchy is built automatically:
 
 ## Example CSV File
 
+Comma-delimited (works with most editors and Excel "Save As CSV"):
+
+```csv
+Source,Cell Line,Experiment #,Sample Notes,Site,Freezer Name,Position 1,Position 2,Position 3,Position 4,Aliquot Type,Number of Aliquots Total,Disposition
+Example Lab,MM134,,Legacy sample from 2017,Main Lab,Freezer A,4,F,1,1,Cells,6,In Storage
+Example Lab,MM134,,Legacy sample from 2017,Main Lab,Freezer A,4,F,1,2,Cells,6,Checked Out
+```
+
+Semicolon-delimited (also accepted):
+
 ```csv
 Source;Cell Line;Experiment #;Sample Notes;Site;Freezer Name;Position 1;Position 2;Position 3;Position 4;Aliquot Type;Number of Aliquots Total;Disposition
-Oesterreich Lab;MM134;;Legacy sample from 2017;Main Lab;Freezer A;4;F;1;1;Cells;6;In Storage
-Oesterreich Lab;MM134;;Legacy sample from 2017;Main Lab;Freezer A;4;F;1;2;Cells;6;Checked Out
-Oesterreich Lab;MM134;;Legacy sample from 2017;Main Lab;Freezer A;4;F;1;3;Cells;6;In Storage
-Oesterreich Lab;MM134;;Legacy sample from 2017;Main Lab;Freezer A;4;F;1;4;Cells;6;In Storage
-Oesterreich Lab;MM134;;Legacy sample from 2017;Main Lab;Freezer A;4;F;1;5;Cells;6;In Storage
-Oesterreich Lab;MM134;;Legacy sample from 2017;Main Lab;Freezer A;4;F;1;6;Cells;6;In Storage
+Example Lab;MM134;;Legacy sample from 2017;Main Lab;Freezer A;4;F;1;1;Cells;6;In Storage
 ```
 
 **Note**: The `Site` column is optional. If omitted, all samples will be assigned to "Default Site".
@@ -162,8 +167,8 @@ For each row in your CSV:
 
 ## Common Issues and Solutions
 
-### Issue: "Column not found" error
-**Solution**: Ensure your CSV header row exactly matches the column names (case-sensitive). Check for extra spaces or typos.
+### Issue: "Missing required columns" error
+**Solution**: Ensure your CSV header row exactly matches the column names (case-sensitive). The error message lists the missing columns alongside what was actually found, so you can quickly spot typos or extra spaces.
 
 ### Issue: Samples imported but no storage locations
 **Solution**: Ensure `Freezer Name`, `Position 1`, and `Position 2` are provided. `Position 3` and `Position 4` are optional but both must be present together.
@@ -175,7 +180,7 @@ For each row in your CSV:
 **Solution**: Use one of these exact values in the CSV: `"In Storage"`, `"Used"`, `"Checked Out"`, or `"Disposed"`. Other values will default to `stored` status. Note: these are the CSV-level labels; internally the model stores disposition types as `stored`, `in_use`, `exhausted`, or `disposed`.
 
 ### Issue: Import fails with encoding errors
-**Solution**: Ensure your CSV file is saved as UTF-8 encoding. Avoid special characters or use proper UTF-8 encoding.
+**Solution**: The importer auto-detects encoding (UTF-8, UTF-8 with BOM, UTF-16, Latin-1), so most files — including those exported from Excel — work without changes. If you still see errors, try re-saving the file as UTF-8 from your spreadsheet application.
 
 ## Tips for Large Imports
 
