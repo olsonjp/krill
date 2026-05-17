@@ -34,7 +34,18 @@
         window.location.href = url.toString();
     };
 
+    function makeRowsClickable() {
+        document.querySelectorAll('.items-table tbody tr').forEach(function (row) {
+            row.addEventListener('click', function (e) {
+                if (e.target.closest('a, button')) return;
+                var link = row.querySelector('a');
+                if (link) link.click();
+            });
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         applyMode(getMode());
+        makeRowsClickable();
     });
 }());

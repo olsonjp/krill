@@ -128,7 +128,7 @@
         </div><!-- end .view-table -->
 
         <!-- Card/grid view -->
-        <div class="view-grid">
+        <div class="view-grid" hidden>
         <div class="activity-list">
             {% if reports %}
                 {% for report in reports %}
@@ -581,5 +581,5 @@ window.onclick = function(event) {
     }
 }
 </style>
-<script src="{% static 'krill/js/list-view.js' %}"></script>
+<script src="{% static 'js/list-view.js' %}"></script>
 {% endblock %}

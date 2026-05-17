@@ -87,7 +87,7 @@
                 <table class="items-table">
                     <thead>
                         <tr>
-                            <th>Sample</th>
+                            <th>Aliquot</th>
                             <th>Type</th>
                             <th>Disposition</th>
                             <th>Location</th>
@@ -99,7 +99,7 @@
                     <tbody>
                         {% for item in items %}
                         <tr>
-                            <td><a href="{% url 'sample:detail' type='aliquot' pk=item.id %}">{{ item.sample.name }}</a></td>
+                            <td><a href="{% url 'sample:detail' type='aliquot' pk=item.id %}">{{ item.sample.name }} <span style="color:var(--color-dark-variant);font-weight:400">#{{ item.id }}</span></a></td>
                             <td>{% if item.aliquot_type %}<span class="status-badge">{{ item.aliquot_type.name }}</span>{% else %}—{% endif %}</td>
                             <td>{% if item.disposition %}<span class="status-badge {{ item.disposition.disposition_type }}">{{ item.disposition.name }}</span>{% else %}—{% endif %}</td>
                             <td>
@@ -215,7 +215,7 @@
             </div><!-- end .view-table -->
 
             <!-- Card grid view -->
-            <div class="view-grid">
+            <div class="view-grid" hidden>
                 <div class="results-grid">
                     {% for item in items %}
                     <div class="sample-card searchable" data-id="{{ item.id }}">
@@ -665,5 +665,5 @@ function viewSample(sampleId) {
 }
 </style>
 
-<script src="{% static 'krill/js/list-view.js' %}"></script>
+<script src="{% static 'js/list-view.js' %}"></script>
 {% endblock %}

@@ -114,7 +114,7 @@
         </div><!-- end .view-table -->
 
         <!-- Grid view -->
-        <div class="view-grid">
+        <div class="view-grid" hidden>
         {% if samples %}
             <div class="results-grid">
                 {% for sample in samples %}
@@ -619,5 +619,5 @@ document.addEventListener('DOMContentLoaded', setupAutoSearch);
 }
 </style>
 
-<script src="{% static 'krill/js/list-view.js' %}"></script>
+<script src="{% static 'js/list-view.js' %}"></script>
 {% endblock %}
