@@ -68,63 +68,208 @@
                 {% if search_query %}
                     <span class="search-info">(filtered by "{{ search_query }}")</span>
                 {% endif %}
+                <div class="view-toggle">
+                    <button class="view-btn toggle-table" onclick="krillToggleView('table')" title="Table view">
+                        <span class="material-icons-round">table_rows</span>
+                    </button>
+                    <button class="view-btn toggle-grid" onclick="krillToggleView('grid')" title="Grid view">
+                        <span class="material-icons-round">grid_view</span>
+                    </button>
+                </div>
             </div>
         </div>
 
         {% if items %}
-            <div class="results-grid">
-                {% for item in items %}
-                <div class="sample-card searchable" data-id="{{ item.id }}">
-                    <div class="sample-header">
-                        <h3>{{ item.name }}</h3>
-                        <span class="sample-type">
-                            {% if model_name == 'Aliquots' %}
-                                {{ item.aliquot_type.name|default:"Unknown Type" }}
-                            {% elif model_name == 'Aliquot Types' %}
-                                Type
-                            {% elif model_name == 'Sources' %}
-                                Source
-                            {% else %}
-                                Sample
-                            {% endif %}
-                        </span>
-                    </div>
-                    <div class="sample-meta">
-                        {% if model_name == 'Aliquots' %}
-                            <p><strong>Sample:</strong> {{ item.sample.name }}</p>
-                            <p><strong>Disposition:</strong>
-                                <span class="disposition-badge disposition-{{ item.disposition|default:'unknown' }}">
-                                    {{ item.disposition|title|default:"Unknown" }}
-                                </span>
-                            </p>
-                            <p><strong>ID:</strong> {{ item.id }}</p>
-                        {% elif model_name == 'Aliquot Types' %}
-                            <p><strong>Description:</strong> {{ item.description|truncatechars:100|default:"No description" }}</p>
-                        {% elif model_name == 'Sources' %}
-                            <p><strong>Description:</strong> {{ item.description|truncatechars:100|default:"No description" }}</p>
-                        {% else %}
-                            <p><strong>Source:</strong> {{ item.source.name|default:"Unknown" }}</p>
-                            <p><strong>Notes:</strong> {{ item.notes|truncatechars:100|default:"No notes" }}</p>
-                        {% endif %}
-                        {% if item.created_at %}
-                            <p><strong>Created:</strong> {{ item.created_at|date:"M d, Y" }}</p>
-                        {% endif %}
-                    </div>
-                    <div class="sample-actions">
-                        <button class="btn btn-primary" onclick="viewItem({{ item.id }})">
-                            <span class="material-icons-round">visibility</span>
-                            View
-                        </button>
-                        {% if model_name == 'Aliquots' %}
-                            <button class="btn btn-secondary" onclick="viewSample({{ item.sample.id }})">
-                                <span class="material-icons-round">science</span>
-                                Sample
-                            </button>
-                        {% endif %}
-                    </div>
+            <!-- Table view -->
+            <div class="view-table">
+                {% if model_type == 'aliquot' %}
+                <div class="table-container">
+                <table class="items-table">
+                    <thead>
+                        <tr>
+                            <th>Sample</th>
+                            <th>Type</th>
+                            <th>Disposition</th>
+                            <th>Location</th>
+                            <th>Created</th>
+                            <th>Access</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr>
+                            <td><a href="{% url 'sample:detail' type='aliquot' pk=item.id %}">{{ item.sample.name }}</a></td>
+                            <td>{% if item.aliquot_type %}<span class="status-badge">{{ item.aliquot_type.name }}</span>{% else %}—{% endif %}</td>
+                            <td>{% if item.disposition %}<span class="status-badge {{ item.disposition.disposition_type }}">{{ item.disposition.name }}</span>{% else %}—{% endif %}</td>
+                            <td>
+                                {% if item.location %}
+                                    {{ item.location.box.rack.shelf.device.site.name }} ›
+                                    {{ item.location.box.rack.shelf.device.name }} ›
+                                    {{ item.location.box.name }}
+                                    [{{ item.location.row }}, {{ item.location.column }}]
+                                {% else %}—{% endif %}
+                            </td>
+                            <td>{{ item.created_at|date:"Y-m-d" }}</td>
+                            <td>{{ item.get_access_level_display }}</td>
+                            <td>
+                                <a class="action-button view" href="{% url 'sample:detail' type='aliquot' pk=item.id %}" title="View">
+                                    <span class="material-icons-round">open_in_new</span>
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="7" style="text-align:center">No aliquots found.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
                 </div>
-                {% endfor %}
-            </div>
+                {% elif model_type == 'sample' %}
+                <div class="table-container">
+                <table class="items-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Source</th>
+                            <th>Experiment #</th>
+                            <th>Notes</th>
+                            <th>Access</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr>
+                            <td><a href="{% url 'sample:detail' type='sample' pk=item.id %}">{{ item.name }}</a></td>
+                            <td>{{ item.source.name|default:"—" }}</td>
+                            <td>{{ item.experiment|default:"—" }}</td>
+                            <td>{{ item.notes|truncatechars:60|default:"—" }}</td>
+                            <td>{{ item.get_access_level_display }}</td>
+                            <td>
+                                <a class="action-button view" href="{% url 'sample:detail' type='sample' pk=item.id %}" title="View">
+                                    <span class="material-icons-round">open_in_new</span>
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="6" style="text-align:center">No samples found.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                </div>
+                {% elif model_type == 'aliquot-type' %}
+                <div class="table-container">
+                <table class="items-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Description</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr>
+                            <td>{{ item.name }}</td>
+                            <td>{{ item.description|truncatechars:80|default:"—" }}</td>
+                            <td>
+                                <a class="action-button view" href="{% url 'sample:detail' type='aliquot-type' pk=item.id %}" title="View">
+                                    <span class="material-icons-round">open_in_new</span>
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="3" style="text-align:center">No aliquot types found.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                </div>
+                {% elif model_type == 'source' %}
+                <div class="table-container">
+                <table class="items-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Description</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr>
+                            <td>{{ item.name }}</td>
+                            <td>{{ item.description|truncatechars:80|default:"—" }}</td>
+                            <td>
+                                <a class="action-button view" href="{% url 'sample:detail' type='source' pk=item.id %}" title="View">
+                                    <span class="material-icons-round">open_in_new</span>
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="3" style="text-align:center">No sources found.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                </div>
+                {% endif %}
+            </div><!-- end .view-table -->
+
+            <!-- Card grid view -->
+            <div class="view-grid">
+                <div class="results-grid">
+                    {% for item in items %}
+                    <div class="sample-card searchable" data-id="{{ item.id }}">
+                        <div class="sample-header">
+                            <h3>{{ item.name }}</h3>
+                            <span class="sample-type">
+                                {% if model_name == 'Aliquots' %}
+                                    {{ item.aliquot_type.name|default:"Unknown Type" }}
+                                {% elif model_name == 'Aliquot Types' %}
+                                    Type
+                                {% elif model_name == 'Sources' %}
+                                    Source
+                                {% else %}
+                                    Sample
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="sample-meta">
+                            {% if model_name == 'Aliquots' %}
+                                <p><strong>Sample:</strong> {{ item.sample.name }}</p>
+                                <p><strong>Disposition:</strong>
+                                    <span class="disposition-badge disposition-{{ item.disposition|default:'unknown' }}">
+                                        {{ item.disposition|title|default:"Unknown" }}
+                                    </span>
+                                </p>
+                                <p><strong>ID:</strong> {{ item.id }}</p>
+                            {% elif model_name == 'Aliquot Types' %}
+                                <p><strong>Description:</strong> {{ item.description|truncatechars:100|default:"No description" }}</p>
+                            {% elif model_name == 'Sources' %}
+                                <p><strong>Description:</strong> {{ item.description|truncatechars:100|default:"No description" }}</p>
+                            {% else %}
+                                <p><strong>Source:</strong> {{ item.source.name|default:"Unknown" }}</p>
+                                <p><strong>Notes:</strong> {{ item.notes|truncatechars:100|default:"No notes" }}</p>
+                            {% endif %}
+                            {% if item.created_at %}
+                                <p><strong>Created:</strong> {{ item.created_at|date:"M d, Y" }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="sample-actions">
+                            <button class="btn btn-primary" onclick="viewItem({{ item.id }})">
+                                <span class="material-icons-round">visibility</span>
+                                View
+                            </button>
+                            {% if model_name == 'Aliquots' %}
+                                <button class="btn btn-secondary" onclick="viewSample({{ item.sample.id }})">
+                                    <span class="material-icons-round">science</span>
+                                    Sample
+                                </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div><!-- end .view-grid -->
 
             <!-- Pagination -->
             {% if is_paginated %}
@@ -340,6 +485,7 @@ function viewSample(sampleId) {
     gap: 20px;
     color: var(--color-dark-variant);
     font-size: 0.9rem;
+    align-items: center;
 }
 
 .results-grid {
@@ -455,6 +601,17 @@ function viewSample(sampleId) {
     flex-wrap: wrap;
 }
 
+/* View toggle */
+.view-toggle { display: flex; border: 1px solid var(--color-light, #e0e0e0); border-radius: 7px; overflow: hidden; }
+.view-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 34px; height: 32px;
+    background: var(--color-white, #fff); border: none;
+    color: var(--color-dark-variant, #555); cursor: pointer;
+}
+.view-btn:first-child { border-right: 1px solid var(--color-light, #e0e0e0); }
+.view-btn.active { background: var(--color-primary, #6C9BCF); color: var(--color-white, #fff); }
+
 @media (max-width: 768px) {
     .search-form .form-row {
         grid-template-columns: 1fr;
@@ -518,4 +675,6 @@ function viewSample(sampleId) {
     margin-left: 10px;
 }
 </style>
+
+<script src="{% static 'krill/js/list-view.js' %}"></script>
 {% endblock %}
