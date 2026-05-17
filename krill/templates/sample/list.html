@@ -170,7 +170,7 @@
                     <tbody>
                         {% for item in items %}
                         <tr>
-                            <td>{{ item.name }}</td>
+                            <td><a href="{% url 'sample:detail' type='aliquot-type' pk=item.id %}">{{ item.name }}</a></td>
                             <td>{{ item.description|truncatechars:80|default:"—" }}</td>
                             <td>
                                 <a class="action-button view" href="{% url 'sample:detail' type='aliquot-type' pk=item.id %}" title="View">
@@ -197,7 +197,7 @@
                     <tbody>
                         {% for item in items %}
                         <tr>
-                            <td>{{ item.name }}</td>
+                            <td><a href="{% url 'sample:detail' type='source' pk=item.id %}">{{ item.name }}</a></td>
                             <td>{{ item.description|truncatechars:80|default:"—" }}</td>
                             <td>
                                 <a class="action-button view" href="{% url 'sample:detail' type='source' pk=item.id %}" title="View">

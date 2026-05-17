@@ -18,7 +18,7 @@ class SampleListView(LoginRequiredMixin, ListView):
                 'sample',
                 'aliquot_type',
                 'disposition',
-                'location__box',
+                'location__box__rack__shelf__device__site',
             )
         elif model_type == 'aliquot-type':
             queryset = AliquotType.objects.all()
