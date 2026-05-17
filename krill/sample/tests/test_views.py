@@ -647,3 +647,57 @@ class SampleSearchViewPageSizeTest(TestCase):
         response = self.client.get(reverse('sample:sample_search') + '?page_size=20')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context['samples'].paginator.per_page, 20)
+
+    def test_invalid_page_size_falls_back_to_50(self):
+        """With an unrecognised page_size value, sample_search falls back to 50."""
+        Sample.objects.bulk_create(
+            [Sample(name=f'Sample {i}', source=self.source) for i in range(30)]
+        )
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:sample_search') + '?page_size=999')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['samples'].paginator.per_page, 50)
+
+
+class AliquotSearchViewPageSizeTest(TestCase):
+    """Test dynamic page size for the aliquot_search FBV."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='aliquotsearchtestuser',
+            email='aliquotsearchtest@example.com',
+            password='testpass123',
+        )
+        self.source = Source.objects.create(name='Aliquot Search Test Source')
+        self.sample = Sample.objects.create(name='Aliquot Search Test Sample', source=self.source)
+
+    def test_aliquot_search_defaults_to_50(self):
+        """With no page_size param, aliquot_search paginates at 50."""
+        Aliquot.objects.bulk_create(
+            [Aliquot(sample=self.sample) for _ in range(60)]
+        )
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:aliquot_search'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['aliquots'].paginator.per_page, 50)
+
+    def test_aliquot_search_grid_returns_20(self):
+        """With page_size=20, aliquot_search paginates at 20."""
+        Aliquot.objects.bulk_create(
+            [Aliquot(sample=self.sample) for _ in range(30)]
+        )
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:aliquot_search') + '?page_size=20')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['aliquots'].paginator.per_page, 20)
+
+    def test_aliquot_search_invalid_page_size_falls_back_to_50(self):
+        """With an unrecognised page_size value, aliquot_search falls back to 50."""
+        Aliquot.objects.bulk_create(
+            [Aliquot(sample=self.sample) for _ in range(30)]
+        )
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:aliquot_search') + '?page_size=999')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['aliquots'].paginator.per_page, 50)

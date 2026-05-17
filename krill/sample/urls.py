@@ -13,6 +13,7 @@ urlpatterns = [
     path('', SampleView.as_view(), name='sample'),
     path('list/', SampleListView.as_view(), name='sample_list'),
     path('search/', sample_search, name='sample_search'),
+    path('aliquot-search/', aliquot_search, name='aliquot_search'),
     path('detail/<str:type>/<int:pk>/', ModelDetailView.as_view(), name='detail'),
     path('aliquot/<int:pk>/', AliquotDetailView.as_view(), name='aliquot_detail'),
     # Backward-compatibility redirect: tube/<pk>/ -> aliquot/<pk>/
