@@ -5,8 +5,12 @@ from ..models.site import Site
 
 class StorageListView(LoginRequiredMixin, ListView):
     template_name = 'storage/list.html'
-    paginate_by = 20
     context_object_name = 'items'
+
+    def get_paginate_by(self, queryset):
+        if self.request.GET.get('page_size') == '20':
+            return 20
+        return 50
 
     def get_queryset(self):
         model_type = self.request.GET.get('type', 'site')
@@ -71,6 +75,7 @@ class StorageListView(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         model_type = self.request.GET.get('type', 'site')
+        context['model_type'] = model_type
 
         # Set model name
         if model_type == 'box':

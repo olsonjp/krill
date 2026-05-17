@@ -106,6 +106,30 @@ class SampleListViewTest(SampleViewTest):
         items = response.context['items']
         self.assertIn(self.source, items)
 
+    def test_table_view_returns_50_items_by_default(self):
+        """Table view (default) paginates at 50."""
+        Source.objects.bulk_create([Source(name=f"S{i}") for i in range(60)])
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:sample_list') + '?type=source')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['items']), 50)
+
+    def test_grid_view_returns_20_items(self):
+        """Grid view (page_size=20) paginates at 20."""
+        Source.objects.bulk_create([Source(name=f"S{i}") for i in range(30)])
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:sample_list') + '?type=source&page_size=20')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['items']), 20)
+
+    def test_invalid_page_size_falls_back_to_50(self):
+        """Invalid page_size values fall back to 50."""
+        Source.objects.bulk_create([Source(name=f"S{i}") for i in range(60)])
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:sample_list') + '?type=source&page_size=999')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['items']), 50)
+
 
 class ModelCreateViewTest(SampleViewTest):
     """Test cases for the ModelCreateView"""
@@ -590,3 +614,90 @@ class AliquotDetailViewMoveTest(TestCase):
             ).exists(),
             "Aliquot should not be moved to occupied position"
         )
+
+
+class SampleSearchViewPageSizeTest(TestCase):
+    """Test dynamic page size for the sample_search FBV."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='searchtestuser',
+            email='searchtest@example.com',
+            password='testpass123',
+        )
+        self.source = Source.objects.create(name='Search Test Source')
+
+    def test_search_defaults_to_50(self):
+        """With no page_size param, sample_search paginates at 50."""
+        Sample.objects.bulk_create(
+            [Sample(name=f'Sample {i}', source=self.source) for i in range(60)]
+        )
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:sample_search'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['samples'].paginator.per_page, 50)
+
+    def test_search_grid_returns_20(self):
+        """With page_size=20, sample_search paginates at 20."""
+        Sample.objects.bulk_create(
+            [Sample(name=f'Sample {i}', source=self.source) for i in range(30)]
+        )
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:sample_search') + '?page_size=20')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['samples'].paginator.per_page, 20)
+
+    def test_invalid_page_size_falls_back_to_50(self):
+        """With an unrecognised page_size value, sample_search falls back to 50."""
+        Sample.objects.bulk_create(
+            [Sample(name=f'Sample {i}', source=self.source) for i in range(30)]
+        )
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:sample_search') + '?page_size=999')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['samples'].paginator.per_page, 50)
+
+
+class AliquotSearchViewPageSizeTest(TestCase):
+    """Test dynamic page size for the aliquot_search FBV."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='aliquotsearchtestuser',
+            email='aliquotsearchtest@example.com',
+            password='testpass123',
+        )
+        self.source = Source.objects.create(name='Aliquot Search Test Source')
+        self.sample = Sample.objects.create(name='Aliquot Search Test Sample', source=self.source)
+
+    def test_aliquot_search_defaults_to_50(self):
+        """With no page_size param, aliquot_search paginates at 50."""
+        Aliquot.objects.bulk_create(
+            [Aliquot(sample=self.sample) for _ in range(60)]
+        )
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:aliquot_search'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['aliquots'].paginator.per_page, 50)
+
+    def test_aliquot_search_grid_returns_20(self):
+        """With page_size=20, aliquot_search paginates at 20."""
+        Aliquot.objects.bulk_create(
+            [Aliquot(sample=self.sample) for _ in range(30)]
+        )
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:aliquot_search') + '?page_size=20')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['aliquots'].paginator.per_page, 20)
+
+    def test_aliquot_search_invalid_page_size_falls_back_to_50(self):
+        """With an unrecognised page_size value, aliquot_search falls back to 50."""
+        Aliquot.objects.bulk_create(
+            [Aliquot(sample=self.sample) for _ in range(30)]
+        )
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:aliquot_search') + '?page_size=999')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['aliquots'].paginator.per_page, 50)

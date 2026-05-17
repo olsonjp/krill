@@ -113,6 +113,22 @@ class StorageListViewTest(StorageViewTestBase):
         items = response.context['items']
         self.assertIn(self.device, items)
 
+    def test_storage_list_defaults_to_50(self):
+        """Storage list table view paginates at 50."""
+        Site.objects.bulk_create([Site(name=f"Site{i}") for i in range(60)])
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('storage:storage_list') + '?type=site')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['items']), 50)
+
+    def test_storage_list_grid_returns_20(self):
+        """Storage list grid view paginates at 20."""
+        Site.objects.bulk_create([Site(name=f"Site{i}") for i in range(30)])
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('storage:storage_list') + '?type=site&page_size=20')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['items']), 20)
+
 
 class HomeViewTest(StorageViewTestBase):
     """Test cases for the HomeView"""

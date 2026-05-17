@@ -16,7 +16,7 @@ def sample_search(request):
     disposition = request.GET.get('disposition', '')
 
     # Start with all samples
-    samples = Sample.objects.order_by('name')
+    samples = Sample.objects.select_related('source').order_by('name')
 
     if query:
         samples = samples.filter(
@@ -29,7 +29,8 @@ def sample_search(request):
         samples = samples.filter(experiment__icontains=sample_type)
 
     # Pagination
-    paginator = Paginator(samples, 20)
+    page_size = 20 if request.GET.get('page_size') == '20' else 50
+    paginator = Paginator(samples, page_size)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
@@ -92,7 +93,8 @@ def aliquot_search(request):
         )
 
     # Pagination
-    paginator = Paginator(aliquots, 20)
+    page_size = 20 if request.GET.get('page_size') == '20' else 50
+    paginator = Paginator(aliquots, page_size)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 

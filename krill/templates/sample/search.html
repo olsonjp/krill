@@ -54,10 +54,67 @@
                 <span class="result-count">{{ total_count }} items found</span>
                 {% if samples.has_other_pages %}
                     <span class="page-info">Page {{ samples.number }} of {{ samples.paginator.num_pages }}</span>
+                {% elif aliquots.has_other_pages %}
+                    <span class="page-info">Page {{ aliquots.number }} of {{ aliquots.paginator.num_pages }}</span>
                 {% endif %}
+                <div class="view-toggle">
+                    <button class="view-btn toggle-table" onclick="krillToggleView('table')" title="Table view">
+                        <span class="material-icons-round">table_rows</span>
+                    </button>
+                    <button class="view-btn toggle-grid" onclick="krillToggleView('grid')" title="Grid view">
+                        <span class="material-icons-round">grid_view</span>
+                    </button>
+                </div>
             </div>
         </div>
 
+        <!-- Table view -->
+        <div class="view-table">
+        <div class="table-container">
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Name</th>
+                    <th>Detail</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sample in samples %}
+                <tr>
+                    <td><span class="status-badge">Sample</span></td>
+                    <td><a href="{% url 'sample:detail' type='sample' pk=sample.pk %}">{{ sample.name }}</a></td>
+                    <td>{{ sample.source.name|default:"—" }}</td>
+                    <td>
+                        <a class="action-button view" href="{% url 'sample:detail' type='sample' pk=sample.pk %}" title="View">
+                            <span class="material-icons-round">open_in_new</span>
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% for aliquot in aliquots %}
+                <tr>
+                    <td><span class="status-badge">Aliquot</span></td>
+                    <td><a href="{% url 'sample:detail' type='aliquot' pk=aliquot.pk %}">{{ aliquot.sample.name }} #{{ aliquot.pk }}</a></td>
+                    <td>{% if aliquot.disposition %}<span class="status-badge {{ aliquot.disposition.disposition_type }}">{{ aliquot.disposition.name }}</span>{% else %}—{% endif %}</td>
+                    <td>
+                        <a class="action-button view" href="{% url 'sample:detail' type='aliquot' pk=aliquot.pk %}" title="View">
+                            <span class="material-icons-round">open_in_new</span>
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not samples and not aliquots %}
+                <tr><td colspan="4" style="text-align:center">No results found.</td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+        </div>
+        </div><!-- end .view-table -->
+
+        <!-- Grid view -->
+        <div class="view-grid" hidden>
         {% if samples %}
             <div class="results-grid">
                 {% for sample in samples %}
@@ -81,10 +138,10 @@
                         {% endif %}
                     </div>
                     <div class="sample-actions">
-                        <button class="btn btn-primary" onclick="viewSample({{ sample.id }})">
+                        <a class="btn btn-primary" href="{% url 'sample:detail' type='sample' pk=sample.pk %}">
                             <span class="material-icons-round">visibility</span>
                             View
-                        </button>
+                        </a>
                         <button class="btn btn-secondary" onclick="viewAliquots({{ sample.id }})">
                             <span class="material-icons-round">list</span>
                             Aliquots
@@ -93,34 +150,85 @@
                 </div>
                 {% endfor %}
             </div>
+        {% endif %}
 
-            <!-- Pagination -->
-            {% if samples.has_other_pages %}
-            <div class="pagination">
-                {% if samples.has_previous %}
-                    <a href="?q={{ query }}&type={{ sample_type }}&disposition={{ disposition }}&page={{ samples.previous_page_number }}"
-                       class="page-link">&laquo; Previous</a>
-                {% endif %}
-
-                <span class="current-page">
-                    Page {{ samples.number }} of {{ samples.paginator.num_pages }}
-                </span>
-
-                {% if samples.has_next %}
-                    <a href="?q={{ query }}&type={{ sample_type }}&disposition={{ disposition }}&page={{ samples.next_page_number }}"
-                       class="page-link">Next &raquo;</a>
-                {% endif %}
+        {% if aliquots %}
+            <div class="results-grid">
+                {% for aliquot in aliquots %}
+                <div class="sample-card">
+                    <div class="sample-header">
+                        <h3>{{ aliquot.sample.name }} #{{ aliquot.pk }}</h3>
+                        <span class="sample-type">Aliquot</span>
+                    </div>
+                    <div class="sample-meta">
+                        {% if aliquot.aliquot_type %}
+                            <p><strong>Type:</strong> {{ aliquot.aliquot_type.name }}</p>
+                        {% endif %}
+                        {% if aliquot.disposition %}
+                            <p><strong>Disposition:</strong>
+                                <span class="status-badge {{ aliquot.disposition.disposition_type }}">{{ aliquot.disposition.name }}</span>
+                            </p>
+                        {% endif %}
+                    </div>
+                    <div class="sample-actions">
+                        <a class="btn btn-primary" href="{% url 'sample:detail' type='aliquot' pk=aliquot.pk %}">
+                            <span class="material-icons-round">visibility</span>
+                            View
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
             </div>
-            {% endif %}
-        {% else %}
+        {% endif %}
+
+        {% if not samples and not aliquots %}
             <div class="no-results">
                 <span class="material-icons-round">search_off</span>
-                <h3>No samples found</h3>
+                <h3>No results found</h3>
                 <p>Try adjusting your search criteria or browse all samples.</p>
                 <button class="btn btn-primary" onclick="browseAllSamples()">
                     Browse All Samples
                 </button>
             </div>
+        {% endif %}
+        </div><!-- end .view-grid -->
+
+        <!-- Pagination for samples -->
+        {% if samples.has_other_pages %}
+        <div class="pagination">
+            {% if samples.has_previous %}
+                <a href="?q={{ query }}&type={{ sample_type }}&disposition={{ disposition }}&page={{ samples.previous_page_number }}&page_size={{ request.GET.page_size }}"
+                   class="page-link">&laquo; Previous</a>
+            {% endif %}
+
+            <span class="current-page">
+                Page {{ samples.number }} of {{ samples.paginator.num_pages }}
+            </span>
+
+            {% if samples.has_next %}
+                <a href="?q={{ query }}&type={{ sample_type }}&disposition={{ disposition }}&page={{ samples.next_page_number }}&page_size={{ request.GET.page_size }}"
+                   class="page-link">Next &raquo;</a>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Pagination for aliquots -->
+        {% if aliquots.has_other_pages %}
+        <div class="pagination">
+            {% if aliquots.has_previous %}
+                <a href="?q={{ query }}&type={{ sample_type }}&disposition={{ disposition }}&page={{ aliquots.previous_page_number }}&page_size={{ request.GET.page_size }}"
+                   class="page-link">&laquo; Previous</a>
+            {% endif %}
+
+            <span class="current-page">
+                Page {{ aliquots.number }} of {{ aliquots.paginator.num_pages }}
+            </span>
+
+            {% if aliquots.has_next %}
+                <a href="?q={{ query }}&type={{ sample_type }}&disposition={{ disposition }}&page={{ aliquots.next_page_number }}&page_size={{ request.GET.page_size }}"
+                   class="page-link">Next &raquo;</a>
+            {% endif %}
+        </div>
         {% endif %}
     </div>
 
@@ -168,10 +276,6 @@ function clearSearch() {
     document.getElementById('sampleType').value = '';
     document.getElementById('disposition').value = '';
     window.location.href = window.location.pathname;
-}
-
-function viewSample(sampleId) {
-    window.location.href = `/samples/detail/sample/${sampleId}/`;
 }
 
 function viewAliquots(sampleId) {
@@ -356,6 +460,7 @@ document.addEventListener('DOMContentLoaded', setupAutoSearch);
 .results-info {
     display: flex;
     gap: 20px;
+    align-items: center;
     color: var(--color-dark-variant);
     font-size: 0.9rem;
 }
@@ -513,4 +618,6 @@ document.addEventListener('DOMContentLoaded', setupAutoSearch);
     }
 }
 </style>
+
+<script src="{% static 'js/list-view.js' %}"></script>
 {% endblock %}

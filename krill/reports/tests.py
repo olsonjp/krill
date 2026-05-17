@@ -5,7 +5,7 @@ from unittest.mock import patch, MagicMock
 import json
 import logging
 
-from .models import Report, Alert
+from .models import Report, Alert, ReportTemplate
 from . import views as reports_views
 from sample.models import Sample, Aliquot
 from sample.models.aliquot import AliquotLocation
@@ -234,4 +234,66 @@ class DashboardStatsViewTest(ReportsViewTest):
             self.assertIn('_errors', data)
             self.assertIsInstance(data['_errors'], list)
             self.assertGreater(len(data['_errors']), 0)
+
+
+class ReportListViewPageSizeTest(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='reportuser', password='pass')
+
+    def test_report_list_defaults_to_50(self):
+        ReportTemplate.objects.bulk_create([
+            ReportTemplate(name=f"T{i}", report_type='summary', created_by=self.user)
+            for i in range(10)
+        ])
+        templates = ReportTemplate.objects.all()
+        Report.objects.bulk_create([
+            Report(template=templates[i % 10], name=f"R{i}", created_by=self.user)
+            for i in range(60)
+        ])
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('reports:report_list_cbv'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['reports']), 50)
+
+    def test_report_list_grid_returns_20(self):
+        ReportTemplate.objects.bulk_create([
+            ReportTemplate(name=f"T{i}", report_type='summary', created_by=self.user)
+            for i in range(10)
+        ])
+        templates = ReportTemplate.objects.all()
+        Report.objects.bulk_create([
+            Report(template=templates[i % 10], name=f"R{i}", created_by=self.user)
+            for i in range(30)
+        ])
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('reports:report_list_cbv') + '?page_size=20')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['reports']), 20)
+
+
+class AlertListViewPageSizeTest(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(username='alertuser', password='pass')
+
+    def test_alert_list_defaults_to_50(self):
+        Alert.objects.bulk_create([
+            Alert(title=f"Alert{i}", message="msg", severity='low', alert_type='general')
+            for i in range(60)
+        ])
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('reports:alert_list_cbv'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['alerts']), 50)
+
+    def test_alert_list_grid_returns_20(self):
+        Alert.objects.bulk_create([
+            Alert(title=f"Alert{i}", message="msg", severity='low', alert_type='general')
+            for i in range(30)
+        ])
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('reports:alert_list_cbv') + '?page_size=20')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context['alerts']), 20)
 
