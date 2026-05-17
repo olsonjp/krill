@@ -7,8 +7,8 @@ FROM python:3.10-slim as base
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    UV_NO_CACHE=1 \
+    UV_SYSTEM_PYTHON=1
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -19,23 +19,23 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
 # Create app directory
 WORKDIR /app
 
-# Copy requirements first for better caching
-COPY requirements.txt .
+# Copy dependency files first for better caching
+COPY pyproject.toml uv.lock ./
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN uv sync --frozen --no-dev
 
 # Development stage
 FROM base as development
 
-# Install development dependencies
-RUN pip install --no-cache-dir \
-    django-debug-toolbar \
-    django-extensions \
-    ipython
+# Install dev dependencies
+RUN uv sync --frozen
 
 # Copy project files
 COPY . .
@@ -50,15 +50,10 @@ RUN chmod +x /app/krill/manage.py
 EXPOSE 8000
 
 # Development command
-CMD ["python", "krill/manage.py", "runserver", "0.0.0.0:8000"]
+CMD ["uv", "run", "python", "krill/manage.py", "runserver", "0.0.0.0:8000"]
 
 # Production stage
 FROM base as production
-
-# Install production dependencies
-RUN pip install --no-cache-dir \
-    gunicorn \
-    whitenoise
 
 # Copy project files
 COPY . .
@@ -70,7 +65,7 @@ RUN mkdir -p /app/media /app/staticfiles /app/logs
 RUN chmod +x /app/krill/manage.py
 
 # Collect static files
-RUN DJANGO_SETTINGS_MODULE=krill.settings_production python krill/manage.py collectstatic --noinput
+RUN DJANGO_SETTINGS_MODULE=krill.settings_production uv run python krill/manage.py collectstatic --noinput
 
 # Create non-root user for security
 RUN groupadd -r krill && useradd -r -g krill krill
@@ -83,17 +78,11 @@ WORKDIR /app/krill
 # Expose port
 EXPOSE 8000
 
-# Production command - now relative to /app/krill
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "120", "krill.wsgi:application"]
+# Production command
+CMD ["uv", "run", "gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "120", "krill.wsgi:application"]
 
 # Testing stage
 FROM base as testing
-
-# Install testing dependencies
-RUN pip install --no-cache-dir \
-    coverage \
-    pytest \
-    pytest-django
 
 # Copy project files
 COPY . .
@@ -105,4 +94,4 @@ RUN mkdir -p /app/media /app/staticfiles /app/logs
 RUN chmod +x /app/krill/manage.py
 
 # Test command
-CMD ["python", "krill/manage.py", "test", "--verbosity=2"]
+CMD ["uv", "run", "python", "krill/manage.py", "test", "--verbosity=2"]
