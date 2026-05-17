@@ -16,7 +16,7 @@ def sample_search(request):
     disposition = request.GET.get('disposition', '')
 
     # Start with all samples
-    samples = Sample.objects.order_by('name')
+    samples = Sample.objects.select_related('source').order_by('name')
 
     if query:
         samples = samples.filter(
