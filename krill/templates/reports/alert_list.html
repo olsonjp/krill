@@ -56,10 +56,56 @@
                     <option value="high">High</option>
                     <option value="critical">Critical</option>
                 </select>
+                <div class="view-toggle">
+                    <button class="view-btn toggle-table" onclick="krillToggleView('table')" title="Table view">
+                        <span class="material-icons-round">table_rows</span>
+                    </button>
+                    <button class="view-btn toggle-grid" onclick="krillToggleView('grid')" title="Grid view">
+                        <span class="material-icons-round">grid_view</span>
+                    </button>
+                </div>
             </div>
         </div>
 
+        <!-- Table view -->
+        <div class="view-table">
+        <div class="table-container">
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Severity</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for alert in alerts %}
+                <tr>
+                    <td><a href="javascript:viewAlert({{ alert.id }})">{{ alert.title }}</a></td>
+                    <td><span class="severity-badge severity-{{ alert.severity }}">{{ alert.get_severity_display }}</span></td>
+                    <td>{{ alert.get_alert_type_display }}</td>
+                    <td><span class="status-badge status-{{ alert.status }}">{{ alert.get_status_display }}</span></td>
+                    <td>{{ alert.created_at|date:"Y-m-d" }}</td>
+                    <td>
+                        <a class="action-button view" href="javascript:viewAlert({{ alert.id }})" title="View">
+                            <span class="material-icons-round">open_in_new</span>
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" style="text-align:center">No alerts found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        </div><!-- end .view-table -->
+
+        <!-- Card/grid view -->
         {% if alerts %}
+            <div class="view-grid">
             <div class="alerts-grid">
                 {% for alert in alerts %}
                 <div class="alert-item" data-status="{{ alert.status }}" data-severity="{{ alert.severity }}">
@@ -104,6 +150,7 @@
                 </div>
                 {% endfor %}
             </div>
+            </div><!-- end .view-grid -->
 
             <!-- Pagination -->
             {% if alerts.has_other_pages %}
@@ -690,5 +737,16 @@ window.onclick = function(event) {
         grid-template-columns: 1fr;
     }
 }
+
+.view-toggle { display: flex; border: 1px solid var(--color-light, #e0e0e0); border-radius: 7px; overflow: hidden; }
+.view-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 34px; height: 32px;
+    background: var(--color-white, #fff); border: none;
+    color: var(--color-dark-variant, #555); cursor: pointer;
+}
+.view-btn:first-child { border-right: 1px solid var(--color-light, #e0e0e0); }
+.view-btn.active { background: var(--color-primary, #6C9BCF); color: var(--color-white, #fff); }
 </style>
+<script src="{% static 'krill/js/list-view.js' %}"></script>
 {% endblock %}

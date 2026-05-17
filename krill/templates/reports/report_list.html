@@ -78,8 +78,57 @@
                     <option value="complete">Complete</option>
                     <option value="failed">Failed</option>
                 </select>
+                <div class="view-toggle">
+                    <button class="view-btn toggle-table" onclick="krillToggleView('table')" title="Table view">
+                        <span class="material-icons-round">table_rows</span>
+                    </button>
+                    <button class="view-btn toggle-grid" onclick="krillToggleView('grid')" title="Grid view">
+                        <span class="material-icons-round">grid_view</span>
+                    </button>
+                </div>
             </div>
         </div>
+
+        <!-- Table view -->
+        <div class="view-table">
+        <div class="table-container">
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Template</th>
+                    <th>Status</th>
+                    <th>Format</th>
+                    <th>Created By</th>
+                    <th>Created</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for report in reports %}
+                <tr>
+                    <td><a href="{% url 'reports:report_detail' report.id %}">{{ report.name }}</a></td>
+                    <td>{{ report.template.name }}</td>
+                    <td><span class="status-badge status-{{ report.status }}">{{ report.get_status_display }}</span></td>
+                    <td>{{ report.format|upper }}</td>
+                    <td>{{ report.created_by.get_full_name|default:report.created_by.username }}</td>
+                    <td>{{ report.created_at|date:"Y-m-d" }}</td>
+                    <td>
+                        <a class="action-button view" href="{% url 'reports:report_detail' report.id %}" title="View">
+                            <span class="material-icons-round">open_in_new</span>
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" style="text-align:center">No reports found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        </div><!-- end .view-table -->
+
+        <!-- Card/grid view -->
+        <div class="view-grid">
         <div class="activity-list">
             {% if reports %}
                 {% for report in reports %}
@@ -164,6 +213,7 @@
                 </div>
             {% endif %}
         </div>
+        </div><!-- end .view-grid -->
     </div>
 </div>
 
@@ -300,6 +350,16 @@ window.onclick = function(event) {
 </script>
 
 <style>
+.view-toggle { display: flex; border: 1px solid var(--color-light, #e0e0e0); border-radius: 7px; overflow: hidden; }
+.view-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 34px; height: 32px;
+    background: var(--color-white, #fff); border: none;
+    color: var(--color-dark-variant, #555); cursor: pointer;
+}
+.view-btn:first-child { border-right: 1px solid var(--color-light, #e0e0e0); }
+.view-btn.active { background: var(--color-primary, #6C9BCF); color: var(--color-white, #fff); }
+
 .report-item {
     background: var(--color-white);
     border: 1px solid var(--color-light);
@@ -531,4 +591,5 @@ window.onclick = function(event) {
     }
 }
 </style>
+<script src="{% static 'krill/js/list-view.js' %}"></script>
 {% endblock %}
