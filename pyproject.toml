@@ -1,0 +1,56 @@
+[project]
+name = "krill"
+version = "0.1.0"
+description = "Django application"
+requires-python = ">=3.10"
+dependencies = [
+    # Core Django
+    "asgiref==3.7.2",
+    "Django==5.0.1",
+    "sqlparse==0.4.4",
+    "typing_extensions==4.9.0",
+
+    # Database
+    "psycopg2-binary==2.9.9",
+
+    # Cache and Sessions
+    "redis==5.0.1",
+    "django-redis==5.4.0",
+
+    # Security
+    "django-ratelimit==4.1.0",
+    "django-cors-headers==4.3.1",
+    "django-axes==6.1.0",
+
+    # Environment and Configuration
+    "python-dotenv==1.0.0",
+    "django-environ==0.11.2",
+
+    # Monitoring and Logging
+    "sentry-sdk==2.43.0",
+
+    # File Handling
+    "Pillow==10.1.0",
+    "python-magic==0.4.27",
+
+    # API and Serialization
+    "djangorestframework==3.14.0",
+    "django-filter==23.5",
+
+    # Production and Deployment
+    "gunicorn==21.2.0",
+    "whitenoise==6.6.0",
+    "django-storages==1.14.2",
+
+    # Development Tools
+    "django-extensions==3.2.3",
+    "ipython==8.17.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "django-debug-toolbar==4.2.0",
+    "bandit==1.7.5",
+    "safety==2.3.5",
+    "coverage==7.3.2",
+]
