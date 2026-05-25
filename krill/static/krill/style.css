@@ -2080,18 +2080,23 @@ main table tbody tr:last-child td{
 }
 
 .status-badge.stored {
-    background: var(--color-success-light);
-    color: var(--color-success-dark);
+    background: #0d7a6a;
+    color: #fff;
 }
 
 .status-badge.in-use {
-    background: var(--color-warning-light);
-    color: var(--color-warning-dark);
+    background: #1f5fa6;
+    color: #fff;
 }
 
 .status-badge.exhausted {
-    background: var(--color-danger-light);
-    color: var(--color-danger-dark);
+    background: #b83300;
+    color: #fff;
+}
+
+.status-badge.disposed {
+    background: #4a5568;
+    color: #fff;
 }
 
 /* Storage Statistics */
