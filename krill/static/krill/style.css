@@ -263,6 +263,7 @@ b{
     padding-top: 60px;
     height: calc(100vh - 60px);
     width: 96%;
+    max-width: 1500px;
     margin: 0 auto;
 }
 
