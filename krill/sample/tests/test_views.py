@@ -148,6 +148,19 @@ class SampleListViewTest(SampleViewTest):
         self.assertContains(response, 'status-badge in-use')
         self.assertNotContains(response, 'status-badge in_use')
 
+    def test_aliquot_table_rows_have_data_url_for_navigation(self):
+        """Each aliquot table row has a data-url attribute pointing to its detail view."""
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:sample_list') + '?type=aliquot')
+        expected_url = reverse('sample:detail', kwargs={'type': 'aliquot', 'pk': self.aliquot.id})
+        self.assertContains(response, f'data-url="{expected_url}"')
+
+    def test_aliquot_action_button_has_target_blank(self):
+        """Aliquot detail action button opens in a new tab."""
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:sample_list') + '?type=aliquot')
+        self.assertContains(response, 'target="_blank"')
+
 
 class ModelCreateViewTest(SampleViewTest):
     """Test cases for the ModelCreateView"""
