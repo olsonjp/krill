@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 
 :root{
-    --color-primary: #6C9BCF;
+    --color-primary: #1f5fa6;
     --color-danger: #FF0060;
     --color-success: #1B9C85;
     --color-warning: #F7D060;
@@ -40,7 +40,7 @@
     /* Softer button colors for better UX */
     --color-success-soft: #4CAF50;
     --color-danger-soft: #E91E63;
-    --color-primary-soft: #5C9CE6;
+    --color-primary-soft: #1f5fa6;
     --color-info-soft: #7E57C2;
 
     --card-border-radius: 2rem;
@@ -61,6 +61,8 @@
     --color-dark-variant: #a3bdcc;
     --color-light: rgba(0, 0, 0, 0.4);
     --box-shadow: 0 2rem 3rem var(--color-light);
+    --color-primary: #6C9BCF;
+    --color-primary-soft: #5C9CE6;
 
     /* Dark mode status badge colors - adjusted for dark theme */
     --color-danger-light: #2d1b1e;
