@@ -1193,8 +1193,6 @@ main table tbody tr:last-child td{
     width: 100%;
     border-collapse: collapse;
     white-space: nowrap;
-    overflow-x: hidden;
-    table-layout: fixed;
 }
 
 .items-table thead {
@@ -1232,9 +1230,6 @@ main table tbody tr:last-child td{
     padding: 0.8rem 1rem;
     color: var(--color-dark-variant);
     border-bottom: 1px solid var(--color-light);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 0;
 }
 
 .items-table tbody tr:hover {
