@@ -21,6 +21,11 @@ class AliquotDisposition(models.Model):
     name = models.CharField(max_length=100, unique=True)
     disposition_type = models.CharField(max_length=20, choices=DISPOSITION_CHOICES, default='stored')
 
+    @property
+    def css_class(self):
+        """Return the disposition_type with underscores replaced by hyphens for CSS class use."""
+        return self.disposition_type.replace('_', '-')
+
     def __str__(self):
         return self.name
 

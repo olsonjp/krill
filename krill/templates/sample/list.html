@@ -101,7 +101,7 @@
                         <tr>
                             <td><a href="{% url 'sample:detail' type='aliquot' pk=item.id %}">{{ item.sample.name }} <span style="color:var(--color-dark-variant);font-weight:400">#{{ item.id }}</span></a></td>
                             <td>{% if item.aliquot_type %}<span class="status-badge">{{ item.aliquot_type.name }}</span>{% else %}—{% endif %}</td>
-                            <td>{% if item.disposition %}<span class="status-badge {{ item.disposition.disposition_type }}">{{ item.disposition.name }}</span>{% else %}—{% endif %}</td>
+                            <td>{% if item.disposition %}<span class="status-badge {{ item.disposition.css_class }}">{{ item.disposition.name }}</span>{% else %}—{% endif %}</td>
                             <td>
                                 {% if item.location %}
                                     {{ item.location.box.rack.shelf.device.site.name }} ›

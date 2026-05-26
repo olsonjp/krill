@@ -130,6 +130,24 @@ class SampleListViewTest(SampleViewTest):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.context['items']), 50)
 
+    def test_stored_disposition_badge_renders_correct_css_class(self):
+        """stored disposition renders with 'stored' CSS class."""
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:sample_list') + '?type=aliquot')
+        self.assertContains(response, 'status-badge stored')
+
+    def test_in_use_disposition_badge_renders_hyphenated_css_class(self):
+        """in_use disposition renders with 'in-use' CSS class, not 'in_use'."""
+        in_use = AliquotDisposition.objects.create(
+            name='In Use Test', disposition_type='in_use'
+        )
+        self.aliquot.disposition = in_use
+        self.aliquot.save()
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:sample_list') + '?type=aliquot')
+        self.assertContains(response, 'status-badge in-use')
+        self.assertNotContains(response, 'status-badge in_use')
+
 
 class ModelCreateViewTest(SampleViewTest):
     """Test cases for the ModelCreateView"""
