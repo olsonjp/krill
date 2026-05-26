@@ -8,7 +8,59 @@
         <p>Browse and manage {{ model_name|lower }}</p>
     </div>
 
-    <!-- Search and Filter Form -->
+    <!-- Filter toolbar (aliquot) / search card (other types) -->
+    {% if model_type == 'aliquot' %}
+    <div class="filter-toolbar">
+        <form id="sampleListForm" action="{% url 'sample:sample_list' %}" method="get">
+            <input type="hidden" name="type" value="aliquot">
+            <div class="toolbar-row">
+                <input type="text" name="q" class="toolbar-search"
+                       placeholder="Search aliquots..." value="{{ search_query }}">
+                <select name="disposition" class="toolbar-filter" onchange="this.form.submit()">
+                    <option value="">+ Disposition</option>
+                    {% for value, label in disposition_choices %}
+                    <option value="{{ value }}" {% if disposition_filter == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+                <select name="aliquot_type" class="toolbar-filter" onchange="this.form.submit()">
+                    <option value="">+ Type</option>
+                    {% for at in aliquot_types %}
+                    <option value="{{ at.id }}" {% if aliquot_type_filter == at.id|stringformat:"i" %}selected{% endif %}>{{ at.name }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="toolbar-btn-search" title="Search">
+                    <span class="material-icons-round">search</span>
+                </button>
+                <a class="btn btn-success" href="{% url 'sample:sample_create' %}?type=aliquot">
+                    <span class="material-icons-round">add</span>
+                    New Aliquot
+                </a>
+            </div>
+        </form>
+        {% if search_query or disposition_filter or aliquot_type_filter %}
+        <div class="filter-chips">
+            {% if search_query %}
+            <span class="filter-chip">
+                "{{ search_query }}"
+                <button type="button" class="chip-remove" onclick="removeFilterParam('q')" title="Remove">×</button>
+            </span>
+            {% endif %}
+            {% if disposition_filter %}
+            <span class="filter-chip">
+                Disposition: {{ disposition_filter|title }}
+                <button type="button" class="chip-remove" onclick="removeFilterParam('disposition')" title="Remove">×</button>
+            </span>
+            {% endif %}
+            {% if aliquot_type_filter %}
+            <span class="filter-chip">
+                Type: {% for at in aliquot_types %}{% if at.id|stringformat:"i" == aliquot_type_filter %}{{ at.name }}{% endif %}{% endfor %}
+                <button type="button" class="chip-remove" onclick="removeFilterParam('aliquot_type')" title="Remove">×</button>
+            </span>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+    {% else %}
     <div class="search-form-container">
         <form id="sampleListForm" class="search-form" action="{% url 'sample:sample_list' %}" method="get">
             {% if request.GET.type %}
@@ -58,6 +110,7 @@
             </div>
         </form>
     </div>
+    {% endif %}
 
     <!-- Results -->
     <div class="search-results">
@@ -353,6 +406,12 @@ document.querySelectorAll('tr[data-url]').forEach(function(row) {
         }
     });
 });
+
+function removeFilterParam(param) {
+    var url = new URL(window.location.href);
+    url.searchParams.delete(param);
+    window.location.href = url.toString();
+}
 </script>
 
 <style>
