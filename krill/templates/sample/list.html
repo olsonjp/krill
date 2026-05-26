@@ -98,7 +98,7 @@
                     </thead>
                     <tbody>
                         {% for item in items %}
-                        <tr>
+                        <tr data-url="{% url 'sample:detail' type='aliquot' pk=item.id %}">
                             <td><a href="{% url 'sample:detail' type='aliquot' pk=item.id %}">{{ item.sample.name }} <span style="color:var(--color-dark-variant);font-weight:400">#{{ item.id }}</span></a></td>
                             <td>{% if item.aliquot_type %}<span class="status-badge">{{ item.aliquot_type.name }}</span>{% else %}—{% endif %}</td>
                             <td>{% if item.disposition %}<span class="status-badge {{ item.disposition.css_class }}">{{ item.disposition.name }}</span>{% else %}—{% endif %}</td>
@@ -113,7 +113,7 @@
                             <td>{{ item.created_at|date:"Y-m-d" }}</td>
                             <td>{{ item.get_access_level_display }}</td>
                             <td>
-                                <a class="action-button view" href="{% url 'sample:detail' type='aliquot' pk=item.id %}" title="View">
+                                <a class="action-button view" href="{% url 'sample:detail' type='aliquot' pk=item.id %}" target="_blank" title="Open in new tab">
                                     <span class="material-icons-round">open_in_new</span>
                                 </a>
                             </td>
@@ -345,6 +345,14 @@ function viewItem(itemId) {
 function viewSample(sampleId) {
     window.location.href = `{% url 'sample:sample_list' %}../detail/sample/${sampleId}/`;
 }
+
+document.querySelectorAll('tr[data-url]').forEach(function(row) {
+    row.addEventListener('click', function(e) {
+        if (!e.target.closest('a, button')) {
+            window.location.href = row.dataset.url;
+        }
+    });
+});
 </script>
 
 <style>
