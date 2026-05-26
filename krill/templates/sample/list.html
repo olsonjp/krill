@@ -161,10 +161,12 @@
                             <td>{% if item.disposition %}<span class="status-badge {{ item.disposition.css_class }}">{{ item.disposition.name }}</span>{% else %}—{% endif %}</td>
                             <td>
                                 {% if item.location %}
-                                    {{ item.location.box.rack.shelf.device.site.name }} ›
+                                <span class="location-breadcrumb"
+                                      title="{{ item.location.box.rack.shelf.device.site.name }} › {{ item.location.box.rack.shelf.device.name }} › {{ item.location.box.name }} ({{ item.location.row }}, {{ item.location.column }})">
                                     {{ item.location.box.rack.shelf.device.name }} ›
-                                    {{ item.location.box.name }}
-                                    [{{ item.location.row }}, {{ item.location.column }}]
+                                    {{ item.location.box.name }} ›
+                                    ({{ item.location.row }}, {{ item.location.column }})
+                                </span>
                                 {% else %}—{% endif %}
                             </td>
                             <td>{{ item.created_at|date:"Y-m-d" }}</td>
