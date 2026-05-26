@@ -265,6 +265,7 @@ b{
     padding-top: 60px;
     height: calc(100vh - 60px);
     width: 96%;
+    max-width: 1500px;
     margin: 0 auto;
 }
 
@@ -1187,14 +1188,13 @@ main table tbody tr:last-child td{
     box-shadow: var(--box-shadow);
     max-height: 70vh;
     overflow-y: auto;
+    overflow-x: auto;
 }
 
 .items-table {
     width: 100%;
     border-collapse: collapse;
     white-space: nowrap;
-    overflow-x: hidden;
-    table-layout: fixed;
 }
 
 .items-table thead {
