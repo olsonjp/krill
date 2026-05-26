@@ -2,7 +2,7 @@ from django.views.generic import ListView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q
 from ..models.sample import Sample
-from ..models.aliquot import Aliquot, AliquotType, AliquotLocation
+from ..models.aliquot import Aliquot, AliquotType, AliquotDisposition, AliquotLocation
 from ..models.source import Source
 
 class SampleListView(LoginRequiredMixin, ListView):
@@ -12,7 +12,6 @@ class SampleListView(LoginRequiredMixin, ListView):
     def get_queryset(self):
         model_type = self.request.GET.get('type', 'sample')
 
-        # Get the queryset based on model type
         if model_type == 'aliquot':
             queryset = Aliquot.objects.select_related(
                 'sample',
@@ -24,10 +23,10 @@ class SampleListView(LoginRequiredMixin, ListView):
             queryset = AliquotType.objects.all()
         elif model_type == 'source':
             queryset = Source.objects.all()
-        else:  # default to samples
+        else:
             queryset = Sample.objects.select_related('source')
 
-        # Apply search filtering if provided
+        # Text search
         search_query = self.request.GET.get('q', '')
         if search_query:
             if model_type == 'aliquot':
@@ -35,49 +34,43 @@ class SampleListView(LoginRequiredMixin, ListView):
                     Q(sample__name__icontains=search_query) |
                     Q(aliquot_type__name__icontains=search_query)
                 )
-            elif model_type == 'sample':
-                queryset = queryset.filter(name__icontains=search_query)
-            elif model_type == 'source':
-                queryset = queryset.filter(name__icontains=search_query)
-            elif model_type == 'aliquot-type':
+            elif model_type in ('sample', 'source', 'aliquot-type'):
                 queryset = queryset.filter(name__icontains=search_query)
 
-        # Apply sorting
+        # Aliquot-specific filters
+        if model_type == 'aliquot':
+            disposition_filter = self.request.GET.get('disposition', '')
+            if disposition_filter:
+                queryset = queryset.filter(disposition__disposition_type=disposition_filter)
+
+            aliquot_type_filter = self.request.GET.get('aliquot_type', '')
+            if aliquot_type_filter:
+                queryset = queryset.filter(aliquot_type__id=aliquot_type_filter)
+
+        # Sorting
         sort_by = self.request.GET.get('sort', 'name')
         sort_order = self.request.GET.get('order', 'asc')
 
         if sort_order == 'desc':
-            sort_by = f'-{sort_by}'
-
-        # Handle special cases for computed properties and non-database fields
-        if model_type == 'aliquot' and sort_by.replace('-', '') == 'disposition':
-            # Disposition is a computed property, so we can't sort by it directly
-            # Instead, sort by sample name and id for consistent pagination
-            queryset = queryset.order_by('sample__name', 'id')
-        elif model_type == 'aliquot' and sort_by.replace('-', '') == 'type':
-            # Map 'type' to 'aliquot_type__name' for proper sorting
-            sort_field = 'aliquot_type__name' if not sort_by.startswith('-') else '-aliquot_type__name'
-            queryset = queryset.order_by(sort_field, 'id')
-        elif model_type == 'aliquot' and sort_by.replace('-', '') == 'sample':
-            # Map 'sample' to 'sample__name' for proper sorting
-            sort_field = 'sample__name' if not sort_by.startswith('-') else '-sample__name'
-            queryset = queryset.order_by(sort_field, 'id')
-        elif hasattr(queryset.model, sort_by.replace('-', '')):
-            # Check if it's actually a database field, not just a property
-            field_name = sort_by.replace('-', '')
-            field = queryset.model._meta.get_field(field_name)
-            if field:
-                queryset = queryset.order_by(sort_by)
-            else:
-                # It's a property, not a field, so use default sorting
-                if model_type == 'aliquot':
-                    queryset = queryset.order_by('sample__name', 'id')
-                elif hasattr(queryset.model, 'name'):
-                    queryset = queryset.order_by('name', 'id')
-                else:
-                    queryset = queryset.order_by('id')
+            sort_prefix = '-'
         else:
-            # Default sorting - use appropriate field for consistent pagination
+            sort_prefix = ''
+
+        if model_type == 'aliquot' and sort_by == 'disposition':
+            queryset = queryset.order_by('sample__name', 'id')
+        elif model_type == 'aliquot' and sort_by == 'type':
+            queryset = queryset.order_by(f'{sort_prefix}aliquot_type__name', 'id')
+        elif model_type == 'aliquot' and sort_by == 'sample':
+            queryset = queryset.order_by(f'{sort_prefix}sample__name', 'id')
+        elif model_type == 'aliquot' and sort_by == 'created_at':
+            queryset = queryset.order_by(f'{sort_prefix}created_at', 'id')
+        elif hasattr(queryset.model, sort_by):
+            try:
+                queryset.model._meta.get_field(sort_by)
+                queryset = queryset.order_by(f'{sort_prefix}{sort_by}')
+            except Exception:
+                queryset = queryset.order_by('sample__name', 'id') if model_type == 'aliquot' else queryset.order_by('name', 'id')
+        else:
             if model_type == 'aliquot':
                 queryset = queryset.order_by('sample__name', 'id')
             elif hasattr(queryset.model, 'name'):
@@ -97,19 +90,23 @@ class SampleListView(LoginRequiredMixin, ListView):
         model_type = self.request.GET.get('type', 'sample')
         context['model_type'] = model_type
 
-        # Set model name
         if model_type == 'aliquot':
             context['model_name'] = 'Aliquots'
         elif model_type == 'aliquot-type':
             context['model_name'] = 'Aliquot Types'
         elif model_type == 'source':
             context['model_name'] = 'Sources'
-        else:  # default to samples
+        else:
             context['model_name'] = 'Samples'
 
-        # Add search and sort context
         context['search_query'] = self.request.GET.get('q', '')
         context['sort_by'] = self.request.GET.get('sort', 'name')
         context['sort_order'] = self.request.GET.get('order', 'asc')
+
+        # Aliquot filter context
+        context['disposition_filter'] = self.request.GET.get('disposition', '')
+        context['aliquot_type_filter'] = self.request.GET.get('aliquot_type', '')
+        context['disposition_choices'] = AliquotDisposition.DISPOSITION_CHOICES
+        context['aliquot_types'] = AliquotType.objects.order_by('name')
 
         return context

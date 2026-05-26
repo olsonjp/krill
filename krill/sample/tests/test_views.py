@@ -161,6 +161,38 @@ class SampleListViewTest(SampleViewTest):
         response = self.client.get(reverse('sample:sample_list') + '?type=aliquot')
         self.assertContains(response, 'target="_blank"')
 
+    def test_aliquot_list_filters_by_disposition(self):
+        """?disposition=stored returns only aliquots with that disposition type."""
+        from sample.models.aliquot import AliquotDisposition
+        in_use = AliquotDisposition.objects.create(name='In Use', disposition_type='in_use')
+        other_aliquot = Aliquot.objects.create(sample=self.sample, disposition=in_use)
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:sample_list') + '?type=aliquot&disposition=stored')
+        self.assertEqual(response.status_code, 200)
+        items = response.context['items']
+        self.assertIn(self.aliquot, items)
+        self.assertNotIn(other_aliquot, items)
+
+    def test_aliquot_list_filters_by_aliquot_type(self):
+        """?aliquot_type=<id> returns only aliquots with that type."""
+        other_type = AliquotType.objects.create(name='Other Type')
+        other_aliquot = Aliquot.objects.create(sample=self.sample, aliquot_type=other_type, disposition=self.stored_disposition)
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:sample_list') + f'?type=aliquot&aliquot_type={self.aliquot_type.id}')
+        self.assertEqual(response.status_code, 200)
+        items = response.context['items']
+        self.assertIn(self.aliquot, items)
+        self.assertNotIn(other_aliquot, items)
+
+    def test_aliquot_list_context_includes_filter_choices(self):
+        """Context includes disposition_choices, aliquot_types, and active filter values."""
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:sample_list') + '?type=aliquot&disposition=stored')
+        self.assertIn('disposition_choices', response.context)
+        self.assertIn('aliquot_types', response.context)
+        self.assertEqual(response.context['disposition_filter'], 'stored')
+        self.assertEqual(response.context['aliquot_type_filter'], '')
+
 
 class ModelCreateViewTest(SampleViewTest):
     """Test cases for the ModelCreateView"""
