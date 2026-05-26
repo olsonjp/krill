@@ -107,6 +107,11 @@ class SampleListView(LoginRequiredMixin, ListView):
         context['sort_by'] = self.request.GET.get('sort', 'name')
         context['sort_order'] = self.request.GET.get('order', 'asc')
 
+        # Build a query string with all current params except 'page' for pagination links
+        params = self.request.GET.copy()
+        params.pop('page', None)
+        context['query_string'] = params.urlencode()
+
         # Aliquot filter context
         if model_type == 'aliquot':
             context['disposition_filter'] = self.request.GET.get('disposition', '')

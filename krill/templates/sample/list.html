@@ -13,16 +13,20 @@
     <div class="filter-toolbar">
         <form id="sampleListForm" action="{% url 'sample:sample_list' %}" method="get">
             <input type="hidden" name="type" value="aliquot">
+            {% if request.GET.sort %}<input type="hidden" name="sort" value="{{ request.GET.sort }}">{% endif %}
+            {% if request.GET.order %}<input type="hidden" name="order" value="{{ request.GET.order }}">{% endif %}
+            {% if request.GET.page_size %}<input type="hidden" name="page_size" value="{{ request.GET.page_size }}">{% endif %}
             <div class="toolbar-row">
                 <input type="text" name="q" class="toolbar-search"
-                       placeholder="Search aliquots..." value="{{ search_query }}">
-                <select name="disposition" class="toolbar-filter" onchange="this.form.submit()">
+                       placeholder="Search aliquots..." value="{{ search_query }}"
+                       aria-label="Search aliquots">
+                <select name="disposition" class="toolbar-filter" onchange="this.form.submit()" aria-label="Filter by disposition">
                     <option value="">+ Disposition</option>
                     {% for value, label in disposition_choices %}
                     <option value="{{ value }}" {% if disposition_filter == value %}selected{% endif %}>{{ label }}</option>
                     {% endfor %}
                 </select>
-                <select name="aliquot_type" class="toolbar-filter" onchange="this.form.submit()">
+                <select name="aliquot_type" class="toolbar-filter" onchange="this.form.submit()" aria-label="Filter by type">
                     <option value="">+ Type</option>
                     {% for at in aliquot_types %}
                     <option value="{{ at.id }}" {% if aliquot_type_filter == at.id|stringformat:"i" %}selected{% endif %}>{{ at.name }}</option>
@@ -328,7 +332,7 @@
             {% if is_paginated %}
             <div class="pagination">
                 {% if page_obj.has_previous %}
-                    <a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}{% if request.GET.sort %}sort={{ request.GET.sort }}&{% endif %}{% if request.GET.order %}order={{ request.GET.order }}&{% endif %}{% if request.GET.type %}type={{ request.GET.type }}&{% endif %}page={{ page_obj.previous_page_number }}" class="page-link">
+                    <a href="?{{ query_string }}{% if query_string %}&{% endif %}page={{ page_obj.previous_page_number }}" class="page-link">
                         <span class="material-icons-round">chevron_left</span>
                         Previous
                     </a>
@@ -339,7 +343,7 @@
                 </span>
 
                 {% if page_obj.has_next %}
-                    <a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}{% if request.GET.sort %}sort={{ request.GET.sort }}&{% endif %}{% if request.GET.order %}order={{ request.GET.order }}&{% endif %}{% if request.GET.type %}type={{ request.GET.type }}&{% endif %}page={{ page_obj.next_page_number }}" class="page-link">
+                    <a href="?{{ query_string }}{% if query_string %}&{% endif %}page={{ page_obj.next_page_number }}" class="page-link">
                         Next
                         <span class="material-icons-round">chevron_right</span>
                     </a>
