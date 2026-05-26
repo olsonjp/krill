@@ -149,7 +149,6 @@
                             <th data-sort="disposition" class="{% if sort_by == 'disposition' %}sort-{{ sort_order }}{% endif %}">Disposition</th>
                             <th data-sort="location" class="{% if sort_by == 'location' %}sort-{{ sort_order }}{% endif %}">Location</th>
                             <th data-sort="created_at" class="{% if sort_by == 'created_at' %}sort-{{ sort_order }}{% endif %}">Created</th>
-                            <th>Access</th>
                             <th></th>
                         </tr>
                     </thead>
@@ -170,7 +169,6 @@
                                 {% else %}—{% endif %}
                             </td>
                             <td>{{ item.created_at|date:"Y-m-d" }}</td>
-                            <td>{{ item.get_access_level_display }}</td>
                             <td>
                                 <a class="action-button view" href="{% url 'sample:detail' type='aliquot' pk=item.id %}" target="_blank" title="Open in new tab">
                                     <span class="material-icons-round">open_in_new</span>
@@ -178,7 +176,7 @@
                             </td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="7" style="text-align:center">No aliquots found.</td></tr>
+                        <tr><td colspan="6" style="text-align:center">No aliquots found.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>

@@ -211,6 +211,14 @@ class SampleListViewTest(SampleViewTest):
         response = self.client.get(reverse('sample:sample_list') + '?sort=name&order=asc')
         self.assertContains(response, 'sort-asc')
 
+    def test_aliquot_table_has_no_access_column(self):
+        """Access column is removed from the aliquot table header."""
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:sample_list') + '?type=aliquot')
+        content = response.content.decode()
+        # Access header should not appear in the aliquot thead
+        self.assertNotIn('<th>Access</th>', content)
+
     def test_aliquot_location_cell_has_title_with_full_path(self):
         """Location cell renders a title attribute with the full storage path."""
         location = AliquotLocation.objects.create(
