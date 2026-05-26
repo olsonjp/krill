@@ -37,7 +37,7 @@ The CSV file must include the following columns (in any order):
 | `Position 4` | No | Column position within the box (1-based) | "5" |
 | `Aliquot Type` | Yes | Type of aliquot | "Cells", "DNA", "RNA" |
 | `Number of Aliquots Total` | Yes | Total number of tubes/aliquots | "6" |
-| `Disposition` | Yes | Current status of the aliquot | "In Storage", "Used", "Checked Out", "Disposed" |
+| `Disposition` | Yes | Current status of the aliquot | "stored", "in_use", "exhausted", "disposed" (or legacy aliases) |
 
 \* Required if you want to assign storage locations. If omitted, samples will be imported without storage assignments.
 
@@ -102,13 +102,21 @@ The storage hierarchy is built automatically:
 ### Disposition
 - Current status of the aliquot
 - Creates a new AliquotDisposition record if it doesn't exist
-- Valid values (these are the CSV column values — the model stores them as the mapped `disposition_type`):
-  - `"In Storage"` → Maps to disposition type `stored`
-  - `"Used"` → Maps to disposition type `exhausted`
-  - `"Checked Out"` → Maps to disposition type `in_use`
-  - `"Disposed"` → Maps to disposition type `disposed` (add this to the mapping if needed)
-  - Any other value → Maps to `stored` (default)
-- The internal AliquotDisposition model uses types: `stored`, `in_use`, `exhausted`, `disposed`
+- Accepted values:
+
+  | CSV value | Disposition type |
+  |-----------|-----------------|
+  | `stored` | stored |
+  | `in_use` | in_use |
+  | `exhausted` | exhausted |
+  | `disposed` | disposed |
+  | `"In Storage"` *(legacy)* | stored |
+  | `"Used"` *(legacy)* | exhausted |
+  | `"Checked Out"` *(legacy)* | in_use |
+  | `"Disposed"` *(legacy)* | disposed |
+
+- Any unrecognised value defaults to `stored`
+- Use the short model values (`stored`, `in_use`, etc.) for new imports; legacy aliases are still accepted for backwards compatibility
 
 ## Example CSV File
 

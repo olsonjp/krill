@@ -544,10 +544,16 @@ class DataImportView(TemplateView):
 
                 # Map disposition
                 disposition_map = {
+                    # Legacy CSV aliases
                     'In Storage': 'stored',
                     'Used': 'exhausted',
                     'Checked Out': 'in_use',
                     'Disposed': 'disposed',
+                    # Model values accepted directly
+                    'stored': 'stored',
+                    'in_use': 'in_use',
+                    'exhausted': 'exhausted',
+                    'disposed': 'disposed',
                 }
                 disposition = row['Disposition'] or 'In Storage'
                 disp_type = disposition_map.get(disposition, 'stored')
