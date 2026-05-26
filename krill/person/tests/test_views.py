@@ -775,6 +775,40 @@ MDA MB 134VI (MM134);UPMC/MJS;Sikora LN2 #1;4;F;1;2;Cells;3;Checked Out;Legacy M
         sources = [f for f in fixtures if f['model'] == 'sample.source']
         self.assertGreater(len(sources), 0)
 
+    def _disposition_csv(self, rows):
+        """Build a minimal valid CSV with given (cell_line, disposition) rows."""
+        header = "Cell Line;Source;Freezer Name;Position 1;Position 2;Aliquot Type;Number of Aliquots Total;Disposition;Sample Notes;Experiment #\n"
+        body = "".join(f"{cl};Lab;FreezerA;1;A;Cells;1;{disp};;\n" for cl, disp in rows)
+        return (header + body).encode('utf-8')
+
+    def _disp_types_from_fixtures(self, fixtures):
+        disp_map = {f['pk']: f['fields']['disposition_type'] for f in fixtures if f['model'] == 'sample.aliquotdisposition'}
+        return {disp_map[a['fields']['disposition']] for a in fixtures if a['model'] == 'sample.aliquot'}
+
+    def test_disposition_model_values_accepted_directly(self):
+        """CSV using model disposition values (stored, in_use, exhausted, disposed) imports correctly."""
+        fixtures = self._csv_fixtures_from_bytes(self._disposition_csv([
+            ('SampleA', 'stored'), ('SampleB', 'in_use'),
+            ('SampleC', 'exhausted'), ('SampleD', 'disposed'),
+        ]))
+        disp_types = self._disp_types_from_fixtures(fixtures)
+        self.assertIn('stored', disp_types)
+        self.assertIn('in_use', disp_types)
+        self.assertIn('exhausted', disp_types)
+        self.assertIn('disposed', disp_types)
+
+    def test_disposition_legacy_aliases_still_accepted(self):
+        """Legacy CSV aliases (In Storage, Checked Out, Used, Disposed) still import correctly."""
+        fixtures = self._csv_fixtures_from_bytes(self._disposition_csv([
+            ('SampleA', 'In Storage'), ('SampleB', 'Checked Out'),
+            ('SampleC', 'Used'), ('SampleD', 'Disposed'),
+        ]))
+        disp_types = self._disp_types_from_fixtures(fixtures)
+        self.assertIn('stored', disp_types)
+        self.assertIn('in_use', disp_types)
+        self.assertIn('exhausted', disp_types)
+        self.assertIn('disposed', disp_types)
+
     def test_convert_csv_missing_required_columns_gives_helpful_error(self):
         """Missing required columns raise an error that names both missing and found columns."""
         bad_csv = b'Name;Value\nTest;123\n'
