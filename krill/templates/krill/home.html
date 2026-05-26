@@ -29,14 +29,14 @@
             <span class="material-icons-round">description</span>
             <div class="stat-info">
                 <h3>Reports</h3>
-                <p>{{ stats.recent_reports|default:"0" }} Recent</p>
+                <p>{% if stats.recent_reports %}{{ stats.recent_reports }} this week{% else %}None this week{% endif %}</p>
             </div>
         </a>
         <a href="{% url 'reports:alert_list' %}" class="stat-card clickable">
             <span class="material-icons-round">warning</span>
             <div class="stat-info">
                 <h3>Alerts</h3>
-                <p>{{ stats.alerts|default:"0" }} New</p>
+                <p>{% if stats.alerts %}{{ stats.alerts }} active{% else %}All clear{% endif %}</p>
             </div>
         </a>
     </div>
@@ -82,8 +82,8 @@
                 <div class="activity-item">
                     <span class="material-icons-round">info</span>
                     <div class="activity-info">
-                        <p>No recent activity</p>
-                        <small>System initialized</small>
+                        <p>No activity yet</p>
+                        <small>Create a sample or aliquot to get started</small>
                     </div>
                 </div>
             {% endif %}

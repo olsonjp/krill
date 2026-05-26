@@ -176,7 +176,13 @@
                             </td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="6" style="text-align:center">No aliquots found.</td></tr>
+                        <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--color-dark-variant)">
+{% if search_query or disposition_filter or aliquot_type_filter %}
+No aliquots match your filters — try clearing a filter above.
+{% else %}
+No aliquots yet. <a href="{% url 'sample:sample_create' %}?type=aliquot">Create your first aliquot</a> to get started.
+{% endif %}
+</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -209,7 +215,9 @@
                             </td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="6" style="text-align:center">No samples found.</td></tr>
+                        <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--color-dark-variant)">
+{% if search_query %}No samples match "{{ search_query }}".{% else %}No samples yet. <a href="{% url 'sample:sample_create' %}">Create your first sample</a> to get started.{% endif %}
+</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -236,7 +244,7 @@
                             </td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="3" style="text-align:center">No aliquot types found.</td></tr>
+                        <tr><td colspan="3" style="text-align:center;padding:2rem;color:var(--color-dark-variant)">No aliquot types defined yet. <a href="{% url 'sample:sample_create' %}?type=aliquot-type">Add an aliquot type</a> before creating aliquots.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -263,7 +271,7 @@
                             </td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="3" style="text-align:center">No sources found.</td></tr>
+                        <tr><td colspan="3" style="text-align:center;padding:2rem;color:var(--color-dark-variant)">No sources defined yet. <a href="{% url 'sample:sample_create' %}?type=source">Add a source</a> to start tracking where samples come from.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>

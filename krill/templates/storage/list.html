@@ -102,7 +102,7 @@
                             </td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="3" style="text-align:center">No sites found.</td></tr>
+                        <tr><td colspan="3" style="text-align:center;padding:2rem;color:var(--color-dark-variant)">No sites configured yet. <a href="{% url 'storage:create' %}?type=site">Add a site</a> to start organizing your storage infrastructure.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -133,7 +133,7 @@
                             </td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="5" style="text-align:center">No devices found.</td></tr>
+                        <tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--color-dark-variant)">No freezers or storage units yet. <a href="{% url 'storage:create' %}?type=device">Add a device</a> to start tracking storage capacity.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -164,7 +164,7 @@
                             </td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="5" style="text-align:center">No shelves found.</td></tr>
+                        <tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--color-dark-variant)">No shelves yet. <a href="{% url 'storage:create' %}?type=shelf">Add a shelf</a> to a device to organize boxes.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -197,7 +197,7 @@
                             </td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="6" style="text-align:center">No boxes found.</td></tr>
+                        <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--color-dark-variant)">No boxes yet. <a href="{% url 'storage:create' %}?type=box">Add a box</a> to a shelf to store aliquots.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>

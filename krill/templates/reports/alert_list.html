@@ -96,7 +96,7 @@
                     </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="6" style="text-align:center">No alerts found.</td></tr>
+                <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--color-dark-variant)">No active alerts. Alerts are raised automatically when a freezer crosses 90% capacity or a sample passes its expiry date.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
