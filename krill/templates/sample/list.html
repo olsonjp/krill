@@ -147,7 +147,7 @@
                             <th data-sort="sample" class="{% if sort_by == 'sample' %}sort-{{ sort_order }}{% endif %}">Aliquot</th>
                             <th data-sort="type" class="{% if sort_by == 'type' %}sort-{{ sort_order }}{% endif %}">Type</th>
                             <th data-sort="disposition" class="{% if sort_by == 'disposition' %}sort-{{ sort_order }}{% endif %}">Disposition</th>
-                            <th>Location</th>
+                            <th data-sort="location" class="{% if sort_by == 'location' %}sort-{{ sort_order }}{% endif %}">Location</th>
                             <th data-sort="created_at" class="{% if sort_by == 'created_at' %}sort-{{ sort_order }}{% endif %}">Created</th>
                             <th>Access</th>
                             <th></th>
@@ -188,8 +188,8 @@
                 <table class="items-table">
                     <thead>
                         <tr>
-                            <th>Name</th>
-                            <th>Source</th>
+                            <th data-sort="name" class="{% if sort_by == 'name' %}sort-{{ sort_order }}{% endif %}">Name</th>
+                            <th data-sort="source" class="{% if sort_by == 'source' %}sort-{{ sort_order }}{% endif %}">Source</th>
                             <th>Experiment #</th>
                             <th>Notes</th>
                             <th>Access</th>
@@ -221,7 +221,7 @@
                 <table class="items-table">
                     <thead>
                         <tr>
-                            <th>Name</th>
+                            <th data-sort="name" class="{% if sort_by == 'name' %}sort-{{ sort_order }}{% endif %}">Name</th>
                             <th>Description</th>
                             <th></th>
                         </tr>
@@ -248,7 +248,7 @@
                 <table class="items-table">
                     <thead>
                         <tr>
-                            <th>Name</th>
+                            <th data-sort="name" class="{% if sort_by == 'name' %}sort-{{ sort_order }}{% endif %}">Name</th>
                             <th>Description</th>
                             <th></th>
                         </tr>

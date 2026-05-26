@@ -199,6 +199,18 @@ class SampleListViewTest(SampleViewTest):
         response = self.client.get(reverse('sample:sample_list') + '?type=aliquot&sort=sample&order=asc')
         self.assertContains(response, 'sort-asc')
 
+    def test_aliquot_location_sort_header_has_active_class(self):
+        """Location <th> gets sort-asc class when sorted by location."""
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:sample_list') + '?type=aliquot&sort=location&order=asc')
+        self.assertContains(response, 'sort-asc')
+
+    def test_sample_list_sort_header_has_active_class(self):
+        """Name <th> gets sort-asc class on the sample list."""
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:sample_list') + '?sort=name&order=asc')
+        self.assertContains(response, 'sort-asc')
+
     def test_aliquot_location_cell_has_title_with_full_path(self):
         """Location cell renders a title attribute with the full storage path."""
         location = AliquotLocation.objects.create(

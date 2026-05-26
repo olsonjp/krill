@@ -68,6 +68,10 @@ class SampleListView(LoginRequiredMixin, ListView):
             queryset = queryset.order_by(f'{sort_prefix}sample__name', 'id')
         elif model_type == 'aliquot' and sort_by == 'created_at':
             queryset = queryset.order_by(f'{sort_prefix}created_at', 'id')
+        elif model_type == 'aliquot' and sort_by == 'location':
+            queryset = queryset.order_by(f'{sort_prefix}location__box__rack__shelf__device__name', 'id')
+        elif model_type == 'sample' and sort_by == 'source':
+            queryset = queryset.order_by(f'{sort_prefix}source__name', 'id')
         elif hasattr(queryset.model, sort_by):
             try:
                 queryset.model._meta.get_field(sort_by)
