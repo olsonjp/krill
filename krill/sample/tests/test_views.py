@@ -193,6 +193,12 @@ class SampleListViewTest(SampleViewTest):
         self.assertEqual(response.context['disposition_filter'], 'stored')
         self.assertEqual(response.context['aliquot_type_filter'], '')
 
+    def test_aliquot_sort_header_has_active_class(self):
+        """The sorted column's <th> has sort-asc or sort-desc class in the response."""
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:sample_list') + '?type=aliquot&sort=sample&order=asc')
+        self.assertContains(response, 'sort-asc')
+
 
 class ModelCreateViewTest(SampleViewTest):
     """Test cases for the ModelCreateView"""

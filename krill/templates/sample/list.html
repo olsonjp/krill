@@ -144,11 +144,11 @@
                 <table class="items-table">
                     <thead>
                         <tr>
-                            <th>Aliquot</th>
-                            <th>Type</th>
-                            <th>Disposition</th>
+                            <th data-sort="sample" class="{% if sort_by == 'sample' %}sort-{{ sort_order }}{% endif %}">Aliquot</th>
+                            <th data-sort="type" class="{% if sort_by == 'type' %}sort-{{ sort_order }}{% endif %}">Type</th>
+                            <th data-sort="disposition" class="{% if sort_by == 'disposition' %}sort-{{ sort_order }}{% endif %}">Disposition</th>
                             <th>Location</th>
-                            <th>Created</th>
+                            <th data-sort="created_at" class="{% if sort_by == 'created_at' %}sort-{{ sort_order }}{% endif %}">Created</th>
                             <th>Access</th>
                             <th></th>
                         </tr>
@@ -416,6 +416,20 @@ function removeFilterParam(param) {
     url.searchParams.delete(param);
     window.location.href = url.toString();
 }
+
+document.querySelectorAll('th[data-sort]').forEach(function(th) {
+    th.style.cursor = 'pointer';
+    th.addEventListener('click', function() {
+        var col = this.dataset.sort;
+        var params = new URLSearchParams(window.location.search);
+        var currentSort = params.get('sort');
+        var currentOrder = params.get('order') || 'asc';
+        params.set('sort', col);
+        params.set('order', (currentSort === col && currentOrder === 'asc') ? 'desc' : 'asc');
+        params.delete('page');
+        window.location.href = window.location.pathname + '?' + params.toString();
+    });
+});
 </script>
 
 <style>
