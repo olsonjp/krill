@@ -37,6 +37,9 @@
     --color-danger-darker: #cc0000;
     --color-warning-darker: #cc8800;
 
+    /* Brand accent — matches the krill logo */
+    --color-brand-orange: #F4A07A;
+
     /* Softer button colors for better UX */
     --color-success-soft: #4CAF50;
     --color-danger-soft: #E91E63;
@@ -338,12 +341,12 @@ aside .sidebar a.active::before{
     transform: translateY(-50%);
     width: 4px;
     height: 18px;
-    background-color: var(--color-primary);
+    background-color: var(--color-brand-orange);
     border-radius: 0 2px 2px 0;
 }
 
 aside .sidebar a.active span:first-of-type{
-    color: var(--color-primary);
+    color: var(--color-brand-orange);
 }
 
 aside .sidebar a:hover{
