@@ -199,6 +199,26 @@ class SampleListViewTest(SampleViewTest):
         response = self.client.get(reverse('sample:sample_list') + '?type=aliquot&sort=sample&order=asc')
         self.assertContains(response, 'sort-asc')
 
+    def test_aliquot_location_cell_has_title_with_full_path(self):
+        """Location cell renders a title attribute with the full storage path."""
+        location = AliquotLocation.objects.create(
+            aliquot=self.aliquot, box=self.box, row=1, column=2
+        )
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:sample_list') + '?type=aliquot')
+        self.assertContains(response, 'title="Test Site')
+        self.assertContains(response, 'Test Device')
+        self.assertContains(response, 'Test Box')
+
+    def test_aliquot_location_cell_has_truncation_class(self):
+        """Location cell has the CSS truncation class."""
+        AliquotLocation.objects.create(
+            aliquot=self.aliquot, box=self.box, row=1, column=2
+        )
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('sample:sample_list') + '?type=aliquot')
+        self.assertContains(response, 'location-breadcrumb')
+
 
 class ModelCreateViewTest(SampleViewTest):
     """Test cases for the ModelCreateView"""

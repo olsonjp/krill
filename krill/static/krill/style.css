@@ -2639,3 +2639,13 @@ main table tbody tr:last-child td{
 .chip-remove:hover {
     opacity: 1;
 }
+
+/* ── Location breadcrumb truncation ──────────────────────────────── */
+.location-breadcrumb {
+    display: block;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: default;
+}
