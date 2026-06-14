@@ -53,9 +53,50 @@
                 </div>
             </div>
         </div>
+
+        {% if user.role.role == 'lab_admin' %}
+        <!-- Feature Flags -->
+        <div class="settings-section">
+            <h2>
+                <span class="material-icons-round">toggle_on</span>
+                Features
+            </h2>
+            <div class="settings-content">
+                <form method="post" action="{% url 'settings' %}" id="feature-flags-form">
+                    {% csrf_token %}
+                    <div class="setting-item">
+                        <label for="consumables_enabled">Consumables Inventory</label>
+                        <p class="setting-description">Track lab supplies, antibodies, reagents, and other consumables.</p>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="consumables_enabled" name="consumables_enabled"
+                                   {% if site_config.consumables_enabled %}checked{% endif %}
+                                   onchange="updateOrderingToggle()">
+                            <label for="consumables_enabled"></label>
+                        </div>
+                    </div>
+                    <div class="setting-item" id="ordering-toggle-row" {% if not site_config.consumables_enabled %}style="opacity:0.4;pointer-events:none"{% endif %}>
+                        <label for="consumables_ordering_enabled">Consumables Ordering</label>
+                        <p class="setting-description">Enable reorder lists and purchase request workflow.</p>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="consumables_ordering_enabled" name="consumables_ordering_enabled"
+                                   {% if site_config.consumables_ordering_enabled %}checked{% endif %}
+                                   {% if not site_config.consumables_enabled %}disabled{% endif %}>
+                            <label for="consumables_ordering_enabled"></label>
+                        </div>
+                    </div>
+                    <div class="form-actions" style="margin-top:1rem">
+                        <button type="submit" class="btn btn-primary">
+                            <span class="material-icons-round">save</span>
+                            Save Feature Settings
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endif %}
     </div>
 
-    <!-- Save Button -->
+    <!-- Save Button (dark mode) -->
     <div class="settings-actions">
         <button class="save-settings">Save Changes</button>
     </div>
@@ -64,6 +105,25 @@
 
 {% block extrahead %}
 <script src="{% static 'js/settings.js' %}"></script>
+<script>
+function updateOrderingToggle() {
+    const consumables = document.getElementById('consumables_enabled');
+    const orderingRow = document.getElementById('ordering-toggle-row');
+    const orderingInput = document.getElementById('consumables_ordering_enabled');
+    if (consumables && orderingRow && orderingInput) {
+        if (consumables.checked) {
+            orderingRow.style.opacity = '1';
+            orderingRow.style.pointerEvents = 'auto';
+            orderingInput.disabled = false;
+        } else {
+            orderingRow.style.opacity = '0.4';
+            orderingRow.style.pointerEvents = 'none';
+            orderingInput.disabled = true;
+            orderingInput.checked = false;
+        }
+    }
+}
+</script>
 <style>
 .setting-actions {
     display: flex;
@@ -99,6 +159,12 @@
 
 .btn-outline-primary .material-icons-round {
     font-size: 1rem;
+}
+
+.setting-description {
+    font-size: 0.8rem;
+    color: var(--color-dark-variant);
+    margin: 0.2rem 0 0.5rem 0;
 }
 </style>
 {% endblock %}

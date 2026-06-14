@@ -200,6 +200,31 @@ class Permission(models.Model):
         return True
 
 
+class SiteConfiguration(models.Model):
+    """Singleton site-wide feature flags. Access via SiteConfiguration.load()."""
+    consumables_enabled = models.BooleanField(default=False)
+    consumables_ordering_enabled = models.BooleanField(default=False)
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='+',
+    )
+
+    class Meta:
+        verbose_name = "Site Configuration"
+
+    def __str__(self):
+        return "Site Configuration"
+
+    @classmethod
+    def load(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+
 class UserAuditLog(models.Model):
     """Audit trail for user actions"""
     ACTION_CHOICES = [

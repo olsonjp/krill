@@ -1,4 +1,9 @@
-from person.models import UserPreference
+from person.models import UserPreference, SiteConfiguration
+
+
+def site_configuration(request):
+    return {'site_config': SiteConfiguration.load()}
+
 
 def user_preferences(request):
     """Add user preferences to template context"""

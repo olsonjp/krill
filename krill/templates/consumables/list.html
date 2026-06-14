@@ -1,0 +1,378 @@
+{% extends 'base/layout.html' %}
+{% load static %}
+
+{% block content %}
+<div class="consumables-list-container">
+    <div class="list-header">
+        <h1>{{ model_name }}</h1>
+        <p>Browse and manage {{ model_name|lower }}</p>
+    </div>
+
+    <!-- Search and Filter Form -->
+    <div class="search-form-container">
+        <form id="consumablesListForm" class="search-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="searchInput">Search</label>
+                    <input type="text" id="searchInput" name="q" class="form-control"
+                           placeholder="Search {{ model_name|lower }}..." value="{{ search_query }}">
+                </div>
+                {% if model_type == 'consumable' %}
+                <div class="form-group">
+                    <label for="categoryFilter">Category</label>
+                    <select id="categoryFilter" name="category" class="form-control">
+                        <option value="">All categories</option>
+                        {% for val, label in consumable_categories %}
+                        <option value="{{ val }}" {% if selected_category == val %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+                <div class="form-group">
+                    <label for="sortBy">Sort By</label>
+                    <select id="sortBy" name="sort" class="form-control">
+                        <option value="name" {% if sort_by == 'name' %}selected{% endif %}>Name</option>
+                        {% if model_type == 'consumable' %}
+                        <option value="type" {% if sort_by == 'type' %}selected{% endif %}>Type</option>
+                        <option value="vendor" {% if sort_by == 'vendor' %}selected{% endif %}>Vendor</option>
+                        <option value="quantity" {% if sort_by == 'quantity' %}selected{% endif %}>Quantity</option>
+                        <option value="expiration_date" {% if sort_by == 'expiration_date' %}selected{% endif %}>Expiration</option>
+                        {% elif model_type == 'location' %}
+                        <option value="room" {% if sort_by == 'room' %}selected{% endif %}>Room</option>
+                        {% endif %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="sortOrder">Order</label>
+                    <select id="sortOrder" name="order" class="form-control">
+                        <option value="asc" {% if sort_order == 'asc' %}selected{% endif %}>Ascending</option>
+                        <option value="desc" {% if sort_order == 'desc' %}selected{% endif %}>Descending</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-primary" onclick="performSearch()">
+                    <span class="material-icons-round">search</span>
+                    Search
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="clearSearch()">
+                    <span class="material-icons-round">clear</span>
+                    Clear
+                </button>
+                <button type="button" class="btn btn-success" onclick="window.location.href='{% url 'consumables:create' %}?type={{ model_type }}'">
+                    <span class="material-icons-round">add</span>
+                    Add {{ model_name|slice:":-1" }}
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Results -->
+    <div class="search-results">
+        <div class="results-header">
+            <h2>{{ model_name }}</h2>
+            <div class="results-info">
+                <span class="result-count">{{ paginator.count }} {{ model_name|lower }} found</span>
+                {% if search_query %}
+                    <span class="search-info">(filtered by "{{ search_query }}")</span>
+                {% endif %}
+                <div class="view-toggle">
+                    <button class="view-btn toggle-table" onclick="krillToggleView('table')" title="Table view">
+                        <span class="material-icons-round">table_rows</span>
+                    </button>
+                    <button class="view-btn toggle-grid" onclick="krillToggleView('grid')" title="Grid view">
+                        <span class="material-icons-round">grid_view</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        {% if items %}
+        <div class="view-table">
+            <div class="table-container">
+            {% if model_type == 'consumable' %}
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th data-sort="name" class="{% if sort_by == 'name' %}sort-{{ sort_order }}{% endif %}">Name</th>
+                        <th data-sort="type" class="{% if sort_by == 'type' %}sort-{{ sort_order }}{% endif %}">Type</th>
+                        <th data-sort="vendor" class="{% if sort_by == 'vendor' %}sort-{{ sort_order }}{% endif %}">Vendor</th>
+                        <th data-sort="quantity" class="{% if sort_by == 'quantity' %}sort-{{ sort_order }}{% endif %}">Qty</th>
+                        <th>Location</th>
+                        <th data-sort="expiration_date" class="{% if sort_by == 'expiration_date' %}sort-{{ sort_order }}{% endif %}">Expires</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr class="clickable-row" data-href="{% url 'consumables:detail' type='consumable' pk=item.id %}">
+                        <td>
+                            <a href="{% url 'consumables:detail' type='consumable' pk=item.id %}">{{ item.name }}</a>
+                            {% if item.is_low_stock %}<span class="badge badge-warning">Low Stock</span>{% endif %}
+                            {% if item.is_out_of_stock %}<span class="badge badge-danger">Out of Stock</span>{% endif %}
+                            {% if item.is_expired %}<span class="badge badge-danger">Expired</span>{% endif %}
+                        </td>
+                        <td>{{ item.consumable_type.name }}</td>
+                        <td>{{ item.vendor.name|default:"—" }}</td>
+                        <td>{{ item.quantity }} {{ item.unit }}</td>
+                        <td>{{ item.location|default:"—" }}</td>
+                        <td>{{ item.expiration_date|date:"M d, Y"|default:"—" }}</td>
+                        <td>
+                            <a class="action-button view" href="{% url 'consumables:detail' type='consumable' pk=item.id %}" title="View">
+                                <span class="material-icons-round">open_in_new</span>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="empty-cell">No consumables yet — add antibodies, reagents, kits, and other lab supplies.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            {% elif model_type == 'type' %}
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th data-sort="name">Name</th>
+                        <th>Category</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td><a href="{% url 'consumables:detail' type='type' pk=item.id %}">{{ item.name }}</a></td>
+                        <td>{{ item.get_category_display }}</td>
+                        <td><a class="action-button view" href="{% url 'consumables:detail' type='type' pk=item.id %}"><span class="material-icons-round">open_in_new</span></a></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3" class="empty-cell">No consumable types defined. <a href="{% url 'consumables:create' %}?type=type">Add a type</a> or run <code>setup_consumable_types</code>.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            {% elif model_type == 'vendor' %}
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th data-sort="name">Name</th>
+                        <th>Website</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td><a href="{% url 'consumables:detail' type='vendor' pk=item.id %}">{{ item.name }}</a></td>
+                        <td>{% if item.website %}<a href="{{ item.website }}" target="_blank" rel="noopener">{{ item.website|truncatechars:50 }}</a>{% else %}—{% endif %}</td>
+                        <td><a class="action-button view" href="{% url 'consumables:detail' type='vendor' pk=item.id %}"><span class="material-icons-round">open_in_new</span></a></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3" class="empty-cell">No vendors yet. <a href="{% url 'consumables:create' %}?type=vendor">Add a vendor</a> to track suppliers.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            {% elif model_type == 'room' %}
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th data-sort="name">Name</th>
+                        <th>Description</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td><a href="{% url 'consumables:detail' type='room' pk=item.id %}">{{ item.name }}</a></td>
+                        <td>{{ item.description|truncatechars:80|default:"—" }}</td>
+                        <td><a class="action-button view" href="{% url 'consumables:detail' type='room' pk=item.id %}"><span class="material-icons-round">open_in_new</span></a></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3" class="empty-cell">No rooms yet. <a href="{% url 'consumables:create' %}?type=room">Add a room</a> to start organizing locations.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            {% elif model_type == 'location' %}
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th data-sort="name">Name</th>
+                        <th>Room</th>
+                        <th>Kind</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td><a href="{% url 'consumables:detail' type='location' pk=item.id %}">{{ item.name }}</a></td>
+                        <td>{{ item.room.name }}</td>
+                        <td>{{ item.get_kind_display }}</td>
+                        <td><a class="action-button view" href="{% url 'consumables:detail' type='location' pk=item.id %}"><span class="material-icons-round">open_in_new</span></a></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="empty-cell">No locations yet. <a href="{% url 'consumables:create' %}?type=location">Add a location</a> to track where items are stored.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+            </div><!-- .table-container -->
+        </div><!-- .view-table -->
+
+        <!-- Pagination -->
+        {% if is_paginated %}
+        <div class="pagination">
+            {% if page_obj.has_previous %}
+                <a href="?{{ query_string }}&page={{ page_obj.previous_page_number }}" class="page-link">
+                    <span class="material-icons-round">chevron_left</span> Previous
+                </a>
+            {% endif %}
+            <span class="current-page">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+            {% if page_obj.has_next %}
+                <a href="?{{ query_string }}&page={{ page_obj.next_page_number }}" class="page-link">
+                    Next <span class="material-icons-round">chevron_right</span>
+                </a>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% else %}
+        <div class="no-results">
+            <span class="material-icons-round">search_off</span>
+            <h3>No {{ model_name|lower }} found</h3>
+            <p>Try adjusting your search or add a new {{ model_name|slice:":-1"|lower }}.</p>
+            <button class="btn btn-primary" onclick="window.location.href='{% url 'consumables:create' %}?type={{ model_type }}'">
+                Add {{ model_name|slice:":-1" }}
+            </button>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function performSearch() {
+    const q = document.getElementById('searchInput');
+    const sortBy = document.getElementById('sortBy');
+    const sortOrder = document.getElementById('sortOrder');
+    const params = new URLSearchParams(window.location.search);
+    if (q.value) params.set('q', q.value); else params.delete('q');
+    if (sortBy) params.set('sort', sortBy.value);
+    if (sortOrder) params.set('order', sortOrder.value);
+    const cat = document.getElementById('categoryFilter');
+    if (cat) { if (cat.value) params.set('category', cat.value); else params.delete('category'); }
+    params.delete('page');
+    window.location.href = window.location.pathname + '?' + params.toString();
+}
+
+function clearSearch() {
+    const params = new URLSearchParams();
+    const type = new URLSearchParams(window.location.search).get('type');
+    if (type) params.set('type', type);
+    window.location.href = window.location.pathname + '?' + params.toString();
+}
+
+// Sortable column headers
+document.querySelectorAll('th[data-sort]').forEach(function(th) {
+    th.style.cursor = 'pointer';
+    th.addEventListener('click', function() {
+        const col = this.dataset.sort;
+        const params = new URLSearchParams(window.location.search);
+        const currentSort = params.get('sort');
+        const currentOrder = params.get('order') || 'asc';
+        params.set('sort', col);
+        params.set('order', (currentSort === col && currentOrder === 'asc') ? 'desc' : 'asc');
+        params.delete('page');
+        window.location.href = window.location.pathname + '?' + params.toString();
+    });
+});
+
+// Clickable rows
+document.querySelectorAll('tr.clickable-row').forEach(function(row) {
+    row.style.cursor = 'pointer';
+    row.addEventListener('click', function(e) {
+        if (!e.target.closest('a, button')) {
+            window.location.href = this.dataset.href;
+        }
+    });
+});
+</script>
+
+<style>
+.consumables-list-container {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+.list-header { text-align: center; margin-bottom: 30px; }
+.list-header h1 { margin: 0 0 10px 0; color: var(--color-dark); }
+.list-header p { color: var(--color-dark-variant); font-size: 1.1rem; }
+.search-form-container {
+    background: var(--color-white);
+    border-radius: var(--border-radius-1);
+    box-shadow: var(--box-shadow);
+    padding: 25px;
+    margin-bottom: 30px;
+}
+.search-form .form-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+.form-group label { display: block; margin-bottom: 8px; font-weight: 500; color: var(--color-dark); }
+.form-control {
+    width: 100%; padding: 12px;
+    border: 1px solid var(--color-light);
+    border-radius: var(--border-radius-1);
+    font-size: 0.9rem; background: var(--color-white); color: var(--color-dark);
+}
+.form-actions { display: flex; gap: 15px; justify-content: center; }
+.btn {
+    padding: 12px 24px; border: none; border-radius: var(--border-radius-1);
+    cursor: pointer; display: flex; align-items: center; gap: 8px;
+    font-size: 0.9rem; font-weight: 500; transition: all 0.3s ease; text-decoration: none;
+}
+.btn-primary { background: var(--color-primary); color: var(--color-white); }
+.btn-primary:hover { background: var(--color-dark); transform: translateY(-1px); }
+.btn-secondary { background: var(--color-info-dark); color: var(--color-white); }
+.btn-secondary:hover { background: var(--color-dark-variant); transform: translateY(-1px); }
+.btn-success { background: var(--color-success); color: var(--color-white); }
+.btn-success:hover { background: var(--color-dark); transform: translateY(-1px); }
+.results-header {
+    padding: 20px; border-bottom: 1px solid var(--color-light);
+    display: flex; justify-content: space-between; align-items: center;
+}
+.results-header h2 { margin: 0; color: var(--color-dark); }
+.results-info { display: flex; gap: 20px; color: var(--color-dark-variant); font-size: 0.9rem; align-items: center; }
+.empty-cell { text-align: center; padding: 2rem; color: var(--color-dark-variant); }
+.no-results { text-align: center; padding: 60px 20px; color: var(--color-dark-variant); }
+.no-results .material-icons-round { font-size: 4rem; color: var(--color-light); margin-bottom: 20px; }
+.badge {
+    display: inline-block; padding: 2px 8px; border-radius: 12px;
+    font-size: 0.75rem; font-weight: 600; margin-left: 4px;
+}
+.badge-warning { background: #fff3cd; color: #856404; }
+.badge-danger { background: #f8d7da; color: #842029; }
+th[data-sort]:hover { background: var(--color-light); }
+.pagination {
+    display: flex; justify-content: center; align-items: center;
+    gap: 15px; padding: 20px 0; margin-top: 20px;
+}
+.page-link {
+    padding: 8px 12px; text-decoration: none; color: var(--color-primary);
+    border: 1px solid var(--color-primary); border-radius: var(--border-radius-1);
+    display: flex; align-items: center; gap: 5px;
+}
+.page-link:hover { background: var(--color-primary); color: var(--color-white); }
+.search-info { color: var(--color-info-dark); font-style: italic; }
+@media (max-width: 768px) {
+    .search-form .form-row { grid-template-columns: 1fr; }
+    .form-actions { flex-direction: column; }
+}
+</style>
+
+<script src="{% static 'js/list-view.js' %}"></script>
+{% endblock %}
