@@ -42,4 +42,5 @@ urlpatterns = [
     path('preferences/user/', get_user_preferences, name='get_user_preferences'),
     path('preferences/save/', save_user_preferences, name='save_user_preferences'),
     path('users/', include('person.urls')),
+    path('consumables/', include('consumables.urls')),
 ]
