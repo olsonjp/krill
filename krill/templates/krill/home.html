@@ -39,6 +39,22 @@
                 <p>{% if stats.alerts %}{{ stats.alerts }} active{% else %}All clear{% endif %}</p>
             </div>
         </a>
+        {% if site_config.consumables_enabled %}
+        <a href="{% url 'consumables:list' %}?type=consumable&low_stock=1" class="stat-card clickable {% if stats.low_stock_count %}stat-card-warning{% endif %}">
+            <span class="material-icons-round">production_quantity_limits</span>
+            <div class="stat-info">
+                <h3>Low Stock</h3>
+                <p>{% if stats.low_stock_count %}{{ stats.low_stock_count }} item{{ stats.low_stock_count|pluralize }}{% else %}All stocked{% endif %}</p>
+            </div>
+        </a>
+        <a href="{% url 'consumables:list' %}?type=consumable&expiring=1" class="stat-card clickable {% if stats.expiring_soon_count %}stat-card-warning{% endif %}">
+            <span class="material-icons-round">event_busy</span>
+            <div class="stat-info">
+                <h3>Expiring Soon</h3>
+                <p>{% if stats.expiring_soon_count %}{{ stats.expiring_soon_count }} item{{ stats.expiring_soon_count|pluralize }}{% else %}None in 30 days{% endif %}</p>
+            </div>
+        </a>
+        {% endif %}
     </div>
 
     <!-- Recent Activity -->
@@ -133,6 +149,14 @@
     .stat-card.clickable:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .stat-card-warning {
+        border-left: 4px solid #d4a017;
+    }
+
+    .stat-card-warning .material-icons-round {
+        color: #d4a017;
     }
 
     .action-btn {
