@@ -16,6 +16,8 @@ from django.utils import timezone
 from django.db.models import Count, Q
 
 # Import models for statistics
+from datetime import date
+
 from sample.models.sample import Sample
 from sample.models.aliquot import Aliquot, AliquotLocation
 from storage.models.storage import Device, Box
@@ -105,6 +107,19 @@ def get_dashboard_statistics():
             action__in=['alert_created', 'warning_created'],
             timestamp__gte=timezone.now() - timedelta(days=1)
         ).count()
+        # Consumables stats (only when feature is enabled)
+        low_stock_count = 0
+        expiring_soon_count = 0
+        site_config = SiteConfiguration.load()
+        if site_config.consumables_enabled:
+            from consumables.models.consumable import Consumable
+            low_stock_count = Consumable.objects.low_stock().count()
+            expiring_soon_count = Consumable.objects.active().filter(
+                expiration_date__isnull=False,
+                expiration_date__lte=date.today() + timedelta(days=30),
+                expiration_date__gte=date.today(),
+            ).count()
+
         return {
             'active_samples': active_samples,
             'storage_usage': storage_usage,
@@ -112,6 +127,8 @@ def get_dashboard_statistics():
             'alerts': alerts,
             'total_slots': total_slots,
             'used_slots': used_slots,
+            'low_stock_count': low_stock_count,
+            'expiring_soon_count': expiring_soon_count,
         }
     except Exception as e:
         # Return default values if there's an error
@@ -122,6 +139,8 @@ def get_dashboard_statistics():
             'alerts': 0,
             'total_slots': 0,
             'used_slots': 0,
+            'low_stock_count': 0,
+            'expiring_soon_count': 0,
         }
 
 def get_recent_activity():

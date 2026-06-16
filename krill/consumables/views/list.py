@@ -1,3 +1,5 @@
+from datetime import date, timedelta
+
 from django.views.generic import ListView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q
@@ -55,6 +57,23 @@ class ConsumablesListView(ConsumablesEnabledMixin, LoginRequiredMixin, ListView)
             if category:
                 qs = qs.filter(consumable_type__category=category)
 
+            # Low stock filter
+            if self.request.GET.get('low_stock'):
+                from django.db.models import F
+                qs = qs.filter(
+                    low_stock_threshold__isnull=False,
+                    quantity__lte=F('low_stock_threshold'),
+                )
+
+            # Expiring soon filter (within 30 days)
+            if self.request.GET.get('expiring'):
+                today = date.today()
+                qs = qs.filter(
+                    expiration_date__isnull=False,
+                    expiration_date__lte=today + timedelta(days=30),
+                    expiration_date__gte=today,
+                )
+
         # Sorting
         sort_map = {
             'consumable': {'type': 'consumable_type__name', 'vendor': 'vendor__name', 'location': 'location__name'},
@@ -86,6 +105,8 @@ class ConsumablesListView(ConsumablesEnabledMixin, LoginRequiredMixin, ListView)
         context['sort_by'] = self.request.GET.get('sort', 'name')
         context['sort_order'] = self.request.GET.get('order', 'asc')
         context['selected_category'] = self.request.GET.get('category', '')
+        context['filter_low_stock'] = bool(self.request.GET.get('low_stock'))
+        context['filter_expiring'] = bool(self.request.GET.get('expiring'))
         from ..models.consumable_type import ConsumableType
         context['consumable_categories'] = ConsumableType.CATEGORY_CHOICES
         # Build query string without page for pagination links

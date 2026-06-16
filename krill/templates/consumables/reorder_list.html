@@ -1,0 +1,120 @@
+{% extends 'base/layout.html' %}
+{% load static %}
+
+{% block content %}
+<div class="reorder-container">
+    <div class="reorder-header">
+        <div>
+            <h1><span class="material-icons-round">assignment</span> Reorder List</h1>
+            <p>{{ items|length }} item{{ items|length|pluralize }} below low-stock threshold &mdash; {{ today|date:"N j, Y" }}</p>
+        </div>
+        <div class="reorder-actions">
+            <a href="{% url 'consumables:reorder_csv' %}" class="btn btn-primary">
+                <span class="material-icons-round">download</span>
+                Download CSV
+            </a>
+            <button class="btn btn-secondary" onclick="window.print()">
+                <span class="material-icons-round">print</span>
+                Print
+            </button>
+            <a href="{% url 'consumables:list' %}?type=consumable&low_stock=1" class="btn btn-secondary">
+                <span class="material-icons-round">arrow_back</span>
+                Back to List
+            </a>
+        </div>
+    </div>
+
+    {% if items %}
+    <div class="table-container">
+        <table class="items-table reorder-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Vendor</th>
+                    <th>Catalog #</th>
+                    <th>On Hand</th>
+                    <th>Threshold</th>
+                    <th>Unit</th>
+                    <th>Location</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% regroup items by vendor as vendor_groups %}
+                {% for group in vendor_groups %}
+                <tr class="vendor-group-row">
+                    <td colspan="8">
+                        <span class="material-icons-round">store</span>
+                        {% if group.grouper %}{{ group.grouper.name }}{% else %}No Vendor{% endif %}
+                    </td>
+                </tr>
+                {% for item in group.list %}
+                <tr>
+                    <td>
+                        <a href="{% url 'consumables:detail' type='consumable' pk=item.pk %}">{{ item.name }}</a>
+                        {% if item.is_out_of_stock %}<span class="badge badge-danger">Out of Stock</span>{% endif %}
+                    </td>
+                    <td>{{ item.consumable_type.name }}</td>
+                    <td>{{ item.vendor.name|default:"—" }}</td>
+                    <td>{{ item.catalog_number|default:"—" }}</td>
+                    <td class="qty-cell {% if item.is_out_of_stock %}text-danger{% endif %}">{{ item.quantity }}</td>
+                    <td class="qty-cell">{{ item.low_stock_threshold }}</td>
+                    <td>{{ item.unit }}</td>
+                    <td>{{ item.location|default:"—" }}</td>
+                </tr>
+                {% endfor %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="no-results">
+        <span class="material-icons-round">check_circle</span>
+        <h3>Nothing to reorder</h3>
+        <p>All items are above their low-stock thresholds.</p>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.reorder-container { padding: 20px; max-width: 1100px; margin: 0 auto; }
+.reorder-header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 24px; flex-wrap: wrap; gap: 16px;
+}
+.reorder-header h1 {
+    display: flex; align-items: center; gap: 8px;
+    margin: 0 0 6px 0; color: var(--color-dark);
+}
+.reorder-header p { margin: 0; color: var(--color-dark-variant); }
+.reorder-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.vendor-group-row td {
+    background: var(--color-light); font-weight: 600;
+    color: var(--color-dark-variant); font-size: 0.85rem;
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 12px;
+}
+.vendor-group-row td .material-icons-round { font-size: 1rem; }
+.qty-cell { font-variant-numeric: tabular-nums; }
+.text-danger { color: var(--color-danger); font-weight: 600; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; margin-left: 4px; }
+.badge-danger { background: #f8d7da; color: #842029; }
+.no-results { text-align: center; padding: 60px 20px; color: var(--color-dark-variant); }
+.no-results .material-icons-round { font-size: 4rem; color: var(--color-success); margin-bottom: 16px; display: block; }
+.btn {
+    padding: 10px 18px; border: none; border-radius: var(--border-radius-1);
+    cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+    font-size: 0.9rem; font-weight: 500; transition: all 0.3s ease; text-decoration: none;
+}
+.btn-primary { background: var(--color-primary); color: var(--color-white); }
+.btn-primary:hover { background: var(--color-dark); transform: translateY(-1px); }
+.btn-secondary { background: var(--color-info-dark); color: var(--color-white); }
+.btn-secondary:hover { background: var(--color-dark-variant); transform: translateY(-1px); }
+
+@media print {
+    .reorder-actions { display: none; }
+    .reorder-container { padding: 0; max-width: 100%; }
+    aside, .sidebar, nav { display: none !important; }
+}
+</style>
+{% endblock %}

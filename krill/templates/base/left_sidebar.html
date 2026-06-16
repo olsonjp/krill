@@ -97,6 +97,12 @@
                         <span class="material-icons-round">place</span>
                         <h3>Locations</h3>
                     </a>
+                    {% if site_config.consumables_ordering_enabled %}
+                    <a href="{% url 'consumables:reorder_list' %}" class="submenu-item {% if 'reorder' in request.path %}active{% endif %}">
+                        <span class="material-icons-round">assignment</span>
+                        <h3>Reorder List</h3>
+                    </a>
+                    {% endif %}
                 </div>
             </div>
             {% endif %}
