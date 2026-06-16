@@ -90,8 +90,8 @@ The project supports both SQLite and PostgreSQL databases:
 ### Using Docker (Recommended)
 
 ```bash
-# Start PostgreSQL and Redis services
-docker-compose up -d postgres redis
+# Start PostgreSQL service
+docker-compose up -d postgres
 
 # Set environment variables
 export DATABASE_ENGINE=postgresql

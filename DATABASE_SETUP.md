@@ -73,9 +73,9 @@ The project includes several environment file templates:
 
 ### Using Docker Compose
 
-1. **Start PostgreSQL and Redis:**
+1. **Start PostgreSQL:**
    ```bash
-   docker-compose up -d postgres redis
+   docker-compose up -d postgres
    ```
 
 2. **Set environment variables:**
@@ -264,7 +264,6 @@ python manage.py setup_db --check
    - Monitor query performance with `django-debug-toolbar`
 
 3. **Caching:**
-   - Enable Redis caching for production
    - Use `select_related()` and `prefetch_related()` for queries
    - Implement database query optimization
 

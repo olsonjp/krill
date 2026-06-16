@@ -57,7 +57,6 @@ This document provides a comprehensive security implementation and deployment gu
 - **Status**: ✅ **IMPLEMENTED** - Production dependencies with security packages
 - **Added Packages**:
   - `psycopg2-binary` - PostgreSQL adapter
-  - `redis`, `django-redis` - Caching and sessions
   - `django-ratelimit`, `django-axes` - Rate limiting and login tracking
   - `python-dotenv`, `django-environ` - Environment management
   - `sentry-sdk` - Error tracking and monitoring
@@ -137,7 +136,6 @@ DB_USER=krill_user
 DB_PASSWORD=secure-database-password
 DB_HOST=localhost
 DB_PORT=5432
-REDIS_URL=redis://127.0.0.1:6379/1
 EMAIL_HOST=smtp.your-provider.com
 EMAIL_HOST_USER=your-email@domain.com
 EMAIL_HOST_PASSWORD=your-email-password
