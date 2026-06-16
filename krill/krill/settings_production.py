@@ -70,17 +70,6 @@ DATABASES = {
     }
 }
 
-# Cache - Use Redis in production
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379/1'),
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-        }
-    }
-}
-
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR.parent / 'staticfiles'
@@ -183,7 +172,6 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Rate limiting
 RATELIMIT_ENABLE = True
-RATELIMIT_USE_CACHE = 'default'
 
 # Security middleware additions
 MIDDLEWARE = [

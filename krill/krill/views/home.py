@@ -1,26 +1,15 @@
-import re
-from collections import namedtuple
-from datetime import timedelta
+from datetime import date, timedelta
 
-from django.conf import settings
-from django.contrib import messages
-from django.contrib.contenttypes.models import ContentType
-from django.core.cache import cache
 from django.shortcuts import redirect, render
-from django.utils.translation import gettext_lazy as _
 from django.views.generic import View
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.http import JsonResponse
 from django.utils import timezone
-from django.db.models import Count, Q
-
-# Import models for statistics
-from datetime import date
 
 from sample.models.sample import Sample
-from sample.models.aliquot import Aliquot, AliquotLocation
-from storage.models.storage import Device, Box
+from sample.models.aliquot import AliquotLocation
+from storage.models.storage import Box
 from person.models import UserAuditLog, UserPreference, SiteConfiguration
 from person.decorators import require_minimum_role
 
@@ -36,31 +25,6 @@ class HomeView(View):
     template_name = 'krill/home.html'
 
     def get(self, request):
-        """
-        if settings.LOGIN_REQUIRED and not request.user.is_authenticated:
-            return redirect('login')
-
-        # Construct the user's custom dashboard layout
-        try:
-            dashboard = get_dashboard(request.user).get_layout()
-        except Exception:
-            messages.error(request, _(
-                "There was an error loading the dashboard configuration. A default dashboard is in use."
-            ))
-            dashboard = get_default_dashboard(config=DEFAULT_DASHBOARD).get_layout()
-
-        # Check whether a new release is available. (Only for staff/superusers.)
-        new_release = None
-        if request.user.is_staff or request.user.is_superuser:
-            latest_release = cache.get('latest_release')
-            if latest_release:
-                release_version, release_url = latest_release
-                if release_version > version.parse(settings.VERSION):
-                    new_release = {
-                        'version': str(release_version),
-                        'url': release_url,
-                    } """
-
         # Get dashboard statistics
         stats = get_dashboard_statistics()
         # Get recent activity
