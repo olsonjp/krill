@@ -19,7 +19,8 @@ from django.db.models import Count, Q
 from sample.models.sample import Sample
 from sample.models.aliquot import Aliquot, AliquotLocation
 from storage.models.storage import Device, Box
-from person.models import UserAuditLog, UserPreference
+from person.models import UserAuditLog, UserPreference, SiteConfiguration
+from person.decorators import require_minimum_role
 
 __all__ = (
     'HomeView',
@@ -187,13 +188,46 @@ class SettingsView(View):
     template_name = 'krill/settings.html'
 
     def get(self, request):
-        # Get or create user preference for dark mode
-        user_preference, created = UserPreference.objects.get_or_create(
+        user_preference, _ = UserPreference.objects.get_or_create(
             user=request.user,
             defaults={'dark_mode': False}
         )
+        return render(request, self.template_name, {
+            'user_preference': user_preference,
+            'site_config': SiteConfiguration.load(),
+        })
 
-        context = {
-            'user_preference': user_preference
-        }
-        return render(request, self.template_name, context)
+    def post(self, request):
+        from person.models import UserRole
+        user_role = UserRole.get_or_create_for_user(request.user)
+        if user_role.role != 'lab_admin':
+            from django.http import HttpResponseForbidden
+            return HttpResponseForbidden("Only lab admins can change site configuration.")
+
+        config = SiteConfiguration.load()
+        consumables_enabled = request.POST.get('consumables_enabled') == 'on'
+        consumables_ordering_enabled = (
+            request.POST.get('consumables_ordering_enabled') == 'on'
+            and consumables_enabled
+        )
+        config.consumables_enabled = consumables_enabled
+        config.consumables_ordering_enabled = consumables_ordering_enabled
+        config.updated_by = request.user
+        config.save()
+
+        UserAuditLog.log_action(
+            user=request.user,
+            action='update',
+            target_type='SiteConfiguration',
+            target_id=config.pk,
+            target_name='Site Configuration',
+            details={
+                'consumables_enabled': consumables_enabled,
+                'consumables_ordering_enabled': consumables_ordering_enabled,
+            },
+            request=request,
+        )
+
+        from django.contrib import messages
+        messages.success(request, 'Site configuration saved.')
+        return redirect('settings')

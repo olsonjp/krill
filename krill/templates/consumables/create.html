@@ -1,0 +1,134 @@
+{% extends 'base/layout.html' %}
+{% load static %}
+
+{% block content %}
+<div class="create-container">
+    <div class="create-header">
+        <a href="{% url 'consumables:list' %}?type={{ model_type }}" class="back-link">
+            <span class="material-icons-round">arrow_back</span>
+            Back to {{ model_name }}s
+        </a>
+        <h1>Add {{ model_name }}</h1>
+    </div>
+
+    <div class="create-form-card">
+        <form method="post" id="createForm">
+            {% csrf_token %}
+            <input type="hidden" name="type" value="{{ model_type }}">
+
+            {% if form.non_field_errors %}
+            <div class="error-messages">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            <!-- Core fields (non-spec) -->
+            {% for field in form %}
+            {% if not field.name|slice:":6" == "spec__" %}
+            <div class="form-group {% if field.errors %}has-error{% endif %}">
+                <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} *{% endif %}</label>
+                {{ field }}
+                {% if field.help_text %}<small class="help-text">{{ field.help_text }}</small>{% endif %}
+                {% if field.errors %}<div class="field-error">{{ field.errors }}</div>{% endif %}
+            </div>
+            {% if model_type == 'consumable' and field.name == 'consumable_type' %}
+            <script>
+            document.getElementById('{{ field.id_for_label }}').addEventListener('change', function() {
+                var params = new URLSearchParams(window.location.search);
+                params.set('type', 'consumable');
+                params.set('consumable_type', this.value);
+                window.location.href = '{% url "consumables:create" %}?' + params.toString();
+            });
+            </script>
+            {% endif %}
+            {% endif %}
+            {% endfor %}
+
+            <!-- Type-specific spec fields -->
+            {% if model_type == 'consumable' %}
+            {% with has_spec=False %}
+            {% for field in form %}{% if field.name|slice:":6" == "spec__" %}{% with has_spec=True %}{% endwith %}{% endif %}{% endfor %}
+            {% endwith %}
+
+            {% for field in form %}
+            {% if field.name|slice:":6" == "spec__" %}
+            {% if forloop.first %}
+            <div class="form-section">
+                <h3><span class="material-icons-round">science</span> Type-Specific Details</h3>
+            {% endif %}
+                <div class="form-group {% if field.errors %}has-error{% endif %}">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} *{% endif %}</label>
+                    {{ field }}
+                    {% if field.help_text %}<small class="help-text">{{ field.help_text }}</small>{% endif %}
+                    {% if field.errors %}<div class="field-error">{{ field.errors }}</div>{% endif %}
+                </div>
+            {% if forloop.last %}
+            </div><!-- .form-section -->
+            {% endif %}
+            {% endif %}
+            {% endfor %}
+            {% endif %}
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    <span class="material-icons-round">add</span>
+                    Create {{ model_name }}
+                </button>
+                <a href="{% url 'consumables:list' %}?type={{ model_type }}" class="btn btn-secondary">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.create-container { padding: 20px; max-width: 700px; margin: 0 auto; }
+.create-header { margin-bottom: 30px; }
+.back-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    color: var(--color-primary); text-decoration: none;
+    font-size: 0.9rem; margin-bottom: 15px;
+}
+.back-link:hover { text-decoration: underline; }
+.create-header h1 { margin: 0; color: var(--color-dark); }
+.create-form-card {
+    background: var(--color-white); border-radius: var(--border-radius-1);
+    box-shadow: var(--box-shadow); padding: 30px;
+}
+.form-group { margin-bottom: 20px; }
+.form-group label { display: block; margin-bottom: 8px; font-weight: 500; color: var(--color-dark); }
+.form-group input, .form-group select, .form-group textarea {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--color-light);
+    border-radius: var(--border-radius-1); font-size: 0.9rem;
+    background: var(--color-white); color: var(--color-dark);
+    box-sizing: border-box;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    outline: none; border-color: var(--color-primary);
+}
+.form-section {
+    border-top: 1px solid var(--color-light);
+    padding-top: 20px; margin-top: 20px;
+}
+.form-section h3 {
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 0; margin-bottom: 20px; color: var(--color-dark);
+}
+.help-text { color: var(--color-dark-variant); font-size: 0.8rem; margin-top: 4px; display: block; }
+.field-error { color: var(--color-danger); font-size: 0.8rem; margin-top: 4px; }
+.has-error input, .has-error select, .has-error textarea { border-color: var(--color-danger); }
+.error-messages {
+    background: #f8d7da; border: 1px solid #f5c2c7; border-radius: var(--border-radius-1);
+    padding: 15px; margin-bottom: 20px; color: #842029;
+}
+.form-actions { display: flex; gap: 10px; margin-top: 30px; }
+.btn {
+    padding: 12px 24px; border: none; border-radius: var(--border-radius-1);
+    cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+    font-size: 0.9rem; font-weight: 500; transition: all 0.3s ease; text-decoration: none;
+}
+.btn-primary { background: var(--color-primary); color: var(--color-white); }
+.btn-primary:hover { background: var(--color-dark); transform: translateY(-1px); }
+.btn-secondary { background: var(--color-info-dark); color: var(--color-white); }
+.btn-secondary:hover { background: var(--color-dark-variant); transform: translateY(-1px); }
+</style>
+{% endblock %}

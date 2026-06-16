@@ -71,6 +71,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'krill.context_processors.user_preferences',
+                'krill.context_processors.site_configuration',
             ],
         },
     },
