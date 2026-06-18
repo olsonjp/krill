@@ -1,0 +1,27 @@
+FROM python:3.10-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    UV_NO_CACHE=1
+
+RUN apt-get update && apt-get install -y \
+    libpq-dev \
+    libmagic1 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
+WORKDIR /app
+
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev
+
+COPY . .
+
+RUN mkdir -p /app/media /app/staticfiles /app/krill/logs
+
+RUN DJANGO_SETTINGS_MODULE=krill.settings_production \
+    uv run python krill/manage.py collectstatic --noinput
+
+RUN groupadd -r krill && useradd -r -g krill krill && chown -R krill:krill /app
+USER krill
