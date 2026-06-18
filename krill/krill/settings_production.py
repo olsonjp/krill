@@ -55,20 +55,27 @@ CSRF_TRUSTED_ORIGINS = [
 # Statement timeout in milliseconds for all queries (default 30 seconds).
 # Prevents long-running queries from hanging the app; override via DB_STATEMENT_TIMEOUT_MS.
 _pg_timeout_ms = os.environ.get('DB_STATEMENT_TIMEOUT_MS', '30000')
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('DB_NAME', 'krill_production'),
-        'USER': os.environ.get('DB_USER', 'krill_user'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', ''),
-        'HOST': os.environ.get('DB_HOST', 'localhost'),
-        'PORT': os.environ.get('DB_PORT', '5432'),
-        'OPTIONS': {
-            'sslmode': 'require',
-            'options': f'-c statement_timeout={_pg_timeout_ms}',
-        },
+_pg_options = {'options': f'-c statement_timeout={_pg_timeout_ms}'}
+
+_database_url = os.environ.get('DATABASE_URL')
+if _database_url:
+    # Railway provides a single DATABASE_URL connection string.
+    import dj_database_url
+    DATABASES = {'default': dj_database_url.parse(_database_url, ssl_require=True)}
+    DATABASES['default'].setdefault('OPTIONS', {}).update(_pg_options)
+else:
+    # DO App Platform (and other envs) supply individual DB_* vars.
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ.get('DB_NAME', 'krill_production'),
+            'USER': os.environ.get('DB_USER', 'krill_user'),
+            'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+            'HOST': os.environ.get('DB_HOST', 'localhost'),
+            'PORT': os.environ.get('DB_PORT', '5432'),
+            'OPTIONS': {'sslmode': 'require', **_pg_options},
+        }
     }
-}
 
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = '/static/'
