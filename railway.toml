@@ -4,6 +4,6 @@ dockerBuildTarget = "production"
 
 [deploy]
 preDeployCommand = "uv run python /app/krill/manage.py migrate"
-startCommand = "/bin/sh -c 'uv run gunicorn --bind 0.0.0.0:$PORT --workers 3 --timeout 120 krill.wsgi:application'"
+startCommand = "uv run gunicorn --workers 3 --timeout 120 krill.wsgi:application"
 healthcheckPath = "/login/"
 healthcheckTimeout = 30
