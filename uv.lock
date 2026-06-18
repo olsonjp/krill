@@ -232,6 +232,19 @@ wheels = [
 ]
 
 [[package]]
+name = "dj-database-url"
+version = "2.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "django" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f0/1d/91ca6ded2b97688bc0287240c916690b6ee7ce2fd5327ea83f847730f6ec/dj-database-url-2.1.0.tar.gz", hash = "sha256:f2042cefe1086e539c9da39fad5ad7f61173bf79665e69bf7e4de55fa88b135f", size = 10502, upload-time = "2023-08-15T14:38:12.078Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/21/d2/b90366de4682c1472748b848292054e0960673f3c7d1a9d08fb227fad819/dj_database_url-2.1.0-py3-none-any.whl", hash = "sha256:04bc34b248d4c21aaa13e4ab419ae6575ef5f10f3df735ce7da97722caa356e0", size = 7673, upload-time = "2023-08-15T14:39:01.026Z" },
+]
+
+[[package]]
 name = "django"
 version = "5.0.1"
 source = { registry = "https://pypi.org/simple" }
@@ -470,6 +483,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "asgiref" },
+    { name = "dj-database-url" },
     { name = "django" },
     { name = "django-axes" },
     { name = "django-cors-headers" },
@@ -504,6 +518,7 @@ requires-dist = [
     { name = "asgiref", specifier = "==3.7.2" },
     { name = "bandit", marker = "extra == 'dev'", specifier = "==1.7.5" },
     { name = "coverage", marker = "extra == 'dev'", specifier = "==7.3.2" },
+    { name = "dj-database-url", specifier = "==2.1.0" },
     { name = "django", specifier = "==5.0.1" },
     { name = "django-axes", specifier = "==6.1.0" },
     { name = "django-cors-headers", specifier = "==4.3.1" },
