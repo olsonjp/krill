@@ -1,6 +1,5 @@
 [build]
-dockerfilePath = "Dockerfile"
-dockerBuildTarget = "production"
+dockerfilePath = "Dockerfile.railway"
 
 [deploy]
 preDeployCommand = "uv run python /app/krill/manage.py migrate"
