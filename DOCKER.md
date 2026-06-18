@@ -86,7 +86,6 @@ docker run -p 8000:8000 \
   -e DB_USER=your_db_user \
   -e DB_PASSWORD=your_db_password \
   -e DB_HOST=your_db_host \
-  -e REDIS_URL=redis://your_redis_host:6379/1 \
   krill:production
 ```
 
@@ -113,15 +112,12 @@ docker run -p 8000:8000 \
 - `DB_PASSWORD` (required)
 - `DB_HOST` (required)
 - `DB_PORT=5432`
-- `REDIS_URL` (required)
-
 ## 🗄️ Database Configuration
 
-The containers are designed to work with external databases. You'll need to:
+The containers are designed to work with an external PostgreSQL database. You'll need to:
 
 1. **Set up PostgreSQL** for production
-2. **Set up Redis** for caching and sessions
-3. **Configure environment variables** to point to your databases
+2. **Configure environment variables** to point to your database
 
 ### Example with External Database
 ```bash
@@ -131,7 +127,6 @@ docker run -p 8000:8000 \
   -e DB_USER=krill_user \
   -e DB_PASSWORD=secure_password \
   -e DB_HOST=your-postgres-host \
-  -e REDIS_URL=redis://your-redis-host:6379/1 \
   krill:production
 ```
 

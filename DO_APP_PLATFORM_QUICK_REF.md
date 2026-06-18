@@ -30,9 +30,6 @@ DB_SSLMODE=require
 - `DB_HOST=${db.HOST}`
 - `DB_PORT=${db.PORT}`
 
-**These are automatically set when you bind a Redis database:**
-- `REDIS_URL=${redis.REDIS_URL}`
-
 ### 🟢 RECOMMENDED (For Production)
 
 ```bash
@@ -121,9 +118,6 @@ DJANGO_SETTINGS_MODULE=krill.settings_production
 
 # Environment
 ENVIRONMENT=production
-
-# Cache (Auto-configured when binding Redis)
-REDIS_URL=${redis.REDIS_URL}
 
 # Email
 EMAIL_HOST=smtp.gmail.com

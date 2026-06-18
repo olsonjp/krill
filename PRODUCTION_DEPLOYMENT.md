@@ -47,15 +47,6 @@ DJANGO_SETTINGS_MODULE=krill.settings_production
 
 These variables are **HIGHLY RECOMMENDED** for production:
 
-#### Cache Configuration
-```bash
-# Redis Cache URL
-REDIS_URL=redis://your-redis-host:6379/1
-
-# Alternative: Redis with authentication
-REDIS_URL=redis://:password@your-redis-host:6379/1
-```
-
 #### Email Configuration
 ```bash
 # SMTP Settings
@@ -159,13 +150,6 @@ When you bind a PostgreSQL database to your app in DO App Platform, these variab
 - `db.HOST` → `DB_HOST`
 - `db.PORT` → `DB_PORT`
 
-### DO App Platform Redis Binding
-
-If you bind a Redis database:
-```bash
-REDIS_URL=${redis.REDIS_URL}
-```
-
 ## Environment Variable Templates
 
 ### Complete Production Environment File
@@ -194,9 +178,6 @@ DJANGO_SETTINGS_MODULE=krill.settings_production
 
 # Environment
 ENVIRONMENT=production
-
-# Cache Configuration
-REDIS_URL=redis://your-redis-host:6379/1
 
 # Email Configuration
 EMAIL_HOST=smtp.gmail.com
@@ -244,9 +225,6 @@ DJANGO_SETTINGS_MODULE=krill.settings_production
 
 # Environment
 ENVIRONMENT=production
-
-# Cache (if binding Redis)
-REDIS_URL=${redis.REDIS_URL}
 
 # Email
 EMAIL_HOST=smtp.gmail.com
@@ -480,6 +458,4 @@ DJANGO_DEBUG=False
 
 ### Database Resources
 - [PostgreSQL Documentation](https://www.postgresql.org/docs/)
-- [Redis Documentation](https://redis.io/documentation)
-
 Remember: **Never commit sensitive environment variables to version control**. Always use your platform's secure environment variable management system.

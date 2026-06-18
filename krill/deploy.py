@@ -54,8 +54,6 @@ def check_dependencies():
     required_packages = [
         'django',
         'psycopg2-binary',
-        'redis',
-        'django-redis',
     ]
 
     missing_packages = []
