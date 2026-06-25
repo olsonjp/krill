@@ -1196,6 +1196,7 @@ main table tbody tr:last-child td{
 
 .items-table {
     width: 100%;
+    min-width: 800px;
     border-collapse: collapse;
     white-space: nowrap;
 }
