@@ -209,7 +209,7 @@ flush:
 
 loaddata:
 	@echo "Loading sample data..."
-	cd krill && python manage.py loaddata sample_fixtures.json
+	cd krill && python manage.py loaddata ../tests/fixtures/sample_fixtures.json
 
 load-testdata:
 	@echo "Loading anonymized test data..."
@@ -243,7 +243,7 @@ setup-test:
 reset:
 	@echo "Resetting development environment..."
 	cd krill && python manage.py flush --noinput
-	cd krill && python manage.py loaddata sample_fixtures.json
+	cd krill && python manage.py loaddata ../tests/fixtures/sample_fixtures.json
 	@echo "Development environment reset complete!"
 
 reset-test:
