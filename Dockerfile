@@ -79,7 +79,7 @@ WORKDIR /app/krill
 EXPOSE 8000
 
 # Production command
-CMD ["uv", "run", "gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "120", "krill.wsgi:application"]
+CMD ["sh", "-c", "uv run python manage.py migrate && uv run gunicorn --bind 0.0.0.0:8000 --workers 3 --timeout 120 krill.wsgi:application"]
 
 # Testing stage
 FROM base as testing
