@@ -252,3 +252,82 @@ class AliquotModelTest(TestCase):
 
         with self.assertRaises(IntegrityError):
             AliquotLocation.objects.create(aliquot=aliquot, box=box, row=2, column=2)
+
+
+class AliquotProvenanceFieldsTest(TestCase):
+    """Passage, sample date and lab member on Aliquot."""
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        self.User = get_user_model()
+        source = Source.objects.create(name="Src")
+        self.sample = Sample.objects.create(name="HeLa", source=source)
+        self.disposition = AliquotDisposition.objects.create(name="Stored", disposition_type="stored")
+
+    def _aliquot(self, **kwargs):
+        return Aliquot.objects.create(sample=self.sample, disposition=self.disposition, **kwargs)
+
+    def test_fields_are_optional(self):
+        aliquot = self._aliquot()
+        self.assertEqual(aliquot.passage, '')
+        self.assertIsNone(aliquot.sample_date)
+        self.assertIsNone(aliquot.lab_member)
+        self.assertEqual(aliquot.lab_member_display, '')
+
+    def test_lab_member_display_falls_back_to_initials(self):
+        self.assertEqual(self._aliquot(lab_member_initials='JS').lab_member_display, 'JS')
+
+    def test_lab_member_display_prefers_linked_user(self):
+        user = self.User.objects.create_user(username='jsmith', password='x', first_name='Jo', last_name='Smith')
+        aliquot = self._aliquot(lab_member=user, lab_member_initials='JS')
+        self.assertEqual(aliquot.lab_member_display, 'Jo Smith')
+
+    def test_lab_member_display_uses_username_without_a_name(self):
+        user = self.User.objects.create_user(username='jsmith', password='x')
+        self.assertEqual(self._aliquot(lab_member=user).lab_member_display, 'jsmith')
+
+    def test_deleting_user_keeps_aliquot_and_initials(self):
+        user = self.User.objects.create_user(username='gone', password='x')
+        aliquot = self._aliquot(lab_member=user, lab_member_initials='GO')
+        user.delete()
+        aliquot.refresh_from_db()
+        self.assertIsNone(aliquot.lab_member)
+        self.assertEqual(aliquot.lab_member_display, 'GO')
+
+    def test_aliquot_form_saves_new_fields(self):
+        from ..forms import AliquotForm
+        form = AliquotForm(data={
+            'sample': self.sample.pk,
+            'disposition': self.disposition.pk,
+            'access_level': 'all_members',
+            'passage': 'p8',
+            'sample_date': '2021-07-01',
+            'lab_member_initials': 'MS',
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+        aliquot = form.save()
+        self.assertEqual((aliquot.passage, str(aliquot.sample_date), aliquot.lab_member_initials), ('p8', '2021-07-01', 'MS'))
+
+    def test_aliquot_detail_page_shows_and_edits_new_fields(self):
+        from django.urls import reverse
+        admin = self.User.objects.create_superuser(username='root', password='x', email='r@example.com')
+        self.client.force_login(admin)
+        aliquot = self._aliquot(passage='p8', lab_member_initials='MS')
+        aliquot.sample_date = timezone.now().date().replace(year=2021, month=7, day=1)
+        aliquot.save()
+        url = reverse('sample:aliquot_detail', kwargs={'pk': aliquot.pk})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        body = response.content.decode()
+        self.assertIn('p8', body)
+        self.assertIn('MS', body)
+        self.assertIn('Jul 01, 2021', body)
+        # edit through the form
+        response = self.client.post(url, {
+            'action': 'edit', 'sample': self.sample.pk, 'disposition': self.disposition.pk,
+            'access_level': 'all_members', 'passage': 'p9', 'sample_date': '2022-01-05',
+            'lab_member_initials': 'JS', 'lab_member': admin.pk,
+        })
+        self.assertEqual(response.status_code, 302)
+        aliquot.refresh_from_db()
+        self.assertEqual((aliquot.passage, str(aliquot.sample_date), aliquot.lab_member_id), ('p9', '2022-01-05', admin.pk))

@@ -51,7 +51,13 @@ class AliquotForm(forms.ModelForm):
 
     class Meta:
         model = Aliquot
-        fields = ['parent', 'sample', 'aliquot_type', 'disposition', 'access_level']
+        fields = [
+            'parent', 'sample', 'aliquot_type', 'disposition', 'access_level',
+            'passage', 'sample_date', 'lab_member', 'lab_member_initials',
+        ]
+        widgets = {
+            'sample_date': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+        }
         help_texts = {
             'parent': 'Parent aliquot, if this is a derivative',
             'sample': 'Sample this aliquot belongs to',
