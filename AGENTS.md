@@ -15,7 +15,7 @@ tracking, and reporting.
   runtime tooling
 
 ## Local setup
-1. Python 3.10+, pip, and (recommended) a virtual environment.
+1. Python 3.15 and uv (`mise install` provides both).
 2. Install dependencies:
    - `uv sync` (make targets and `uv run python ...` use `.venv` without activation)
 3. Database defaults to SQLite; for PostgreSQL set env vars from

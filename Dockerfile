@@ -2,7 +2,7 @@
 # Supports both development and production environments
 
 # Base stage with common dependencies
-FROM python:3.10-slim as base
+FROM python:3.15-slim as base
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \

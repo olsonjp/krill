@@ -53,15 +53,11 @@ This document provides a comprehensive security implementation and deployment gu
   - Dependency vulnerability scanning
   - File permissions validation
 
-#### 5. Updated Requirements (`requirements.txt`)
-- **Status**: ✅ **IMPLEMENTED** - Production dependencies with security packages
-- **Added Packages**:
-  - `psycopg2-binary` - PostgreSQL adapter
-  - `django-ratelimit`, `django-axes` - Rate limiting and login tracking
-  - `python-dotenv`, `django-environ` - Environment management
-  - `sentry-sdk` - Error tracking and monitoring
-  - `bandit`, `safety` - Security analysis tools
-  - `gunicorn`, `whitenoise` - Production server and static files
+#### 5. Dependencies (`pyproject.toml`, locked in `uv.lock`)
+- **Status**: ✅ **IMPLEMENTED** - Only libraries the code actually uses are installed
+- **Runtime**: `Django`, `psycopg2-binary` (PostgreSQL), `sentry-sdk` (error tracking), `openpyxl` (XLSX import), `gunicorn` and `whitenoise` (server and static files)
+- **Dev extra** (`uv sync --extra dev`): `bandit` (code analysis), `pip-audit` (known-vulnerability scan), `coverage`, `django-debug-toolbar`
+- **Not enabled**: login rate limiting / lockout. `django-axes` and `django-ratelimit` were once listed here but were never turned on in `INSTALLED_APPS` or `MIDDLEWARE`, so they were removed. This is still an open gap.
 
 ## 🔒 **Critical Security Issues - Current Status**
 
@@ -324,10 +320,9 @@ python manage.py test security_tests
 # Run Django deployment checks
 python manage.py check --deploy
 
-# Run security analysis tools
-pip install bandit safety
-bandit -r krill/
-safety check
+# Run security analysis tools (dev extra: uv sync --extra dev)
+uv run bandit -r krill/
+uv run pip-audit
 ```
 
 ### **Manual Security Checks**
