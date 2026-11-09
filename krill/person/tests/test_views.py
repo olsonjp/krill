@@ -1216,3 +1216,42 @@ class ImportBuildsOnExistingDataTest(TestCase):
         other.role.save()
         self.client.force_login(other)
         self.assertEqual(self.client.get(reverse('person:data_import_refused', args=[token])).status_code, 404)
+
+    def test_cell_line_names_match_ignoring_case_and_spacing_within_file(self):
+        text = (
+            'Cell Line;Source;Freezer Name;Site;Position 1;Position 2;Position 3;Position 4;'
+            'Aliquot Type;Disposition;Sample Notes;Experiment #\n'
+            'MM134;Lab A;Freezer 1;Main;4;F;2;1;Cells;;first note;\n'
+            'mm134 ;Lab A;Freezer 1;Main;4;F;2;2;Cells;;second note;\n'
+            ' Mm134;Lab A;Freezer 1;Main;4;F;2;3;Cells;;first note;\n'
+            'OtherLine;Lab A;Freezer 1;Main;4;F;2;4;Cells;;;\n'
+        )
+        view, fixtures = self._convert(text)
+        samples = [f for f in fixtures if f['model'] == 'sample.sample' and f['pk'] != 1]
+        names = sorted(s['fields']['name'] for s in samples)
+        self.assertEqual(names, ['MM134', 'OtherLine'])        # first spelling kept, trimmed
+        mm134 = next(s for s in samples if s['fields']['name'] == 'MM134')
+        self.assertEqual(mm134['fields']['notes'], 'first note\nsecond note')
+        aliquots = [a['fields']['sample'] for a in fixtures if a['model'] == 'sample.aliquot']
+        self.assertEqual(aliquots[0], aliquots[1])
+        self.assertEqual(aliquots[1], aliquots[2])
+        self.assertNotEqual(aliquots[2], aliquots[3])
+
+    def test_cell_line_matches_existing_sample_ignoring_case(self):
+        text = self.CSV.replace('HeLa;', 'hela ;')
+        view, fixtures = self._convert(text)
+        self.assertNotIn('sample.sample', [f['model'] for f in fixtures])
+        self.assertEqual({a['fields']['sample'] for a in fixtures if a['model'] == 'sample.aliquot'}, {1})
+        self.assertEqual(view.reused_counts['samples'], 1)
+        self._load(fixtures)
+        from sample.models.sample import Sample
+        self.assertEqual(Sample.objects.get(pk=1).name, 'HeLa')   # existing record untouched
+        self.assertEqual(Sample.objects.count(), 1)
+
+    def test_duplicate_hint_ignores_case(self):
+        from person.views import ImportConflictError
+        _, fixtures = self._convert(self.CSV)
+        self._load(fixtures)
+        with self.assertRaises(ImportConflictError) as ctx:
+            self._convert(self.CSV.replace('HeLa;', 'HELA;'))
+        self.assertIn('probably already been imported', str(ctx.exception))
