@@ -40,7 +40,7 @@ venv
 *.xlsx
 *.xls
 *.sql
-!init.sql
+!scripts/init.sql
 *.db
 *.sqlite
 *.sqlite3

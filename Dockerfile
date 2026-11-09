@@ -93,5 +93,8 @@ RUN mkdir -p /app/media /app/staticfiles /app/logs
 # Set permissions
 RUN chmod +x /app/krill/manage.py
 
+# Run from the Django project directory so test discovery finds the apps
+WORKDIR /app/krill
+
 # Test command
-CMD ["uv", "run", "python", "krill/manage.py", "test", "--verbosity=2"]
+CMD ["uv", "run", "python", "manage.py", "test", "--verbosity=2"]

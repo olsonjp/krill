@@ -42,3 +42,18 @@ The script is integrated into the development workflow:
 The pre-commit hook (`.git/hooks/pre-commit`) automatically runs the whitespace cleanup before each commit. If files are modified during cleanup, the commit is aborted and you'll need to review and commit again.
 
 This ensures that all committed code has consistent whitespace formatting.
+
+## build.sh
+
+Builds the Docker images (`development`, `testing`, `production`, `all`, `test`, `push`).
+Normally invoked through `make build-*` / `make test-docker`. See
+[the deployment guide](../docs/deployment/README.md).
+
+## deploy.sh
+
+Helper for deploying to DigitalOcean App Platform with `doctl`. See
+[the DigitalOcean guide](../docs/deployment/digitalocean.md).
+
+## init.sql
+
+PostgreSQL initialization (extensions) mounted by `docker-compose.yml`.

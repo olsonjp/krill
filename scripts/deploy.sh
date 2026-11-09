@@ -5,6 +5,9 @@
 
 set -e
 
+# Run from the repository root
+cd "$(dirname "$0")/.."
+
 echo "🚀 Krill Deployment Script for DigitalOcean App Platform"
 echo "========================================================"
 
