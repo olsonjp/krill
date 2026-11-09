@@ -1,4 +1,11 @@
+from django.conf import settings
+
 from person.models import UserPreference, SiteConfiguration
+
+
+def support_email(request):
+    """Expose the support address (settings.SUPPORT_EMAIL) to templates."""
+    return {'support_email': settings.SUPPORT_EMAIL}
 
 
 def site_configuration(request):

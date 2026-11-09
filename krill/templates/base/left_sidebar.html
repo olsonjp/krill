@@ -157,6 +157,12 @@
                 </div>
             </div>
             {% endif %}
+            <a href="mailto:{{ support_email }}?subject=Krill%20support%20request" class="support-link">
+                <span class="material-icons-round">
+                    support_agent
+                </span>
+                <h3>Support</h3>
+            </a>
             <form method="post" action="{% url 'logout' %}" class="logout-form">
                 {% csrf_token %}
                 <button type="submit" class="sidebar-logout">
