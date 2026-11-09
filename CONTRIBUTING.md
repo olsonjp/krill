@@ -58,26 +58,20 @@ Feature suggestions are welcome! Please create an issue with:
    cd krill
    ```
 
-2. **Create a virtual environment**:
-   ```bash
-   uv sync
-   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-   ```
-
-3. **Install dependencies**:
+2. **Install dependencies** (creates `.venv`; `make` targets and `uv run` use it without activation):
    ```bash
    uv sync
    ```
 
-4. **Set up the database**:
+3. **Set up the database**:
    ```bash
-   python manage.py migrate
-   python manage.py createsuperuser
+   make migrate
+   make createsuperuser
    ```
 
-5. **Run the development server**:
+4. **Run the development server**:
    ```bash
-   python manage.py runserver
+   make server
    ```
 
 ## Code Style

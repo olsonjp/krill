@@ -1,6 +1,10 @@
 # Krill Makefile
 # Provides convenient commands for both local development and Docker containers
 
+# Python commands run through uv (using the project's .venv), so no manual venv
+# activation is needed. Override to use your own interpreter: make PYTHON=python <target>
+PYTHON ?= uv run python
+
 .PHONY: help build-dev build-test build-prod build-all test run-dev run-prod clean
 .PHONY: server migrate makemigrations shell collectstatic createsuperuser
 .PHONY: test-local test-docker security-check deploy-check push-prod
@@ -99,32 +103,32 @@ run-prod:
 # Local Development Commands
 server:
 	@echo "Starting Django development server..."
-	cd krill && python manage.py runserver
+	cd krill && $(PYTHON) manage.py runserver
 
 migrate:
 	@echo "Running database migrations..."
-	cd krill && python manage.py migrate
+	cd krill && $(PYTHON) manage.py migrate
 
 makemigrations:
 	@echo "Creating new migrations..."
-	cd krill && python manage.py makemigrations
+	cd krill && $(PYTHON) manage.py makemigrations
 
 shell:
 	@echo "Opening Django shell..."
-	cd krill && python manage.py shell
+	cd krill && $(PYTHON) manage.py shell
 
 collectstatic:
 	@echo "Collecting static files..."
-	cd krill && python manage.py collectstatic --noinput
+	cd krill && $(PYTHON) manage.py collectstatic --noinput
 
 createsuperuser:
 	@echo "Creating superuser..."
-	cd krill && python manage.py createsuperuser
+	cd krill && $(PYTHON) manage.py createsuperuser
 
 # Testing Commands
 test-local:
 	@echo "Running tests locally..."
-	cd krill && python manage.py test --verbosity=2
+	cd krill && $(PYTHON) manage.py test --verbosity=2
 
 test-docker:
 	@echo "Building and running tests in Docker..."
@@ -132,12 +136,12 @@ test-docker:
 
 security-check:
 	@echo "Running security validation..."
-	cd krill && python run_security_check.py
+	cd krill && $(PYTHON) run_security_check.py
 
 # Anonymized Data Commands
 test-data:
 	@echo "Running anonymized data tests..."
-	python tests/run_tests.py
+	$(PYTHON) tests/run_tests.py
 
 test-data-gen:
 	@echo "Generating anonymized test data..."
@@ -147,15 +151,15 @@ test-data-gen:
 		echo "The anonymized data will not be regenerated."; \
 		exit 1; \
 	fi
-	cd tests/scripts && python anonymize_csv.py
+	cd tests/scripts && $(PYTHON) anonymize_csv.py
 
 test-data-fixtures:
 	@echo "Generating Django fixtures from anonymized data..."
-	cd tests/scripts && python convert_csv.py
+	cd tests/scripts && $(PYTHON) convert_csv.py
 
 create-test-superuser:
 	@echo "Creating test superuser..."
-	cd tests/scripts && python create_test_superuser.py
+	cd tests/scripts && $(PYTHON) create_test_superuser.py
 
 test-data-all:
 	@echo "Generating all test data and fixtures..."
@@ -165,11 +169,11 @@ test-data-all:
 		exit 1; \
 	fi
 	@echo "Step 1: Generating anonymized data..."
-	cd tests/scripts && python anonymize_csv.py
+	cd tests/scripts && $(PYTHON) anonymize_csv.py
 	@echo "Step 2: Generating Django fixtures..."
-	cd tests/scripts && python convert_csv.py
+	cd tests/scripts && $(PYTHON) convert_csv.py
 	@echo "Step 3: Running verification tests..."
-	python tests/run_tests.py
+	$(PYTHON) tests/run_tests.py
 	@echo "All test data generation complete!"
 
 # Docker Commands
@@ -200,57 +204,57 @@ docker-shell:
 
 deploy-check:
 	@echo "Running deployment checks..."
-	cd krill && python manage.py check --deploy
+	cd krill && $(PYTHON) manage.py check --deploy
 
 # Additional Development Commands
 flush:
 	@echo "Flushing database..."
-	cd krill && python manage.py flush
+	cd krill && $(PYTHON) manage.py flush
 
 loaddata:
 	@echo "Loading sample data..."
-	cd krill && python manage.py loaddata ../tests/fixtures/sample_fixtures.json
+	cd krill && $(PYTHON) manage.py loaddata ../tests/fixtures/sample_fixtures.json
 
 load-testdata:
 	@echo "Loading anonymized test data..."
-	cd krill && python manage.py loaddata ../tests/fixtures/sample_fixtures.json
+	cd krill && $(PYTHON) manage.py loaddata ../tests/fixtures/sample_fixtures.json
 
 dbshell:
 	@echo "Opening database shell..."
-	cd krill && python manage.py dbshell
+	cd krill && $(PYTHON) manage.py dbshell
 
 showmigrations:
 	@echo "Showing migration status..."
-	cd krill && python manage.py showmigrations
+	cd krill && $(PYTHON) manage.py showmigrations
 
 check:
 	@echo "Running Django system checks..."
-	cd krill && python manage.py check
+	cd krill && $(PYTHON) manage.py check
 
 # Development Setup Commands
 setup:
 	@echo "Setting up development environment..."
-	cd krill && python manage.py migrate
+	cd krill && $(PYTHON) manage.py migrate
 	@echo "Development setup complete!"
 
 setup-test:
 	@echo "Setting up test environment with anonymized data..."
-	cd krill && python manage.py migrate
-	cd krill && python manage.py loaddata ../tests/fixtures/sample_fixtures.json
-	cd tests/scripts && python create_test_superuser.py
+	cd krill && $(PYTHON) manage.py migrate
+	cd krill && $(PYTHON) manage.py loaddata ../tests/fixtures/sample_fixtures.json
+	cd tests/scripts && $(PYTHON) create_test_superuser.py
 	@echo "Test environment setup complete!"
 
 reset:
 	@echo "Resetting development environment..."
-	cd krill && python manage.py flush --noinput
-	cd krill && python manage.py loaddata ../tests/fixtures/sample_fixtures.json
+	cd krill && $(PYTHON) manage.py flush --noinput
+	cd krill && $(PYTHON) manage.py loaddata ../tests/fixtures/sample_fixtures.json
 	@echo "Development environment reset complete!"
 
 reset-test:
 	@echo "Resetting test environment with anonymized data..."
-	cd krill && python manage.py flush --noinput
-	cd krill && python manage.py loaddata ../tests/fixtures/sample_fixtures.json
-	cd tests/scripts && python create_test_superuser.py
+	cd krill && $(PYTHON) manage.py flush --noinput
+	cd krill && $(PYTHON) manage.py loaddata ../tests/fixtures/sample_fixtures.json
+	cd tests/scripts && $(PYTHON) create_test_superuser.py
 	@echo "Test environment reset complete!"
 
 # Code Quality Commands

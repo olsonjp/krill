@@ -32,11 +32,12 @@ Krill is designed for research laboratories and biobanks that need to:
 git clone <repository-url>
 cd krill
 uv sync                       # creates .venv and installs dependencies
-source .venv/bin/activate     # On Windows: .venv\Scripts\activate
 make migrate                  # SQLite by default
 make createsuperuser
 make server                   # http://localhost:8000 (admin at /admin)
 ```
+
+`make` targets run Python through `uv run`, so there is no need to activate the virtualenv. For ad-hoc commands use `uv run python krill/manage.py <command>` (or activate `.venv` yourself).
 
 To start with anonymized sample data instead (creates `admin` / `admin`), run `make setup-test`.
 See [Testing](tests/README.md) and `make help` for all available commands.
