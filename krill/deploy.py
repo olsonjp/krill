@@ -65,7 +65,7 @@ def check_dependencies():
 
     if missing_packages:
         print(f"❌ Missing packages: {', '.join(missing_packages)}")
-        print("Run: pip install -r requirements.txt")
+        print("Run: uv sync")
         return False
 
     print("✅ All dependencies are installed")

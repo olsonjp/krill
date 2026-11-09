@@ -9,17 +9,17 @@ tracking, and reporting.
   transaction)
 - `templates/`: top-level template overrides (admin UI)
 - `tests/`: anonymized test data, fixtures, scripts, `run_tests.py`
-- `scripts/`: utility scripts (e.g., `clean_whitespace.py`)
-- `config/`: configuration files
-- `Dockerfile`, `docker-compose.yml`, `build.sh`, `Makefile`: build and
+- `scripts/`: build/deploy and utility scripts (e.g., `build.sh`, `clean_whitespace.py`)
+- `docs/`: guides (deployment, data import, QA notes)
+- `Dockerfile`, `docker-compose.yml`, `scripts/build.sh`, `Makefile`: build and
   runtime tooling
 
 ## Local setup
 1. Python 3.10+, pip, and (recommended) a virtual environment.
 2. Install dependencies:
-   - `pip install -r requirements.txt`
+   - `uv sync` (then `source .venv/bin/activate`)
 3. Database defaults to SQLite; for PostgreSQL set env vars from
-   `env.example` or `env.production`.
+   `env.example` or `docs/deployment/env.production.example`.
 4. `manage.py` lives under `krill/`:
    - From repo root: `python krill/manage.py <command>`
    - Or `cd krill` then `python manage.py <command>`
@@ -31,7 +31,7 @@ tracking, and reporting.
 - Django tests: `make test-local`
 - Test data scripts: `make test-data`
 - Lint/whitespace cleanup: `make lint`
-- Docker tests: `make test-docker` or `./build.sh test`
+- Docker tests: `make test-docker` or `./scripts/build.sh test`
 
 ## Test data notes
 - Anonymized fixtures live in `tests/fixtures/sample_fixtures.json`.

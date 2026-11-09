@@ -154,7 +154,7 @@ When you bind a PostgreSQL database to your app in DO App Platform, these variab
 
 ### Complete Production Environment File
 
-Create a `.env.production` file with all variables:
+Create a `.env.production` file with all variables (see [`env.production.example`](env.production.example)):
 
 ```bash
 # ========================================

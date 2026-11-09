@@ -13,24 +13,24 @@ The Docker setup includes three build targets:
 
 ### Build All Images
 ```bash
-./build.sh all
+./scripts/build.sh all
 ```
 
 ### Build Specific Image
 ```bash
 # Development
-./build.sh development
+./scripts/build.sh development
 
 # Testing
-./build.sh testing
+./scripts/build.sh testing
 
 # Production
-./build.sh production
+./scripts/build.sh production
 ```
 
 ### Run Tests in Container
 ```bash
-./build.sh test
+./scripts/build.sh test
 ```
 
 ## 📋 Detailed Usage
@@ -39,7 +39,7 @@ The Docker setup includes three build targets:
 
 Build the development image:
 ```bash
-./build.sh development
+./scripts/build.sh development
 ```
 
 Run the development container:
@@ -57,7 +57,7 @@ docker run -p 8000:8000 krill:development
 
 Build the testing image:
 ```bash
-./build.sh testing
+./scripts/build.sh testing
 ```
 
 Run tests in container:
@@ -75,7 +75,7 @@ docker run --rm krill:testing
 
 Build the production image:
 ```bash
-./build.sh production
+./scripts/build.sh production
 ```
 
 Run the production container:
@@ -170,7 +170,7 @@ docker run -p 8000:8000 \
 
 ### Run All Tests
 ```bash
-./build.sh test
+./scripts/build.sh test
 ```
 
 ### Run Specific Test Suite
@@ -200,10 +200,10 @@ source venv/bin/activate
 python krill/manage.py runserver
 
 # New container-based testing
-./build.sh test
+./scripts/build.sh test
 
 # New container-based production build
-./build.sh production
+./scripts/build.sh production
 ```
 
 ## 🛠️ Troubleshooting
@@ -254,15 +254,15 @@ docker stats <container_id>
 - [Docker Documentation](https://docs.docker.com/)
 - [Django Deployment](https://docs.djangoproject.com/en/stable/howto/deployment/)
 - [Gunicorn Documentation](https://gunicorn.org/)
-- [Krill Security Guide](SECURITY.md)
+- [Krill Security Guide](../../krill/SECURITY.md)
 
 ## 🤝 Contributing
 
 When adding new dependencies or changing the build process:
 
-1. Update `requirements.txt`
-2. Test all build targets: `./build.sh all`
-3. Run tests: `./build.sh test`
+1. Update `pyproject.toml` and run `uv lock`
+2. Test all build targets: `./scripts/build.sh all`
+3. Run tests: `./scripts/build.sh test`
 4. Update this documentation
 
 ---

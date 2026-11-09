@@ -16,9 +16,8 @@ The project is configured to support both database engines:
    ```bash
    git clone <repository>
    cd krill
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   pip install -r requirements.txt
+   uv sync
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
    ```
 
 2. **Run with SQLite (default):**
@@ -54,7 +53,7 @@ The project is configured to support both database engines:
 The project includes several environment file templates:
 
 - `env.example` - Basic configuration for local development
-- `env.production` - Production configuration with PostgreSQL
+- [`env.production.example`](env.production.example) - Production configuration with PostgreSQL
 - `.env` - Your actual environment file (create this)
 
 ### Key Environment Variables

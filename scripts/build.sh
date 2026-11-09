@@ -1,9 +1,12 @@
 #!/bin/bash
 
 # Krill Docker Build Script
-# Usage: ./build.sh [development|testing|production|all]
+# Usage: ./scripts/build.sh [development|testing|production|all]
 
 set -e
+
+# Run from the repository root so `docker build .` finds the Dockerfile
+cd "$(dirname "$0")/.."
 
 # Colors for output
 RED='\033[0;31m'

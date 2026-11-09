@@ -43,7 +43,7 @@ CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "120",
 
 ```
 /app/                    # Base container directory
-├── requirements.txt     # Python dependencies
+├── pyproject.toml       # Python dependencies (with uv.lock)
 ├── krill/              # Django project directory
 │   ├── krill/          # Django project package
 │   │   ├── wsgi.py     # WSGI application
@@ -105,9 +105,6 @@ python manage.py createsuperuser
 
 # Gunicorn with correct WSGI path
 gunicorn krill.wsgi:application --bind 0.0.0.0:8000
-
-# Alternative: Use root-level wsgi.py
-gunicorn wsgi:application --bind 0.0.0.0:8000
 ```
 
 ### File Paths
@@ -194,17 +191,7 @@ doctl apps logs your-app-id --follow
 
 ## Alternative Approaches
 
-### Option 1: Root-Level WSGI File
-If you prefer to use the root-level `wsgi.py`:
-```dockerfile
-# Keep WORKDIR /app/krill
-WORKDIR /app/krill
-
-# Use root-level wsgi
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "120", "wsgi:application"]
-```
-
-### Option 2: Environment Variable Override
+### Option: Environment Variable Override
 You can still override working directory in some platforms:
 ```yaml
 # Some platforms support this

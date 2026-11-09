@@ -24,38 +24,22 @@ Krill is designed for research laboratories and biobanks that need to:
 ### Prerequisites
 
 - Python 3.10+
-- pip
-- virtualenv (recommended)
+- [uv](https://docs.astral.sh/uv/) (dependencies are defined in `pyproject.toml` / `uv.lock`)
 
 ### Local Development Setup
 
-1. **Clone the repository:**
-   ```bash
-   git clone <repository-url>
-   cd krill
-   ```
+```bash
+git clone <repository-url>
+cd krill
+uv sync                       # creates .venv and installs dependencies
+source .venv/bin/activate     # On Windows: .venv\Scripts\activate
+make migrate                  # SQLite by default
+make createsuperuser
+make server                   # http://localhost:8000 (admin at /admin)
+```
 
-2. **Create and activate virtual environment:**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-
-3. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Run with SQLite (default):**
-   ```bash
-   python manage.py migrate
-   python manage.py createsuperuser
-   python manage.py runserver
-   ```
-
-5. **Access the application:**
-   - Web interface: http://localhost:8000
-   - Admin interface: http://localhost:8000/admin
+To start with anonymized sample data instead (creates `admin` / `admin`), run `make setup-test`.
+See [Testing](tests/README.md) and `make help` for all available commands.
 
 ### Production Setup with PostgreSQL
 
@@ -148,20 +132,17 @@ python manage.py migrate
 
 ```
 krill/
-├── krill/                 # Main Django project
-│   ├── settings.py        # Base settings (environment-based)
-│   ├── settings_local.py  # Local development overrides
-│   ├── settings_production.py  # Production settings
+├── krill/                 # Django project root (manage.py lives here)
+│   ├── krill/             # Settings, URLs, WSGI
+│   ├── person/ sample/ storage/ reports/ transaction/   # Django apps
 │   └── management/        # Custom management commands
-├── person/                # User management app
-├── sample/                # Sample tracking app
-├── storage/               # Storage management app
-├── reports/               # Reporting app
-├── transaction/           # Transaction tracking
-├── docker-compose.yml     # Docker services
+├── templates/             # Admin template overrides
+├── tests/                 # Anonymized data, fixtures, test scripts
+├── scripts/               # Build, deploy and utility scripts
+├── docs/                  # Guides (see Documentation below)
+├── Dockerfile, docker-compose.yml, app.yaml   # Container and DO App Platform config
 ├── env.example            # Environment template
-├── env.production         # Production environment template
-└── DATABASE_SETUP.md      # Detailed database guide
+└── pyproject.toml, uv.lock
 ```
 
 ## Environment Configuration
@@ -169,7 +150,7 @@ krill/
 Create a `.env` file based on the provided templates:
 
 - `env.example` - Basic configuration for development
-- `env.production` - Production configuration with PostgreSQL
+- [`docs/deployment/env.production.example`](docs/deployment/env.production.example) - Production configuration with PostgreSQL
 
 ### Key Environment Variables
 
@@ -244,25 +225,37 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes
 4. Add tests for new functionality
-5. Ensure all tests pass (`python manage.py test`)
+5. Ensure all tests pass (`make test-local`)
 6. Commit your changes (`git commit -m 'Add some amazing feature'`)
 7. Push to the branch (`git push origin feature/amazing-feature`)
 8. Open a Pull Request
 
 ## Documentation
 
-- [Database Setup Guide](DATABASE_SETUP.md) - Comprehensive database configuration
-- [Data Import Guide](DATA_IMPORT.md) - How to structure CSV files for importing sample data
-- [Production Deployment Guide](PRODUCTION_DEPLOYMENT.md) - Complete production deployment instructions
-- [DigitalOcean App Platform Quick Reference](DO_APP_PLATFORM_QUICK_REF.md) - DO-specific deployment guide
-- [Dockerfile Deployment Guide](DOCKERFILE_DEPLOYMENT.md) - How the Dockerfile handles working directory
-- [API Documentation](docs/api.md) - API endpoints and usage (coming soon)
+**Getting started and contributing**
+- [CONTRIBUTING.md](CONTRIBUTING.md) - Development workflow and guidelines
+- [Testing Guide](tests/README.md) - Running tests and using anonymized test data
+- [Test Data Anonymization](tests/ANONYMIZATION_README.md) - How the anonymized dataset is produced
+- [Utility Scripts](scripts/README.md) - Helper scripts (whitespace cleanup, PostgreSQL migration)
+- [Security Notes](krill/SECURITY.md) - Security configuration and checks
+
+**Data**
+- [Data Import Guide](docs/DATA_IMPORT.md) - How to structure CSV files for importing sample data
+- [Database Setup Guide](docs/deployment/DATABASE_SETUP.md) - SQLite and PostgreSQL configuration
+
+**Deployment**
+- [Docker Guide](docs/deployment/DOCKER.md) - Building and running the Docker images
+- [Dockerfile Deployment Guide](docs/deployment/DOCKERFILE_DEPLOYMENT.md) - How the Dockerfile handles the working directory
+- [Production Deployment Guide](docs/deployment/PRODUCTION_DEPLOYMENT.md) - Complete production deployment instructions
+- [DigitalOcean App Platform Quick Reference](docs/deployment/DO_APP_PLATFORM_QUICK_REF.md) - DO-specific deployment guide
+
+See also the [docs index](docs/README.md).
 
 ## Support
 
 For issues and questions:
 
-1. Check the [documentation](#documentation) below
+1. Check the [documentation](#documentation) above
 2. Search [existing issues](https://github.com/yourusername/krill/issues)
 3. Create a [new issue](https://github.com/yourusername/krill/issues/new) with detailed information
 

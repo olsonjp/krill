@@ -164,36 +164,7 @@ services:
     value: require
 ```
 
-### Option 2: Using root-level WSGI file
-
-```yaml
-name: krill-app
-services:
-- name: web
-  source_dir: /
-  github:
-    repo: your-username/krill
-    branch: main
-  run_command: python manage.py migrate && gunicorn wsgi:application --bind 0.0.0.0:8000
-  environment_slug: python
-  instance_count: 1
-  instance_size_slug: basic-xxs
-  envs:
-  - key: DATABASE_ENGINE
-    value: postgresql
-  - key: DJANGO_SECRET_KEY
-    value: your-secret-key-here
-  - key: DJANGO_DEBUG
-    value: "False"
-  - key: DJANGO_SETTINGS_MODULE
-    value: krill.settings_production
-  - key: ENVIRONMENT
-    value: production
-  - key: DB_SSLMODE
-    value: require
-```
-
-**Note**: The working directory is now set in the Dockerfile (`WORKDIR /app/krill`), so you don't need to specify it in the app.yaml.
+---
 
 ## Common Commands
 
@@ -256,9 +227,6 @@ doctl apps logs your-app-id --type build
 
 # Your app.yaml should use:
 run_command: python manage.py migrate && gunicorn krill.wsgi:application --bind 0.0.0.0:8000
-
-# Or if using root-level wsgi.py:
-run_command: python manage.py migrate && gunicorn wsgi:application --bind 0.0.0.0:8000
 
 # Check your project structure:
 # Your project has Django files in the krill/ subdirectory

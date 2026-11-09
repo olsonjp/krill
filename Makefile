@@ -61,23 +61,23 @@ help:
 # Build commands
 build-dev:
 	@echo "Building development image..."
-	./build.sh development
+	./scripts/build.sh development
 
 build-test:
 	@echo "Building testing image..."
-	./build.sh testing
+	./scripts/build.sh testing
 
 build-prod:
 	@echo "Building production image..."
-	./build.sh production
+	./scripts/build.sh production
 
 build-all:
 	@echo "Building all images..."
-	./build.sh all
+	./scripts/build.sh all
 
 push-prod:
 	@echo "Pushing production image to DigitalOcean registry..."
-	./build.sh push
+	./scripts/build.sh push
 
 # Run commands
 run-dev:
@@ -128,7 +128,7 @@ test-local:
 
 test-docker:
 	@echo "Building and running tests in Docker..."
-	./build.sh test
+	./scripts/build.sh test
 
 security-check:
 	@echo "Running security validation..."
@@ -175,7 +175,7 @@ test-data-all:
 # Docker Commands
 test:
 	@echo "Building and running tests..."
-	./build.sh test
+	./scripts/build.sh test
 
 # Utility Commands
 clean:
