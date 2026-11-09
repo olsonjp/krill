@@ -87,8 +87,8 @@ def check_dependencies():
     """Check for known security vulnerabilities in dependencies"""
     print("🔍 Checking dependencies for security vulnerabilities...")
 
-    # Try to run safety check if available
-    result = run_command("safety check", check=False)
+    # Try to run pip-audit if available (install the dev extra: uv sync --extra dev)
+    result = run_command("pip-audit", check=False)
     if result.returncode == 0:
         print("✅ No known security vulnerabilities found in dependencies")
         return True
@@ -97,7 +97,7 @@ def check_dependencies():
         print(result.stdout)
         return False
     else:
-        print("⚠️  Could not run safety check (install with: pip install safety)")
+        print("⚠️  Could not run pip-audit (install with: uv sync --extra dev)")
         return True
 
 def check_file_permissions():

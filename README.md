@@ -23,7 +23,7 @@ Krill is designed for research laboratories and biobanks that need to:
 
 ### Prerequisites
 
-- Python 3.10+
+- Python 3.15 (`mise install` sets up Python and uv from `mise.toml`)
 - [uv](https://docs.astral.sh/uv/) (dependencies are defined in `pyproject.toml` / `uv.lock`)
 
 ### Local Development Setup
@@ -188,7 +188,7 @@ coverage report
 bandit -r .
 
 # Dependency vulnerability check
-safety check
+uv run pip-audit
 
 # Code formatting
 black .
