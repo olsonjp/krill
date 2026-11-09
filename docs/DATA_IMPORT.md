@@ -17,7 +17,7 @@ Krill supports importing sample data via CSV files. The import process creates:
 ### File Format
 - **Delimiter**: Auto-detected — comma (`,`), semicolon (`;`), tab (`\t`), or pipe (`|`) all work
 - **Encoding**: Auto-detected — UTF-8, UTF-8 with BOM (Excel default), UTF-16, or Latin-1
-- **Header Row**: Required (first row must contain column names)
+- **Header Row**: Required (first row must contain column names). Column names are matched case-insensitively and ignore surrounding spaces, so `cell line` and `CELL LINE` both work.
 
 ### Required Columns
 
