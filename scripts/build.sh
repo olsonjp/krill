@@ -37,8 +37,15 @@ build_target() {
     local target=$1
     local tag="krill:${target}"
     
+    # Production runs on amd64 hosts; always build for it (even on Apple Silicon).
+    # Other targets build for the native platform to stay fast.
+    local platform_args=()
+    if [ "$target" = "production" ]; then
+        platform_args=(--platform linux/amd64)
+    fi
+
     print_status "Building ${target} image..."
-    docker build --target ${target} -t ${tag} .
+    docker build "${platform_args[@]}" --target ${target} -t ${tag} .
     
     if [ $? -eq 0 ]; then
         print_success "Successfully built ${tag}"
