@@ -72,10 +72,12 @@ htmlcov/
 .pytest_cache/
 .tox/
 
-# Environment files
+# Environment files and credentials: never bake these into an image
 .env
-.env.local
-.env.production
+.env.*
+.aws/
+*.pem
+*.key
 
 # Backup files
 *.bak
