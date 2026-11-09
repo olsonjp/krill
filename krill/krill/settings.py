@@ -72,6 +72,7 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'krill.context_processors.user_preferences',
                 'krill.context_processors.site_configuration',
+                'krill.context_processors.support_email',
             ],
         },
     },
@@ -154,6 +155,9 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Where the Support links in the UI send email.
+SUPPORT_EMAIL = os.environ.get('SUPPORT_EMAIL', 'support@krillbio.com')
 
 STATICFILES_DIRS = [
     BASE_DIR / "static/krill",
