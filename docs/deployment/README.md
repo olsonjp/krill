@@ -110,6 +110,20 @@ Backups: `pg_dump -h $DB_HOST -U $DB_USER $DB_NAME > backup_$(date +%Y%m%d).sql`
 (more in [Database Setup](../database.md#backup-and-recovery)). Also keep a secure copy of
 your environment configuration. See also the [Security Notes](../../krill/SECURITY.md).
 
+## Which header carries the client's IP?
+
+Behind DigitalOcean's proxy, the address Django sees as the caller's can be forged: Sentry has recorded `127.0.0.1`, `10.0.0.1` and similar values from internet scanners. `krill.middleware.ClientIPDiagnosticMiddleware` tags every request in Sentry with the headers it arrived with (`ip.remote_addr`, `ip.do_connecting_ip`, `ip.x_forwarded_for`, `ip.x_real_ip`, `ip.cf_connecting_ip`), so you can see which one is trustworthy. To test, send one request with made-up values for each header:
+
+```bash
+curl -s -o /dev/null https://YOUR-APP/health/ \
+  -H 'X-Forwarded-For: 203.0.113.7' -H 'DO-Connecting-IP: 203.0.113.8' \
+  -H 'X-Real-IP: 203.0.113.9' -H 'CF-Connecting-IP: 203.0.113.10'
+```
+
+Then find that request in Sentry (Explore > Traces, filter on the tag, for example `ip.do_connecting_ip:203.0.113.8`). A header whose tag still shows your **real** address, not the made-up one, is set by the proxy and cannot be forged by a caller. A header that echoes the made-up value is caller-controlled and must not be used for IP-based limits.
+
+This is a diagnostic. Set `SENTRY_CLIENT_IP_TAGS=false` to switch it off without a deploy-time code change, and remove the middleware once per-IP rate limiting uses a verified header.
+
 ## Troubleshooting
 
 | Symptom | Likely cause / fix |

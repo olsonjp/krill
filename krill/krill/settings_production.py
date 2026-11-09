@@ -188,6 +188,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'krill.middleware.ClientIPDiagnosticMiddleware',   # Sentry tags for client-address headers
     # Add rate limiting middleware if using django-ratelimit
     # 'django_ratelimit.middleware.RatelimitMiddleware',
 ]

@@ -54,6 +54,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'krill.middleware.ClientIPDiagnosticMiddleware',
 ]
 
 ROOT_URLCONF = 'krill.urls'
@@ -155,6 +156,10 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Diagnostic: tag every request in Sentry with the client-address headers it arrived with
+# (see krill/middleware.py). Set SENTRY_CLIENT_IP_TAGS=false to switch it off.
+SENTRY_CLIENT_IP_TAGS = os.environ.get('SENTRY_CLIENT_IP_TAGS', 'true').lower() == 'true'
 
 # Where the Support links in the UI send email.
 SUPPORT_EMAIL = os.environ.get('SUPPORT_EMAIL', 'support@krillbio.com')
