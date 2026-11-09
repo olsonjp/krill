@@ -754,6 +754,32 @@ MDA MB 134VI (MM134);UPMC/MJS;Sikora LN2 #1;4;F;1;2;Cells;3;Checked Out;Legacy M
             if os.path.exists(path):
                 os.unlink(path)
 
+    def test_convert_csv_headers_are_case_insensitive(self):
+        """Header case and surrounding whitespace must not matter."""
+        header, rest = self.test_csv_content.split('\n', 1)
+        mangled = ';'.join(
+            (' ' + h.lower() + ' ') if i % 2 else h.upper()
+            for i, h in enumerate(header.split(';'))
+        )
+        expected = self._csv_fixtures_from_bytes(self.test_csv_content.encode('utf-8'))
+        actual = self._csv_fixtures_from_bytes((mangled + '\n' + rest).encode('utf-8'))
+        self.assertGreater(len(actual), 0)
+
+        def strip_timestamps(fixtures):
+            skip = {'created_at', 'updated_at'}
+            return [
+                {**f, 'fields': {k: v for k, v in f['fields'].items() if k not in skip}}
+                for f in fixtures
+            ]
+
+        self.assertEqual(strip_timestamps(actual), strip_timestamps(expected))
+
+    def test_convert_csv_missing_column_still_reported(self):
+        """Case-insensitivity must not hide genuinely missing columns."""
+        content = self.test_csv_content.replace('Disposition', 'Status')
+        with self.assertRaises(KeyError):
+            self._csv_fixtures_from_bytes(content.encode('utf-8'))
+
     def test_convert_csv_handles_utf8_bom(self):
         """UTF-8 BOM prefix must not corrupt the first column name."""
         raw = b'\xef\xbb\xbf' + self.test_csv_content.encode('utf-8')

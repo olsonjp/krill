@@ -30,6 +30,34 @@ from .forms import (
 from .decorators import require_permission, require_minimum_role, grant_object_permission, revoke_object_permission
 from .utils import get_upload_temp_dir
 
+# Column headers the importer reads. Uploaded headers are matched to these
+# case-insensitively (and ignoring surrounding whitespace), since spreadsheets
+# from Windows/Excel are often capitalized inconsistently.
+IMPORT_COLUMNS = (
+    'Source', 'Cell Line', 'Experiment #', 'Sample Notes', 'Site', 'Freezer Name',
+    'Position 1', 'Position 2', 'Position 3', 'Position 4', 'Aliquot Type',
+    'Number of Aliquots Total', 'Collef Aliquots Total', 'Disposition',
+)
+
+
+def normalize_import_headers(fieldnames):
+    """Map uploaded CSV headers onto their canonical names, ignoring case.
+
+    Unrecognized headers are returned unchanged. If two headers collapse to the
+    same canonical name, only the first is renamed.
+    """
+    canonical = {name.casefold(): name for name in IMPORT_COLUMNS}
+    result, used = [], set()
+    for header in fieldnames or []:
+        name = canonical.get((header or '').strip().casefold())
+        if name is not None and name not in used:
+            used.add(name)
+            result.append(name)
+        else:
+            result.append(header)
+    return result
+
+
 
 # Data Import Form
 class DataImportForm(forms.Form):
@@ -406,6 +434,7 @@ class DataImportView(TemplateView):
             except csv.Error:
                 delimiter = ';'
             reader = csv.DictReader(f, delimiter=delimiter)
+            reader.fieldnames = normalize_import_headers(reader.fieldnames)
             for row in reader:
                 missing = required_columns - row.keys()
                 if missing:
