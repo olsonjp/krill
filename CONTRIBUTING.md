@@ -87,10 +87,13 @@ Feature suggestions are welcome! Please create an issue with:
 - Write tests for new features and bug fixes
 - Ensure all existing tests pass before submitting
 - Aim for good test coverage
-- Run tests with:
+- Run tests with (`make test-local` does the same):
   ```bash
-  python manage.py test
+  cd krill && uv run python manage.py test
   ```
+- The test suite also runs on every pull request through GitHub Actions
+  (`.github/workflows/tests.yml`). Pull requests from forks wait for a maintainer
+  to approve the run before it starts.
 
 ## Documentation
 
