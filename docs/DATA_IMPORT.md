@@ -24,6 +24,16 @@ The import adds to what is already in Krill. It never overwrites or renames exis
 - **Storage slots are never double-booked.** If a slot is already occupied (by existing data, or by two rows of the file), the import stops before changing anything and lists the slots.
 - Importing the same file twice is therefore refused; to replace data, remove it first (for example `manage.py wipe_samples`).
 
+### Linking lab members to users
+`Lab Member` initials are stored as written. To link them to user accounts after an import, map initials to usernames:
+
+```
+uv run python manage.py link_lab_members                                     # list initials not linked yet
+uv run python manage.py link_lab_members --map MS=matt.sikora --map JS=joe.sottnik          # dry run
+uv run python manage.py link_lab_members --map MS=matt.sikora --map JS=joe.sottnik --yes     # link
+```
+Initials match in any case, only aliquots that are not linked yet are touched, and the recorded initials are kept (the aliquot shows the user's name once linked, the initials otherwise). Re-running is safe, and any unrecognized username stops the command before anything changes.
+
 ### Rows that are skipped
 A row is skipped when it has **no value in any column except** `Site`, `Freezer Name`, `Position 1`-`4` and `Aliquot Type`. These are typically empty slots listed in a pre-filled box grid. The import preview shows how many rows were skipped. A row with any other value (for example only a passage number or lab member) is still imported. Skipped slots can be added later in Krill if a tube is found there.
 
