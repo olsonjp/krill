@@ -22,6 +22,7 @@ urlpatterns = [
     path('audit-logs/', views.audit_log, name='audit_log'),
     # Data import
     path('data-import/', views.DataImportView.as_view(), name='data_import'),
+    path('data-import/refused/<str:token>/', views.download_import_refusals, name='data_import_refused'),
     # API endpoints
     path('api/users/<int:user_id>/permissions/', views.user_permissions_api, name='user_permissions_api'),
     path('api/permissions/grant/', views.grant_object_permission_api, name='grant_object_permission_api'),

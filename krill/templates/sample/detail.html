@@ -27,6 +27,18 @@
                 <span class="status-badge {{ object.disposition.disposition_type|lower }}">{{ object.disposition.name }}</span>
             </div>
             <div class="detail-field">
+                <label>Passage:</label>
+                <span>{{ object.passage|default:"Not recorded" }}</span>
+            </div>
+            <div class="detail-field">
+                <label>Sample Date:</label>
+                <span>{{ object.sample_date|date:"M d, Y"|default:"Not recorded" }}</span>
+            </div>
+            <div class="detail-field">
+                <label>Lab Member:</label>
+                <span>{{ object.lab_member_display|default:"Not recorded" }}</span>
+            </div>
+            <div class="detail-field">
                 <label>Access Level:</label>
                 <span class="access-level-badge access-level-{{ object.access_level }}">
                     <i class="material-icons-round">

@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils import timezone
@@ -46,6 +47,31 @@ class Aliquot(models.Model):
         default='all_members',
         help_text="Restrict access to specific user tiers"
     )
+    passage = models.CharField(
+        max_length=100,
+        blank=True,
+        default='',
+        help_text='Passage number when frozen, as written on the vial (e.g. "p8")',
+    )
+    sample_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text='Date the aliquot was prepared. Month-only dates are stored as the 1st of the month.',
+    )
+    lab_member = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='aliquots_prepared',
+        help_text='User who prepared the aliquot, if they have an account',
+    )
+    lab_member_initials = models.CharField(
+        max_length=50,
+        blank=True,
+        default='',
+        help_text='Initials as recorded, used when the person has no linked user account',
+    )
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
     deleted = models.BooleanField(default=False, db_index=True)
@@ -56,6 +82,13 @@ class Aliquot(models.Model):
 
     def __str__(self):
         return f"{self.sample.name} - Aliquot {self.id}"
+
+    @property
+    def lab_member_display(self):
+        """The linked user's name if there is one, otherwise the recorded initials."""
+        if self.lab_member_id:
+            return self.lab_member.get_full_name() or self.lab_member.get_username()
+        return self.lab_member_initials
 
     def store_in_location(self, box, row, column):
         """Store this aliquot in a location"""

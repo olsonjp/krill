@@ -804,7 +804,9 @@ MDA MB 134VI (MM134);UPMC/MJS;Sikora LN2 #1;4;F;1;2;Cells;3;Checked Out;Legacy M
 
     def test_convert_xlsx_matches_equivalent_csv(self):
         """An XLSX upload yields the same fixtures as the equivalent CSV."""
-        expected = self._csv_fixtures_from_bytes(self.test_csv_content.encode('utf-8'))
+        header, first, second = self.test_csv_content.split('\n')
+        csv_equivalent = '\n'.join([header + ';Sample date', first + ';2021-11-01', second + ';7/2021'])
+        expected = self._csv_fixtures_from_bytes(csv_equivalent.encode('utf-8'))
         actual = self._csv_fixtures_from_bytes(self._xlsx_bytes(self._xlsx_rows()))
         self.assertGreater(len(actual), 0)
         self.assertEqual(self._strip_timestamps(actual), self._strip_timestamps(expected))
@@ -864,6 +866,69 @@ MDA MB 134VI (MM134);UPMC/MJS;Sikora LN2 #1;4;F;1;2;Cells;3;Checked Out;Legacy M
         self.assertEqual(len([x for x in fixtures if x['model'] == 'sample.aliquot']), 1)
         self.assertFalse([x for x in fixtures if x['model'] == 'storage.site' and x['fields']['name'] == 'Default Site'][1:])
         self.assertEqual(view.skipped_empty_rows, 1)
+
+    def test_parse_sample_date(self):
+        from datetime import date
+        from person.views import parse_sample_date
+        cases = {
+            '': (None, True),
+            '  ': (None, True),
+            '2019-11-01': (date(2019, 11, 1), True),
+            '2019-11-01 00:00:00': (date(2019, 11, 1), True),
+            '11/2021': (date(2021, 11, 1), True),      # month only -> 1st
+            '7/2021': (date(2021, 7, 1), True),
+            'Jul-21': (date(2021, 7, 1), True),
+            '12/26/2020': (date(2020, 12, 26), True),
+            '12/26/20': (date(2020, 12, 26), True),
+            '2/29/25': (None, False),                  # not a real date
+            '4/38/23': (None, False),
+            '2025': (None, False),
+            "'2025'": (None, False),
+            '25-Jul': (None, False),                   # ambiguous: left blank, not guessed
+            'garbage': (None, False),
+        }
+        for text, expected in cases.items():
+            self.assertEqual(parse_sample_date(text), expected, text)
+
+    def test_import_reads_passage_lab_member_and_date(self):
+        import tempfile, os
+        header = 'Cell Line;Source;Freezer Name;Position 1;Position 2;Position 3;Position 4;Aliquot Type;Disposition;Sample Notes;Experiment #;Passage Number;Lab Member;Sample date '
+        content = '\n'.join([
+            header,
+            'HeLa;Lab A;Freezer 1;1;A;1;1;Cells;;;;p3;JS;2019-11-01',
+            'HeLa;Lab A;Freezer 1;1;A;1;2;Cells;;;;p20EV p39+4-5;MS;7/2021',
+            'HeLa;Lab A;Freezer 1;1;A;1;3;Cells;;;;;;4/38/23',
+        ])
+        with tempfile.NamedTemporaryFile(suffix='.csv', delete=False, mode='w') as f:
+            f.write(content)
+        view = DataImportView()
+        try:
+            fixtures = view.convert_csv_to_fixtures(f.name)
+        finally:
+            os.unlink(f.name)
+        aliquots = [x['fields'] for x in fixtures if x['model'] == 'sample.aliquot']
+        self.assertEqual(
+            [(a['passage'], a['lab_member_initials'], a['sample_date']) for a in aliquots],
+            [('p3', 'JS', '2019-11-01'), ('p20EV p39+4-5', 'MS', '2021-07-01'), ('', '', None)],
+        )
+        self.assertEqual(view.unparsed_sample_dates, 1)
+
+    def test_import_loads_new_fields_into_database(self):
+        """The generated fixtures must be loadable (field names match the model)."""
+        import json, tempfile, os
+        from django.core.management import call_command
+        from sample.models.aliquot import Aliquot
+        fixtures = self._csv_fixtures_from_bytes(
+            (self.test_csv_content.replace('Experiment #', 'Experiment #;Passage Number;Lab Member;Sample date', 1)
+             .replace('EXP001', 'EXP001;p5;AB;3/2022')).encode('utf-8'))
+        with tempfile.NamedTemporaryFile(suffix='.json', delete=False, mode='w') as f:
+            json.dump(fixtures, f)
+        try:
+            call_command('loaddata', f.name, verbosity=0)
+        finally:
+            os.unlink(f.name)
+        aliquot = Aliquot.objects.first()
+        self.assertEqual((aliquot.passage, aliquot.lab_member_initials, str(aliquot.sample_date)), ('p5', 'AB', '2022-03-01'))
 
     def test_is_location_only_row(self):
         from person.views import is_location_only_row
@@ -972,3 +1037,182 @@ MDA MB 134VI (MM134);UPMC/MJS;Sikora LN2 #1;4;F;1;2;Cells;3;Checked Out;Legacy M
         msg = str(cm.exception)
         self.assertIn('Source', msg)
         self.assertIn('Name', msg)
+
+
+class ImportBuildsOnExistingDataTest(TestCase):
+    """The importer must add to current data, never overwrite or duplicate it."""
+
+    CSV = (
+        'Cell Line;Source;Freezer Name;Site;Position 1;Position 2;Position 3;Position 4;'
+        'Aliquot Type;Disposition;Sample Notes;Experiment #\n'
+        'HeLa;Lab A;Freezer 1;Main;4;F;1;1;Cells;In Storage;;\n'
+        'HeLa;Lab A;Freezer 1;Main;4;F;1;2;PDX;In Storage;;\n'
+    )
+
+    def setUp(self):
+        from sample.models.source import Source
+        from sample.models.sample import Sample
+        from sample.models.aliquot import AliquotType, AliquotDisposition
+        from storage.models.site import Site
+        from storage.models.storage import Device, Shelf, Rack, Box
+        # Existing data whose primary keys deliberately sit where a from-scratch import would write.
+        self.lab_admin_user = User.objects.create_user(username='importer', password='x')
+        self.lab_admin_user.role.role = 'lab_admin'
+        self.lab_admin_user.role.save()
+        self.source = Source.objects.create(pk=1, name='Lab A')
+        self.type_cells = AliquotType.objects.create(pk=1, name='Cells')
+        self.disp = AliquotDisposition.objects.create(pk=1, name='In Storage', disposition_type='stored')
+        self.site = Site.objects.create(pk=1, name='Main')
+        self.device = Device.objects.create(pk=1, name='Freezer 1', site=self.site)
+        self.shelf = Shelf.objects.create(pk=1, name='F', device=self.device)
+        self.rack = Rack.objects.create(pk=1, name='4', shelf=self.shelf)
+        self.box = Box.objects.create(pk=1, name='4_F', rack=self.rack, rows=10, columns=10)
+        self.sample = Sample.objects.create(pk=1, name='HeLa', source=self.source, notes='keep me')
+        # An unrelated existing source/box that a from-scratch import would clobber.
+        Source.objects.create(pk=2, name='Other Lab')
+
+    def _convert(self, text):
+        import tempfile, os
+        with tempfile.NamedTemporaryFile(suffix='.csv', delete=False, mode='w') as f:
+            f.write(text)
+        view = DataImportView()
+        try:
+            return view, view.convert_csv_to_fixtures(f.name)
+        finally:
+            os.unlink(f.name)
+
+    def _load(self, fixtures):
+        import json, tempfile, os
+        from django.core.management import call_command
+        with tempfile.NamedTemporaryFile(suffix='.json', delete=False, mode='w') as f:
+            json.dump(fixtures, f)
+        try:
+            call_command('loaddata', f.name, verbosity=0)
+        finally:
+            os.unlink(f.name)
+
+    def test_existing_records_are_reused_not_recreated(self):
+        view, fixtures = self._convert(self.CSV)
+        models = [f['model'] for f in fixtures]
+        for reused in ('sample.source', 'sample.sample', 'storage.site', 'storage.device',
+                       'storage.shelf', 'storage.rack', 'storage.box', 'sample.aliquotdisposition'):
+            self.assertNotIn(reused, models, f'{reused} should be reused, not recreated')
+        # Only the genuinely new aliquot type is created, numbered after the existing one.
+        new_types = [f for f in fixtures if f['model'] == 'sample.aliquottype']
+        self.assertEqual([(f['fields']['name'], f['pk']) for f in new_types], [('PDX', 2)])
+        aliquots = [f['fields'] for f in fixtures if f['model'] == 'sample.aliquot']
+        self.assertEqual({a['sample'] for a in aliquots}, {1})
+        self.assertEqual({a['disposition'] for a in aliquots}, {1})
+        self.assertEqual({l['fields']['box'] for l in fixtures if l['model'] == 'sample.aliquotlocation'}, {1})
+        self.assertEqual(view.reused_counts['boxes'], 1)
+        self.assertEqual(view.reused_counts['sources'], 1)
+
+    def test_loading_does_not_change_existing_rows(self):
+        from sample.models.source import Source
+        from sample.models.sample import Sample
+        from sample.models.aliquot import Aliquot, AliquotLocation, AliquotType
+        from storage.models.storage import Box
+        _, fixtures = self._convert(self.CSV)
+        self._load(fixtures)
+        self.assertEqual(Source.objects.get(pk=1).name, 'Lab A')
+        self.assertEqual(Source.objects.get(pk=2).name, 'Other Lab')
+        self.assertEqual(Sample.objects.get(pk=1).notes, 'keep me')
+        self.assertEqual(Sample.objects.count(), 1)
+        self.assertEqual(Box.objects.count(), 1)
+        self.assertEqual(AliquotType.objects.count(), 2)
+        self.assertEqual(Aliquot.objects.filter(sample_id=1).count(), 2)
+        self.assertEqual(AliquotLocation.objects.filter(box_id=1).count(), 2)
+
+    def test_new_storage_is_added_beside_existing(self):
+        text = self.CSV.replace('Freezer 1', 'Freezer 2')   # a different freezer in the same site
+        _, fixtures = self._convert(text)
+        devices = [f for f in fixtures if f['model'] == 'storage.device']
+        self.assertEqual([(d['fields']['name'], d['pk']) for d in devices], [('Freezer 2', 2)])
+        self.assertEqual([f['pk'] for f in fixtures if f['model'] == 'storage.box'], [2])
+        self._load(fixtures)
+        from storage.models.storage import Box
+        self.assertEqual(sorted(Box.objects.values_list('name', flat=True)), ['4_F', '4_F'])
+
+    def test_second_import_of_same_positions_fails_clearly(self):
+        from person.views import ImportConflictError
+        _, fixtures = self._convert(self.CSV)
+        self._load(fixtures)
+        with self.assertRaises(ImportConflictError) as ctx:
+            self._convert(self.CSV)
+        self.assertIn('2 storage slot(s) cannot be used', str(ctx.exception))
+        self.assertIn('nothing was changed', str(ctx.exception))
+        self.assertIn('probably already been imported', str(ctx.exception))
+        self.assertEqual(len(ctx.exception.conflicts), 2)
+        first = ctx.exception.conflicts[0]
+        self.assertEqual((first['box'], first['row'], first['column'], first['cell_line']), ('4_F', 1, 1, 'HeLa'))
+        self.assertIn("already holds aliquot #", first['reason'])
+
+    def test_duplicate_slot_within_the_file_fails_clearly(self):
+        from person.views import ImportConflictError
+        text = self.CSV.replace('1;2;PDX', '1;1;PDX')
+        with self.assertRaises(ImportConflictError):
+            self._convert(text)
+
+    def test_preview_lists_matched_records(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        self.client.force_login(self.lab_admin_user)
+        upload = SimpleUploadedFile('x.csv', self.CSV.replace('1;2;PDX', '1;3;PDX').encode('utf-8'), content_type='text/csv')
+        response = self.client.post(reverse('person:data_import'), {'csv_file': upload})
+        reused = dict((label, n) for label, n in response.context['preview_data']['reused'])
+        self.assertEqual(reused.get('boxes'), 1)
+        self.assertEqual(reused.get('sources'), 1)
+        self.assertContains(response, 'Matched to existing records')
+
+    def test_summarize_conflicts_groups_by_box_and_reason(self):
+        from person.views import summarize_conflicts
+        conflicts = (
+            [{'box': '1_A', 'row': r, 'column': 1, 'cell_line': name, 'reason': 'x', 'existing_sample': name}
+             for r, name in enumerate(['M41', 'M41', 'PEO1', 'A', 'B'], start=1)]
+            + [{'box': '2_G', 'row': 1, 'column': 1, 'cell_line': 'MCF7', 'reason': 'y', 'existing_sample': None}]
+        )
+        summary = summarize_conflicts(conflicts)
+        self.assertEqual(summary[0], {
+            'box': '1_A', 'reason': 'Slot already holds an aliquot in Krill', 'count': 5,
+            'cell_lines': 'M41, PEO1, A and 1 more',
+        })
+        self.assertEqual((summary[1]['box'], summary[1]['count'], summary[1]['reason']),
+                         ('2_G', 1, 'Slot used by more than one row in this file'))
+
+    def test_refused_duplicate_upload_shows_summary_and_offers_csv(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        self.client.force_login(self.lab_admin_user)
+        _, fixtures = self._convert(self.CSV)
+        self._load(fixtures)                                  # the file is already in Krill
+        response = self.client.post(reverse('person:data_import'), {
+            'csv_file': SimpleUploadedFile('x.csv', self.CSV.encode('utf-8'), content_type='text/csv')})
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn('preview_data', response.context)
+        self.assertIn('nothing was changed', response.context['error'])
+        self.assertEqual(response.context['conflict_total'], 2)
+        self.assertEqual(response.context['conflict_summary'][0]['box'], '4_F')
+        self.assertContains(response, 'Slot already holds an aliquot in Krill')
+        self.assertContains(response, 'Download all 2 refused rows')
+        # the download has every refused row with its reason
+        download = self.client.get(reverse('person:data_import_refused', args=[response.context['refusals_token']]))
+        self.assertEqual(download.status_code, 200)
+        self.assertIn('attachment', download['Content-Disposition'])
+        lines = b''.join(download.streaming_content).decode().strip().splitlines()
+        self.assertEqual(lines[0], 'Box,Row,Column,Cell line,Why refused')
+        self.assertEqual(len(lines), 3)
+        self.assertIn('4_F,1,1,HeLa,Slot already holds aliquot #', lines[1])
+
+    def test_refusal_download_rejects_bad_or_foreign_tokens(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        self.client.force_login(self.lab_admin_user)
+        _, fixtures = self._convert(self.CSV)
+        self._load(fixtures)
+        response = self.client.post(reverse('person:data_import'), {
+            'csv_file': SimpleUploadedFile('x.csv', self.CSV.encode('utf-8'), content_type='text/csv')})
+        token = response.context['refusals_token']
+        self.assertEqual(self.client.get(reverse('person:data_import_refused', args=['not-a-hex-token'])).status_code, 404)
+        self.assertEqual(self.client.get(reverse('person:data_import_refused', args=['0' * 32])).status_code, 404)
+        other = User.objects.create_user(username='other', password='x')
+        other.role.role = 'lab_admin'
+        other.role.save()
+        self.client.force_login(other)
+        self.assertEqual(self.client.get(reverse('person:data_import_refused', args=[token])).status_code, 404)

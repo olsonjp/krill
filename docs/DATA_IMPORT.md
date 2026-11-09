@@ -16,6 +16,14 @@ Krill supports importing sample data via CSV files. The import process creates:
 
 Upload either a **CSV** or an **XLSX** workbook. For XLSX only the **first sheet** is read; blank rows are skipped, formulas are read as their last saved value, and legacy `.xls` files must be re-saved as `.xlsx` or CSV. The sections below describe the CSV details; an XLSX is treated as the same table of columns.
 
+### Importing into a database that already has data
+The import adds to what is already in Krill. It never overwrites or renames existing records:
+- **Matched by exact name and reused:** sources, samples (by `Cell Line`), aliquot types, dispositions and sites. Freezers are matched by name within their site, and shelves, racks and boxes by name within their freezer. The preview lists what was matched ("Matched to existing records") and only counts the genuinely new ones.
+- **Existing records are left as they are.** An existing sample keeps its notes; new aliquots are attached to it.
+- **Anything not matched is created** alongside the existing data, so a freezer or site spelled differently from the one already in Krill becomes a second, separate freezer. Use the same `Site` and `Freezer Name` as in Krill to add to an existing one.
+- **Storage slots are never double-booked.** If a slot is already occupied (by existing data, or by two rows of the file), the import stops before changing anything and lists the slots.
+- Importing the same file twice is therefore refused; to replace data, remove it first (for example `manage.py wipe_samples`).
+
 ### Rows that are skipped
 A row is skipped when it has **no value in any column except** `Site`, `Freezer Name`, `Position 1`-`4` and `Aliquot Type`. These are typically empty slots listed in a pre-filled box grid. The import preview shows how many rows were skipped. A row with any other value (for example only a passage number or lab member) is still imported. Skipped slots can be added later in Krill if a tube is found there.
 
@@ -45,6 +53,9 @@ The CSV file must include the following columns (in any order):
 | `Aliquot Type` | Yes | Type of aliquot | "Cells", "DNA", "RNA" |
 | `Number of Aliquots Total` | Yes | Total number of tubes/aliquots | "6" |
 | `Disposition` | Yes | Current status of the aliquot | "stored", "in_use", "exhausted", "disposed" (or legacy aliases) |
+| `Passage Number` | No | Passage when the aliquot was frozen, stored as written on the aliquot | "p8", "p20EV p39+4-5" |
+| `Lab Member` | No | Initials of who prepared the aliquot | "JS" |
+| `Sample date` | No | Date the aliquot was prepared | "2019-11-01", "7/2021" |
 
 \* Required if you want to assign storage locations. If omitted, samples will be imported without storage assignments.
 
@@ -53,6 +64,12 @@ The CSV file must include the following columns (in any order):
 - `Collef Aliquots Total` - Alternative name for `Number of Aliquots Total` (handles typos in source data)
 
 ## Column Details
+
+### Passage Number, Lab Member and Sample date
+These describe each individual aliquot (not the cell line) and are stored on the aliquot:
+- **Passage Number** is kept as text exactly as written, since values are not always plain numbers.
+- **Lab Member** is stored as the initials from the sheet. An aliquot can also be linked to a user account later (aliquot edit form); Krill shows the user's name when linked and the initials otherwise.
+- **Sample date** accepts `YYYY-MM-DD`, `M/D/YYYY`, `M/D/YY`, `Mon-YY` and month-only values such as `7/2021` (stored as the 1st of the month). A date that is not understood (for example `4/38/23`, or a year alone) is left blank and counted in the import preview. Prefer the XLSX, which keeps real dates.
 
 ### Source
 - Creates a new Source record if it doesn't exist

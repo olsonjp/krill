@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import JsonResponse
+from django.http import FileResponse, Http404, JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
 from django.contrib import messages
@@ -16,9 +16,10 @@ import csv
 import json
 import logging
 import os
+import re
 import tempfile
 import zipfile
-from datetime import datetime
+from datetime import date, datetime
 from collections import defaultdict
 
 logger = logging.getLogger(__name__)
@@ -39,6 +40,7 @@ IMPORT_COLUMNS = (
     'Source', 'Cell Line', 'Experiment #', 'Sample Notes', 'Site', 'Freezer Name',
     'Position 1', 'Position 2', 'Position 3', 'Position 4', 'Aliquot Type',
     'Number of Aliquots Total', 'Collef Aliquots Total', 'Disposition',
+    'Passage Number', 'Lab Member', 'Sample date',
 )
 
 
@@ -91,6 +93,121 @@ def is_note_row(row):
     return blank('Cell Line') and all(
         blank(key) for key in ('Site', 'Freezer Name', 'Position 1', 'Position 2', 'Position 3', 'Position 4')
     )
+
+
+def parse_sample_date(text):
+    """Parse a sample date from a spreadsheet cell.
+
+    Returns (date, ok). Blank text is (None, True). Month-only values such as
+    "7/2021" or "Jul-21" become the 1st of that month. Anything unrecognized is
+    (None, False) so the caller can report it rather than guess.
+    """
+    text = (text or '').strip()
+    if not text:
+        return None, True
+    month_only = re.fullmatch(r'(\d{1,2})/(\d{4})', text)
+    if month_only:
+        try:
+            return date(int(month_only.group(2)), int(month_only.group(1)), 1), True
+        except ValueError:
+            return None, False
+    for fmt in ('%Y-%m-%d', '%Y-%m-%d %H:%M:%S', '%m/%d/%Y', '%m/%d/%y'):
+        try:
+            return datetime.strptime(text, fmt).date(), True
+        except ValueError:
+            pass
+    try:
+        return datetime.strptime(text, '%b-%y').date().replace(day=1), True
+    except ValueError:
+        return None, False
+
+
+class ImportConflictError(ValueError):
+    """The file cannot be added to the current data (e.g. a storage slot is taken).
+
+    `conflicts` lists every refused item as a dict with `box`, `row`, `column`,
+    `cell_line` and `reason`, so the page can show exactly what was refused and why.
+    """
+
+    def __init__(self, message, conflicts=()):
+        super().__init__(message)
+        self.conflicts = list(conflicts)
+
+
+def summarize_conflicts(conflicts, examples=3):
+    """Group refused items by box and reason: [{box, reason, count, cell_lines}], largest first."""
+    groups = {}
+    for conflict in conflicts:
+        kind = ('Slot already holds an aliquot in Krill' if conflict['existing_sample'] is not None
+                else 'Slot used by more than one row in this file')
+        group = groups.setdefault((conflict['box'], kind), {'box': conflict['box'], 'reason': kind, 'count': 0, 'names': []})
+        group['count'] += 1
+        name = conflict['cell_line'] or '(no cell line)'
+        if name not in group['names']:
+            group['names'].append(name)
+    summary = []
+    for group in groups.values():
+        shown = group['names'][:examples]
+        extra = len(group['names']) - len(shown)
+        summary.append({
+            'box': group['box'], 'reason': group['reason'], 'count': group['count'],
+            'cell_lines': ', '.join(shown) + (f' and {extra} more' if extra > 0 else ''),
+        })
+    return sorted(summary, key=lambda g: (-g['count'], g['box']))
+
+
+def load_existing_import_context():
+    """Read what the import must build on: existing rows by natural key, the next free
+    primary key per model, and the storage slots that are already occupied.
+
+    Names are matched exactly. Shelves, racks and boxes are matched by name within
+    their freezer, which preserves how earlier imports shaped the hierarchy.
+    """
+    from django.db.models import Max
+    from sample.models.source import Source
+    from sample.models.sample import Sample
+    from sample.models.aliquot import Aliquot, AliquotLocation, AliquotType, AliquotDisposition
+    from storage.models.site import Site
+    from storage.models.storage import Device, Shelf, Rack, Box
+
+    def first_by_name(queryset):
+        found = {}
+        for pk, name in queryset.order_by('pk').values_list('pk', 'name'):
+            found.setdefault(name, pk)
+        return found
+
+    def next_pk(model):
+        return (model.objects.aggregate(top=Max('pk'))['top'] or 0) + 1
+
+    def scoped(queryset, scope_path):
+        found = {}
+        for pk, name, scope in queryset.order_by('pk').values_list('pk', 'name', scope_path):
+            found.setdefault((scope, name), pk)
+        return found
+
+    return {
+        'sources': first_by_name(Source.objects),
+        'samples': first_by_name(Sample.objects),
+        'aliquot_types': first_by_name(AliquotType.objects),
+        'dispositions': first_by_name(AliquotDisposition.objects),
+        'sites': first_by_name(Site.objects),
+        'devices': scoped(Device.objects, 'site_id'),
+        'shelves': scoped(Shelf.objects, 'device_id'),
+        'racks': scoped(Rack.objects, 'shelf__device_id'),
+        'boxes': scoped(Box.objects, 'rack__shelf__device_id'),
+        'occupied_slots': {
+            (box_id, row, column): ('existing', aliquot_id, sample_name)
+            for box_id, row, column, aliquot_id, sample_name in AliquotLocation.objects.values_list(
+                'box_id', 'row', 'column', 'aliquot_id', 'aliquot__sample__name')
+        },
+        'next_pk': {
+            'source': next_pk(Source), 'sample': next_pk(Sample),
+            'aliquot_type': next_pk(AliquotType), 'disposition': next_pk(AliquotDisposition),
+            'site': next_pk(Site), 'device': next_pk(Device), 'shelf': next_pk(Shelf),
+            'rack': next_pk(Rack), 'box': next_pk(Box),
+            'aliquot': next_pk(Aliquot), 'location': next_pk(AliquotLocation),
+        },
+    }
 
 
 def _xlsx_cell_to_text(value):
@@ -208,6 +325,7 @@ class DataImportView(TemplateView):
                 context = self.get_context_data()
                 context['form'] = DataImportForm()
                 context['error'] = str(e)
+                context.update(self.conflict_context(e, request.user.id))
                 return render(request, self.template_name, context)
 
         if form.is_valid():
@@ -236,6 +354,7 @@ class DataImportView(TemplateView):
                 context = self.get_context_data()
                 context['form'] = form
                 context['error'] = str(e)
+                context.update(self.conflict_context(e, request.user.id))
                 return render(request, self.template_name, context)
 
         context = self.get_context_data()
@@ -276,6 +395,15 @@ class DataImportView(TemplateView):
             preview_data['tubes'] = 0  # No longer separate; each aliquot is one physical item
             preview_data['locations'] = len([f for f in fixtures if f['model'] == 'sample.aliquotlocation'])
             preview_data['skipped_rows'] = getattr(self, 'skipped_empty_rows', 0)
+            preview_data['unparsed_dates'] = getattr(self, 'unparsed_sample_dates', 0)
+            reused = getattr(self, 'reused_counts', {})
+            preview_data['reused'] = [
+                (label, reused[key]) for key, label in (
+                    ('sources', 'sources'), ('samples', 'samples'), ('aliquot_types', 'aliquot types'),
+                    ('dispositions', 'dispositions'), ('sites', 'sites'), ('devices', 'freezers'),
+                    ('shelves', 'shelves'), ('racks', 'racks'), ('boxes', 'boxes'),
+                ) if reused.get(key)
+            ]
 
             # Convert sets to sorted lists for display
             for key in ['sources', 'samples', 'storage_items', 'aliquot_types', 'dispositions']:
@@ -285,6 +413,10 @@ class DataImportView(TemplateView):
             if os.path.exists(temp_csv_path):
                 os.remove(temp_csv_path)
 
+        except ImportConflictError:
+            if 'temp_csv_path' in locals() and os.path.exists(temp_csv_path):
+                os.remove(temp_csv_path)
+            raise
         except Exception as e:
             # Clean up temporary file on error
             if 'temp_csv_path' in locals() and os.path.exists(temp_csv_path):
@@ -372,6 +504,30 @@ class DataImportView(TemplateView):
         except Exception as e:
             logger.error(f"Error retrieving temp file {import_id}: {e}")
             return None
+
+    def conflict_context(self, error, user_id):
+        """Template context for a refused import: aggregate list plus a CSV download token."""
+        if not isinstance(error, ImportConflictError) or not error.conflicts:
+            return {}
+        token = self.store_refusals(error.conflicts, user_id)
+        return {
+            'conflict_summary': summarize_conflicts(error.conflicts),
+            'conflict_total': len(error.conflicts),
+            'refusals_token': token,
+        }
+
+    def store_refusals(self, conflicts, user_id):
+        """Write every refused item to a CSV the user can download; returns its token."""
+        import uuid
+        token = uuid.uuid4().hex
+        user_dir = os.path.join(get_upload_temp_dir(), f'imports_{user_id}')
+        os.makedirs(user_dir, exist_ok=True)
+        with open(os.path.join(user_dir, f'refused_{token}.csv'), 'w', newline='', encoding='utf-8') as out:
+            writer = csv.writer(out)
+            writer.writerow(['Box', 'Row', 'Column', 'Cell line', 'Why refused'])
+            for c in conflicts:
+                writer.writerow([c['box'], c['row'], c['column'], c['cell_line'], c['reason']])
+        return token
 
     def cleanup_temp_file(self, import_id, user_id):
         """Clean up temporary file and metadata"""
@@ -477,6 +633,12 @@ class DataImportView(TemplateView):
                 print(f"Unexpected error during import: {str(e)}")
                 raise Exception(f"Unexpected import error: {str(e)}")
 
+        except ImportConflictError:
+            if fixtures_file and os.path.exists(fixtures_file):
+                os.remove(fixtures_file)
+            if temp_csv_path and os.path.exists(temp_csv_path):
+                os.remove(temp_csv_path)
+            raise
         except Exception as e:
             # Clean up temporary files on any error
             if fixtures_file and os.path.exists(fixtures_file):
@@ -497,18 +659,51 @@ class DataImportView(TemplateView):
             if os.path.exists(converted_path):
                 os.remove(converted_path)
 
+    @staticmethod
+    def _conflict_summary(conflicts):
+        """One-paragraph explanation of a refused import (the full list is shown separately)."""
+        in_krill = sum(1 for c in conflicts if c['existing_sample'] is not None)
+        in_file = len(conflicts) - in_krill
+        parts = []
+        if in_krill:
+            parts.append(f"{in_krill} already hold aliquots in Krill")
+        if in_file:
+            parts.append(f"{in_file} are used by more than one row in this file")
+        summary = (
+            f"Import refused, nothing was changed: {len(conflicts)} storage slot(s) cannot be used "
+            f"({'; '.join(parts)})."
+        )
+        if in_krill == len(conflicts) and all(c['existing_sample'] == c['cell_line'] for c in conflicts):
+            summary += " Every refused row matches an aliquot already in those slots, so this file has probably already been imported."
+        return summary
+
     def _convert_csv_to_fixtures(self, csv_file_path):
         """Convert CSV file to Django fixtures using the existing convert_csv.py logic"""
         fixtures = []
-        pk_counter = defaultdict(lambda: 1)
         self.skipped_empty_rows = 0
+        self.unparsed_sample_dates = 0
 
-        # Mapping dictionaries to track created objects
-        sources = {}
-        samples = {}
-        storage = {'sites': {}, 'devices': {}, 'shelves': {}, 'racks': {}, 'boxes': {}}
-        aliquot_types = {}
-        dispositions = {}
+        # Build on the current data: rows that already exist (matched by name) are reused
+        # and get no fixture, and new rows are numbered after the highest existing id so
+        # loading never overwrites anything.
+        existing = load_existing_import_context()
+        pk_counter = defaultdict(lambda: 1, existing['next_pk'])
+        occupied_slots = dict(existing['occupied_slots'])   # slot -> who holds it
+        slot_conflicts = []
+        reused = {name: set() for name in
+                  ('sources', 'samples', 'aliquot_types', 'dispositions', 'sites', 'devices', 'shelves', 'racks', 'boxes')}
+
+        # Mapping dictionaries: natural key -> primary key (existing or newly created)
+        sources = dict(existing['sources'])
+        samples = dict(existing['samples'])
+        storage = {
+            'sites': dict(existing['sites']), 'devices': dict(existing['devices']),
+            'shelves': dict(existing['shelves']), 'racks': dict(existing['racks']),
+            'boxes': dict(existing['boxes']),
+        }
+        aliquot_types = dict(existing['aliquot_types'])
+        dispositions = dict(existing['dispositions'])
+        self.reused_counts = {}
 
         required_columns = {'Source', 'Cell Line', 'Freezer Name', 'Position 1', 'Position 2', 'Aliquot Type', 'Disposition'}
 
@@ -547,6 +742,8 @@ class DataImportView(TemplateView):
                     continue
                 # Create Source if not exists
                 source_name = row['Source'] or 'Unknown'
+                if source_name in existing['sources']:
+                    reused['sources'].add(source_name)
                 if source_name not in sources:
                     sources[source_name] = pk_counter['source']
                     fixtures.append({
@@ -562,6 +759,8 @@ class DataImportView(TemplateView):
                 # Create Sample if not exists
                 sample_key = row['Cell Line']
                 current_notes = row['Sample Notes'] or ''
+                if sample_key in existing['samples']:
+                    reused['samples'].add(sample_key)
                 if sample_key not in samples:
                     samples[sample_key] = pk_counter['sample']
                     fixtures.append({
@@ -593,6 +792,8 @@ class DataImportView(TemplateView):
                 rack_name = row['Position 1']   # e.g., "4"
                 box_name = f"{rack_name}_{shelf_name}"  # e.g., "4_F"
 
+                if site_name in existing['sites']:
+                    reused['sites'].add(site_name)
                 if site_name not in storage['sites']:
                     storage['sites'][site_name] = pk_counter['site']
                     fixtures.append({
@@ -601,53 +802,66 @@ class DataImportView(TemplateView):
                         'fields': {'name': site_name}
                     })
                     pk_counter['site'] += 1
+                site_pk = storage['sites'][site_name]
 
+                # Freezer, shelf, rack and box are matched by name within their parent
+                # (shelf, rack and box within the freezer) and created when missing.
+                device_pk = None
+                box_key = None
                 if freezer_name:
-                    # Create Device if not exists
-                    if freezer_name not in storage['devices']:
-                        storage['devices'][freezer_name] = pk_counter['device']
+                    device_key = (site_pk, freezer_name)
+                    if device_key in existing['devices']:
+                        reused['devices'].add(device_key)
+                    if device_key not in storage['devices']:
+                        storage['devices'][device_key] = pk_counter['device']
                         fixtures.append({
                             'model': 'storage.device',
-                            'pk': storage['devices'][freezer_name],
+                            'pk': storage['devices'][device_key],
                             'fields': {
                                 'name': freezer_name,
                                 'description': '',
-                                'site': storage['sites'][site_name]
+                                'site': site_pk
                             }
                         })
                         pk_counter['device'] += 1
+                    device_pk = storage['devices'][device_key]
 
-                if shelf_name and rack_name:
-                    # Create Shelf if not exists
-                    if shelf_name not in storage['shelves']:
-                        storage['shelves'][shelf_name] = pk_counter['shelf']
+                if device_pk is not None and shelf_name and rack_name:
+                    shelf_key = (device_pk, shelf_name)
+                    if shelf_key in existing['shelves']:
+                        reused['shelves'].add(shelf_key)
+                    if shelf_key not in storage['shelves']:
+                        storage['shelves'][shelf_key] = pk_counter['shelf']
                         fixtures.append({
                             'model': 'storage.shelf',
-                            'pk': storage['shelves'][shelf_name],
+                            'pk': storage['shelves'][shelf_key],
                             'fields': {
                                 'name': shelf_name,
                                 'description': '',
-                                'device': storage['devices'][freezer_name]
+                                'device': device_pk
                             }
                         })
                         pk_counter['shelf'] += 1
 
-                    # Create Rack if not exists
-                    if rack_name not in storage['racks']:
-                        storage['racks'][rack_name] = pk_counter['rack']
+                    rack_key = (device_pk, rack_name)
+                    if rack_key in existing['racks']:
+                        reused['racks'].add(rack_key)
+                    if rack_key not in storage['racks']:
+                        storage['racks'][rack_key] = pk_counter['rack']
                         fixtures.append({
                             'model': 'storage.rack',
-                            'pk': storage['racks'][rack_name],
+                            'pk': storage['racks'][rack_key],
                             'fields': {
                                 'name': rack_name,
                                 'description': '',
-                                'shelf': storage['shelves'][shelf_name]
+                                'shelf': storage['shelves'][shelf_key]
                             }
                         })
                         pk_counter['rack'] += 1
 
-                    # Create Box if not exists
-                    box_key = box_name
+                    box_key = (device_pk, box_name)
+                    if box_key in existing['boxes']:
+                        reused['boxes'].add(box_key)
                     if box_key not in storage['boxes']:
                         storage['boxes'][box_key] = pk_counter['box']
                         fixtures.append({
@@ -656,7 +870,7 @@ class DataImportView(TemplateView):
                             'fields': {
                                 'name': box_name,
                                 'description': '',
-                                'rack': storage['racks'][rack_name],
+                                'rack': storage['racks'][rack_key],
                                 'rows': 10,
                                 'columns': 10
                             }
@@ -665,6 +879,8 @@ class DataImportView(TemplateView):
 
                 # Create AliquotType if not exists
                 aliquot_type = row['Aliquot Type'] or 'Unknown'
+                if aliquot_type in existing['aliquot_types']:
+                    reused['aliquot_types'].add(aliquot_type)
                 if aliquot_type not in aliquot_types:
                     aliquot_types[aliquot_type] = pk_counter['aliquot_type']
                     fixtures.append({
@@ -692,6 +908,8 @@ class DataImportView(TemplateView):
                 }
                 disposition = row['Disposition'] or 'In Storage'
                 disp_type = disposition_map.get(disposition, 'stored')
+                if disposition in existing['dispositions']:
+                    reused['dispositions'].add(disposition)
                 if disposition not in dispositions:
                     dispositions[disposition] = pk_counter['disposition']
                     fixtures.append({
@@ -713,10 +931,16 @@ class DataImportView(TemplateView):
                 first_aliquot_pk = pk_counter['aliquot']
                 for aliquot_num in range(quantity):
                     aliquot_pk = pk_counter['aliquot']
+                    sample_date, date_ok = parse_sample_date(row.get('Sample date'))
+                    if not date_ok:
+                        self.unparsed_sample_dates += 1
                     fixtures.append({
                         'model': 'sample.aliquot',
                         'pk': aliquot_pk,
                         'fields': {
+                            'passage': (row.get('Passage Number') or '').strip(),
+                            'sample_date': sample_date.isoformat() if sample_date else None,
+                            'lab_member_initials': (row.get('Lab Member') or '').strip(),
                             'parent': None,  # Could be mapped if needed
                             'sample': samples[sample_key],
                             'disposition': dispositions[disposition],
@@ -730,11 +954,25 @@ class DataImportView(TemplateView):
                     pk_counter['aliquot'] += 1
 
                 # Create AliquotLocation if box exists (only for first aliquot in the batch)
-                if box_key in storage['boxes'] and row.get('Position 3') and row.get('Position 4') and quantity > 0:
+                if box_key is not None and row.get('Position 3') and row.get('Position 4') and quantity > 0:
                     try:
                         row_pos = int(row['Position 3'])
                         col_pos = int(row['Position 4'])
                         if row_pos > 0 and col_pos > 0:  # Only create location for valid positions
+                            slot = (storage['boxes'][box_key], row_pos, col_pos)
+                            if slot in occupied_slots:
+                                holder = occupied_slots[slot]
+                                if holder[0] == 'existing':
+                                    reason = f"Slot already holds aliquot #{holder[1]} of '{holder[2]}' in Krill"
+                                else:
+                                    reason = f"Another row in this file already uses this slot (for '{holder[1]}')"
+                                slot_conflicts.append({
+                                    'box': box_name, 'row': row_pos, 'column': col_pos,
+                                    'cell_line': sample_key, 'reason': reason,
+                                    'existing_sample': holder[2] if holder[0] == 'existing' else None,
+                                })
+                                continue
+                            occupied_slots[slot] = ('file', sample_key)
                             fixtures.append({
                                 'model': 'sample.aliquotlocation',
                                 'pk': pk_counter['location'],
@@ -752,7 +990,24 @@ class DataImportView(TemplateView):
                         # Log error but continue with import
                         print(f"Warning: Could not create location for aliquot {first_aliquot_pk}: {e}")
 
+        if slot_conflicts:
+            raise ImportConflictError(self._conflict_summary(slot_conflicts), slot_conflicts)
+
+        self.reused_counts = {name: len(keys) for name, keys in reused.items()}
         return fixtures
+
+
+@login_required
+@require_minimum_role('lab_manager')
+def download_import_refusals(request, token):
+    """Download the full list of items a refused import could not use (CSV)."""
+    import re
+    if not re.fullmatch(r'[0-9a-f]{32}', token):
+        raise Http404
+    path = os.path.join(get_upload_temp_dir(), f'imports_{request.user.id}', f'refused_{token}.csv')
+    if not os.path.exists(path):
+        raise Http404
+    return FileResponse(open(path, 'rb'), as_attachment=True, filename='refused-import-rows.csv', content_type='text/csv')
 
 
 # Create your views here.

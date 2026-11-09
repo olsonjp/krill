@@ -49,6 +49,18 @@
                 <span class="status-badge {{ aliquot.disposition.disposition_type|lower }}">{{ aliquot.disposition.name }}</span>
             </div>
             <div class="detail-field">
+                <label>Passage:</label>
+                <span>{{ aliquot.passage|default:"Not recorded" }}</span>
+            </div>
+            <div class="detail-field">
+                <label>Sample Date:</label>
+                <span>{{ aliquot.sample_date|date:"M d, Y"|default:"Not recorded" }}</span>
+            </div>
+            <div class="detail-field">
+                <label>Lab Member:</label>
+                <span>{{ aliquot.lab_member_display|default:"Not recorded" }}</span>
+            </div>
+            <div class="detail-field">
                 <label>Created:</label>
                 <span>{{ aliquot.created_at|date:"M d, Y H:i" }}</span>
             </div>
