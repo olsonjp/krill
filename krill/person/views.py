@@ -156,6 +156,11 @@ def summarize_conflicts(conflicts, examples=3):
     return sorted(summary, key=lambda g: (-g['count'], g['box']))
 
 
+def normalize_sample_name(name):
+    """Key used to match cell lines: ignores case and surrounding whitespace."""
+    return (name or '').strip().casefold()
+
+
 def load_existing_import_context():
     """Read what the import must build on: existing rows by natural key, the next free
     primary key per model, and the storage slots that are already occupied.
@@ -187,7 +192,10 @@ def load_existing_import_context():
 
     return {
         'sources': first_by_name(Source.objects),
-        'samples': first_by_name(Sample.objects),
+        'samples': {
+            normalize_sample_name(name): pk
+            for pk, name in reversed(list(Sample.objects.order_by('pk').values_list('pk', 'name')))
+        },   # lowest pk wins for names that differ only by case/spacing
         'aliquot_types': first_by_name(AliquotType.objects),
         'dispositions': first_by_name(AliquotDisposition.objects),
         'sites': first_by_name(Site.objects),
@@ -673,7 +681,7 @@ class DataImportView(TemplateView):
             f"Import refused, nothing was changed: {len(conflicts)} storage slot(s) cannot be used "
             f"({'; '.join(parts)})."
         )
-        if in_krill == len(conflicts) and all(c['existing_sample'] == c['cell_line'] for c in conflicts):
+        if in_krill == len(conflicts) and all(normalize_sample_name(c['existing_sample']) == normalize_sample_name(c['cell_line']) for c in conflicts):
             summary += " Every refused row matches an aliquot already in those slots, so this file has probably already been imported."
         return summary
 
@@ -757,7 +765,10 @@ class DataImportView(TemplateView):
                     pk_counter['source'] += 1
 
                 # Create Sample if not exists
-                sample_key = row['Cell Line']
+                # Cell lines match ignoring case and surrounding whitespace ("MM134", "mm134 ");
+                # a new sample keeps the first spelling seen, trimmed.
+                sample_name = (row['Cell Line'] or '').strip()
+                sample_key = normalize_sample_name(sample_name)
                 current_notes = row['Sample Notes'] or ''
                 if sample_key in existing['samples']:
                     reused['samples'].add(sample_key)
@@ -767,7 +778,7 @@ class DataImportView(TemplateView):
                         'model': 'sample.sample',
                         'pk': samples[sample_key],
                         'fields': {
-                            'name': row['Cell Line'],
+                            'name': sample_name,
                             'experiment': row['Experiment #'] or '',
                             'source': sources[source_name],
                             'notes': current_notes
@@ -776,7 +787,7 @@ class DataImportView(TemplateView):
                     pk_counter['sample'] += 1
                 else:
                     # Sample exists, check if we need to append notes
-                    existing_sample = next((fixture for fixture in fixtures if fixture['model'] == 'sample.sample' and fixture['fields']['name'] == sample_key), None)
+                    existing_sample = next((fixture for fixture in fixtures if fixture['model'] == 'sample.sample' and fixture['pk'] == samples[sample_key]), None)
                     if existing_sample and current_notes and current_notes not in existing_sample['fields']['notes']:
                         existing_notes = existing_sample['fields']['notes']
                         if existing_notes:
@@ -968,11 +979,11 @@ class DataImportView(TemplateView):
                                     reason = f"Another row in this file already uses this slot (for '{holder[1]}')"
                                 slot_conflicts.append({
                                     'box': box_name, 'row': row_pos, 'column': col_pos,
-                                    'cell_line': sample_key, 'reason': reason,
+                                    'cell_line': sample_name, 'reason': reason,
                                     'existing_sample': holder[2] if holder[0] == 'existing' else None,
                                 })
                                 continue
-                            occupied_slots[slot] = ('file', sample_key)
+                            occupied_slots[slot] = ('file', sample_name)
                             fixtures.append({
                                 'model': 'sample.aliquotlocation',
                                 'pk': pk_counter['location'],

@@ -18,11 +18,12 @@ Upload either a **CSV** or an **XLSX** workbook. For XLSX only the **first sheet
 
 ### Importing into a database that already has data
 The import adds to what is already in Krill. It never overwrites or renames existing records:
-- **Matched by exact name and reused:** sources, samples (by `Cell Line`), aliquot types, dispositions and sites. Freezers are matched by name within their site, and shelves, racks and boxes by name within their freezer. The preview lists what was matched ("Matched to existing records") and only counts the genuinely new ones.
+- **Matched by exact name and reused:** sources, aliquot types, dispositions and sites. **Cell lines** are matched ignoring upper/lower case and surrounding spaces (`MM134`, `mm134` and `MM134 ` are the same sample); a new sample keeps the first spelling seen in the file. Freezers are matched by name within their site, and shelves, racks and boxes by name within their freezer. The preview lists what was matched ("Matched to existing records") and only counts the genuinely new ones.
 - **Existing records are left as they are.** An existing sample keeps its notes; new aliquots are attached to it.
 - **Anything not matched is created** alongside the existing data, so a freezer or site spelled differently from the one already in Krill becomes a second, separate freezer. Use the same `Site` and `Freezer Name` as in Krill to add to an existing one.
 - **Storage slots are never double-booked.** If a slot is already occupied (by existing data, or by two rows of the file), the import stops before changing anything and lists the slots.
 - Importing the same file twice is therefore refused; to replace data, remove it first (for example `manage.py wipe_samples`).
+- To replace an old freezer layout with the one in your sheet, remove it first with `manage.py delete_storage --site 'Old Site'` (or `--freezer 'Old Freezer'` for one freezer). It deletes the site or freezer with its shelves, racks and boxes, is a dry run unless you add `--yes`, and refuses while any aliquot is still stored in those boxes (run `wipe_samples` first). Take a database backup before using either command.
 
 ### Rows that are skipped
 A row is skipped when it has **no value in any column except** `Site`, `Freezer Name`, `Position 1`-`4` and `Aliquot Type`. These are typically empty slots listed in a pre-filled box grid. The import preview shows how many rows were skipped. A row with any other value (for example only a passage number or lab member) is still imported. Skipped slots can be added later in Krill if a tube is found there.
