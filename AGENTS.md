@@ -17,7 +17,7 @@ tracking, and reporting.
 ## Local setup
 1. Python 3.10+, pip, and (recommended) a virtual environment.
 2. Install dependencies:
-   - `uv sync` (then `source .venv/bin/activate`)
+   - `uv sync` (make targets and `uv run python ...` use `.venv` without activation)
 3. Database defaults to SQLite; for PostgreSQL set env vars from
    `env.example` or `docs/deployment/env.production.example`.
 4. `manage.py` lives under `krill/`:
