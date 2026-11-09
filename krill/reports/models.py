@@ -141,7 +141,7 @@ class Alert(models.Model):
     alert_type = models.CharField(max_length=20, choices=ALERT_TYPE_CHOICES, default='general')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
     target_type = models.CharField(max_length=50, blank=True, null=True, help_text="Type of object this alert relates to")
-    target_id = models.IntegerField(blank=True, null=True, help_text="ID of the object this alert relates to")
+    target_id = models.BigIntegerField(blank=True, null=True, help_text="ID of the object this alert relates to")
     acknowledged_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, blank=True, null=True, related_name='acknowledged_alerts')
     acknowledged_at = models.DateTimeField(blank=True, null=True)
     resolved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, blank=True, null=True, related_name='resolved_alerts')
