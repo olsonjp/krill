@@ -25,6 +25,16 @@ The import adds to what is already in Krill. It never overwrites or renames exis
 - Importing the same file twice is therefore refused; to replace data, remove it first (for example `manage.py wipe_samples`).
 - To replace an old freezer layout with the one in your sheet, remove it first with `manage.py delete_storage --site 'Old Site'` (or `--freezer 'Old Freezer'` for one freezer). It deletes the site or freezer with its shelves, racks and boxes, is a dry run unless you add `--yes`, and refuses while any aliquot is still stored in those boxes (run `wipe_samples` first). Take a database backup before using either command.
 
+### Linking lab members to users
+`Lab Member` initials are stored as written. To link them to user accounts after an import, map initials to usernames:
+
+```
+uv run python manage.py link_lab_members                                     # list initials not linked yet
+uv run python manage.py link_lab_members --map MS=matt.sikora --map JS=joe.sottnik          # dry run
+uv run python manage.py link_lab_members --map MS=matt.sikora --map JS=joe.sottnik --yes     # link
+```
+Initials match in any case, only aliquots that are not linked yet are touched, and the recorded initials are kept (the aliquot shows the user's name once linked, the initials otherwise). Re-running is safe, and any unrecognized username stops the command before anything changes.
+
 ### Rows that are skipped
 A row is skipped when it has **no value in any column except** `Site`, `Freezer Name`, `Position 1`-`4` and `Aliquot Type`. These are typically empty slots listed in a pre-filled box grid. The import preview shows how many rows were skipped. A row with any other value (for example only a passage number or lab member) is still imported. Skipped slots can be added later in Krill if a tube is found there.
 
