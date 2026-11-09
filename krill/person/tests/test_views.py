@@ -764,15 +764,144 @@ MDA MB 134VI (MM134);UPMC/MJS;Sikora LN2 #1;4;F;1;2;Cells;3;Checked Out;Legacy M
         expected = self._csv_fixtures_from_bytes(self.test_csv_content.encode('utf-8'))
         actual = self._csv_fixtures_from_bytes((mangled + '\n' + rest).encode('utf-8'))
         self.assertGreater(len(actual), 0)
+        self.assertEqual(self._strip_timestamps(actual), self._strip_timestamps(expected))
 
-        def strip_timestamps(fixtures):
-            skip = {'created_at', 'updated_at'}
-            return [
-                {**f, 'fields': {k: v for k, v in f['fields'].items() if k not in skip}}
-                for f in fixtures
-            ]
+    @staticmethod
+    def _strip_timestamps(fixtures):
+        skip = {'created_at', 'updated_at'}
+        return [
+            {**f, 'fields': {k: v for k, v in f['fields'].items() if k not in skip}}
+            for f in fixtures
+        ]
 
-        self.assertEqual(strip_timestamps(actual), strip_timestamps(expected))
+    def _xlsx_bytes(self, rows, extra_sheet=True):
+        """Build an in-memory XLSX with `rows` on the first sheet."""
+        import io
+        from openpyxl import Workbook
+        wb = Workbook()
+        ws = wb.active
+        ws.title = 'All canes'
+        for row in rows:
+            ws.append(row)
+        if extra_sheet:
+            wb.create_sheet('Ignored').append(['not', 'the', 'data'])
+        buf = io.BytesIO()
+        wb.save(buf)
+        return buf.getvalue()
+
+    def _xlsx_rows(self):
+        """XLSX equivalent of test_csv_content with Excel-typical cell types."""
+        import datetime
+        header = [h.lower() for h in self.test_csv_content.split('\n', 1)[0].split(';')] + ['Sample date']
+        base = [
+            ['MDA MB 134VI (MM134)', 'UPMC/MJS', 'Sikora LN2 #1', 4, 'F', 1.0, 1, 'Cells', 5, 'In Storage',
+             'Legacy MM134 from Oesterreich Lab banks', None, 'p+33', 'EXP001', datetime.datetime(2021, 11, 1)],
+            [],
+            ['MDA MB 134VI (MM134)', 'UPMC/MJS', 'Sikora LN2 #1', 4, 'F', 1, 2.0, 'Cells', 3, 'Checked Out',
+             'Legacy MM134 from Oesterreich Lab banks', 'Thawed by MTS on 09.04.19', 'p+33', 'EXP001', '7/2021'],
+        ]
+        return [header] + base
+
+    def test_convert_xlsx_matches_equivalent_csv(self):
+        """An XLSX upload yields the same fixtures as the equivalent CSV."""
+        expected = self._csv_fixtures_from_bytes(self.test_csv_content.encode('utf-8'))
+        actual = self._csv_fixtures_from_bytes(self._xlsx_bytes(self._xlsx_rows()))
+        self.assertGreater(len(actual), 0)
+        self.assertEqual(self._strip_timestamps(actual), self._strip_timestamps(expected))
+
+    def test_convert_xlsx_preserves_multiline_cells(self):
+        """Newlines inside a cell survive the XLSX conversion."""
+        rows = self._xlsx_rows()
+        rows[1][10] = 'Line one\nLine two'
+        fixtures = self._csv_fixtures_from_bytes(self._xlsx_bytes(rows))
+        notes = [f['fields'].get('notes', '') for f in fixtures if f['model'] == 'sample.sample']
+        self.assertTrue(any('Line one\nLine two' in n for n in notes))
+
+    def test_convert_xlsx_missing_column_still_reported(self):
+        rows = self._xlsx_rows()
+        rows[0][rows[0].index('disposition')] = 'status'
+        with self.assertRaises(KeyError):
+            self._csv_fixtures_from_bytes(self._xlsx_bytes(rows))
+
+    def test_location_only_rows_are_skipped(self):
+        """Rows with only a location and aliquot type (empty grid slots) are not imported."""
+        header = 'Cell Line;Source;Freezer Name;Position 1;Position 2;Position 3;Position 4;Aliquot Type;Disposition;Sample Notes;Experiment #;Passage Number;Lab Member'
+        content = '\n'.join([
+            header,
+            'HeLa;Lab A;Freezer 1;1;A;1;1;Cells;;;;p3;JS',
+            ';;Freezer 1;1;A;1;2;Cells;;;;;',        # empty slot -> skipped
+            ';;Freezer 1;1;A;1;3;Cells;;;;;',        # empty slot -> skipped
+            ';;Freezer 1;1;A;1;4;Cells;;;;p13;MEM',  # no cell line but has passage/lab member -> kept
+        ])
+        view = DataImportView()
+        import tempfile, os
+        with tempfile.NamedTemporaryFile(suffix='.csv', delete=False, mode='w') as f:
+            f.write(content)
+        try:
+            fixtures = view.convert_csv_to_fixtures(f.name)
+        finally:
+            os.unlink(f.name)
+        self.assertEqual(len([x for x in fixtures if x['model'] == 'sample.aliquot']), 2)
+        self.assertEqual(len([x for x in fixtures if x['model'] == 'sample.aliquotlocation']), 2)
+        self.assertEqual(view.skipped_empty_rows, 2)
+
+    def test_note_rows_are_skipped(self):
+        """A comment row with no cell line and no location is not imported as a tube."""
+        from person.views import is_note_row
+        self.assertTrue(is_note_row({'Cell Line': '', 'Experiment #': 'COMPLETE BOX H MISSING', 'Position 1': ''}))
+        self.assertFalse(is_note_row({'Cell Line': 'HeLa', 'Position 1': ''}))   # unlocated tube is kept
+        self.assertFalse(is_note_row({'Cell Line': '', 'Position 1': '1'}))
+        import tempfile, os
+        header = 'Cell Line;Source;Freezer Name;Position 1;Position 2;Position 3;Position 4;Aliquot Type;Disposition;Sample Notes;Experiment #'
+        content = '\n'.join([header, 'HeLa;Lab A;Freezer 1;1;A;1;1;Cells;;;', ';;;;;;;;;;COMPLETE BOX H MISSING'])
+        with tempfile.NamedTemporaryFile(suffix='.csv', delete=False, mode='w') as f:
+            f.write(content)
+        view = DataImportView()
+        try:
+            fixtures = view.convert_csv_to_fixtures(f.name)
+        finally:
+            os.unlink(f.name)
+        self.assertEqual(len([x for x in fixtures if x['model'] == 'sample.aliquot']), 1)
+        self.assertFalse([x for x in fixtures if x['model'] == 'storage.site' and x['fields']['name'] == 'Default Site'][1:])
+        self.assertEqual(view.skipped_empty_rows, 1)
+
+    def test_is_location_only_row(self):
+        from person.views import is_location_only_row
+        self.assertTrue(is_location_only_row({'Cell Line': '', 'Position 1': '1', 'Aliquot Type': 'Cells', 'Notes': ' '}))
+        self.assertFalse(is_location_only_row({'Cell Line': 'HeLa', 'Position 1': '1'}))
+        self.assertFalse(is_location_only_row({'Cell Line': '', 'Sample date': '2020-01-01'}))
+        self.assertFalse(is_location_only_row({'Cell Line': '', None: ['stray']}))
+
+    def test_preview_reports_skipped_rows(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        self.client.force_login(self.lab_admin_user)
+        content = self.test_csv_content + '\n;;Sikora LN2 #1;4;F;5;5;Cells;;;;;;'
+        upload = SimpleUploadedFile('x.csv', content.encode('utf-8'), content_type='text/csv')
+        response = self.client.post(reverse('person:data_import'), {'csv_file': upload})
+        self.assertEqual(response.context['preview_data']['skipped_rows'], 1)
+
+    def test_xlsx_upload_through_preview(self):
+        """Uploading an .xlsx through the import view produces a preview."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        self.client.force_login(self.lab_admin_user)
+        upload = SimpleUploadedFile(
+            'inventory.xlsx',
+            self._xlsx_bytes(self._xlsx_rows()),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        response = self.client.post(reverse('person:data_import'), {'csv_file': upload})
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('preview_data', response.context)
+        self.assertEqual(response.context['preview_data']['aliquots'], 8)
+
+    def test_legacy_xls_upload_rejected(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        self.client.force_login(self.lab_admin_user)
+        upload = SimpleUploadedFile('old.xls', b'\xd0\xcf\x11\xe0junk', content_type='application/vnd.ms-excel')
+        response = self.client.post(reverse('person:data_import'), {'csv_file': upload})
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn('preview_data', response.context)
+        self.assertIn('.xls', str(response.context['form'].errors))
 
     def test_convert_csv_missing_column_still_reported(self):
         """Case-insensitivity must not hide genuinely missing columns."""

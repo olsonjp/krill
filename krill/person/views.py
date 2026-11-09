@@ -16,6 +16,8 @@ import csv
 import json
 import logging
 import os
+import tempfile
+import zipfile
 from datetime import datetime
 from collections import defaultdict
 
@@ -58,13 +60,100 @@ def normalize_import_headers(fieldnames):
     return result
 
 
+# Columns that only say where a tube is and what kind it is. A row with a value in
+# none of the *other* columns carries no sample information (typically an empty slot
+# in a pre-filled box grid) and is skipped on import.
+LOCATION_COLUMNS = frozenset({
+    'Site', 'Freezer Name', 'Position 1', 'Position 2', 'Position 3', 'Position 4', 'Aliquot Type',
+})
+
+
+def is_location_only_row(row):
+    """True if every column outside LOCATION_COLUMNS is blank."""
+    for key, value in row.items():
+        if key in LOCATION_COLUMNS:
+            continue
+        values = value if isinstance(value, list) else [value]  # DictReader puts extra cells in a list
+        if any(str(v).strip() for v in values if v is not None):
+            return False
+    return True
+
+
+def is_note_row(row):
+    """True for a row with no cell line and no storage location at all.
+
+    These are comments typed into the sheet (e.g. "COMPLETE BOX H MISSING" in the
+    Experiment # column), not tubes, so they are skipped on import.
+    """
+    def blank(key):
+        return not str(row.get(key) or '').strip()
+
+    return blank('Cell Line') and all(
+        blank(key) for key in ('Site', 'Freezer Name', 'Position 1', 'Position 2', 'Position 3', 'Position 4')
+    )
+
+
+def _xlsx_cell_to_text(value):
+    """Render an XLSX cell the way it would appear in a CSV export."""
+    if value is None:
+        return ''
+    if isinstance(value, bool):
+        return str(value)
+    if isinstance(value, float) and value.is_integer():
+        return str(int(value))
+    if isinstance(value, datetime):
+        return value.date().isoformat() if value.time() == datetime.min.time() else value.isoformat(sep=' ')
+    return str(value)
+
+
+def xlsx_to_csv(xlsx_path, dest_dir=None):
+    """Convert the first sheet of an XLSX workbook to a temporary tab-delimited CSV.
+
+    Returns the path of the new file; the caller is responsible for removing it.
+    Blank rows are skipped. Formulas are read as their last saved value.
+    """
+    from openpyxl import load_workbook
+
+    fd, csv_path = tempfile.mkstemp(suffix='.csv', dir=dest_dir)
+    try:
+        # Pass a file object: uploads are stored as *.csv regardless of type, and
+        # openpyxl rejects paths by extension.
+        with open(xlsx_path, 'rb') as source, os.fdopen(fd, 'w', newline='', encoding='utf-8') as out:
+            workbook = load_workbook(source, read_only=True, data_only=True)
+            try:
+                writer = csv.writer(out, delimiter='\t')
+                for row in workbook.worksheets[0].iter_rows(values_only=True):
+                    cells = [_xlsx_cell_to_text(value) for value in row]
+                    if any(cell.strip() for cell in cells):
+                        writer.writerow(cells)
+            finally:
+                workbook.close()
+    except Exception:
+        os.remove(csv_path)
+        raise
+    return csv_path
+
+
+def is_xlsx_file(path):
+    """True if the file is an XLSX workbook (checked by content, not extension)."""
+    return zipfile.is_zipfile(path)
+
+
 
 # Data Import Form
 class DataImportForm(forms.Form):
     csv_file = forms.FileField(
-        label='CSV File',
-        help_text='Upload a CSV file with sample data. Expected format: Source;Cell Line;Experiment #;Sample Notes;Site;Freezer Name;Position 1;Position 2;Position 3;Position 4;Aliquot Type;Number of Aliquots Total;Disposition (Site is optional, defaults to "Default Site")'
+        label='Data File',
+        help_text='Upload a CSV or XLSX file with sample data (for XLSX, the first sheet is used). Expected columns: Source;Cell Line;Experiment #;Sample Notes;Site;Freezer Name;Position 1;Position 2;Position 3;Position 4;Aliquot Type;Number of Aliquots Total;Disposition (Site is optional, defaults to "Default Site")'
     )
+
+    def clean_csv_file(self):
+        uploaded = self.cleaned_data['csv_file']
+        if uploaded.name.lower().endswith('.xls'):
+            raise forms.ValidationError(
+                'Legacy .xls files are not supported. Save the file as .xlsx or CSV and upload it again.'
+            )
+        return uploaded
 
 
 # Data Import View for main app
@@ -186,6 +275,7 @@ class DataImportView(TemplateView):
             preview_data['aliquots'] = len([f for f in fixtures if f['model'] == 'sample.aliquot'])
             preview_data['tubes'] = 0  # No longer separate; each aliquot is one physical item
             preview_data['locations'] = len([f for f in fixtures if f['model'] == 'sample.aliquotlocation'])
+            preview_data['skipped_rows'] = getattr(self, 'skipped_empty_rows', 0)
 
             # Convert sets to sorted lists for display
             for key in ['sources', 'samples', 'storage_items', 'aliquot_types', 'dispositions']:
@@ -396,9 +486,22 @@ class DataImportView(TemplateView):
             raise Exception(f"Import failed: {str(e)}")
 
     def convert_csv_to_fixtures(self, csv_file_path):
+        """Convert an uploaded CSV or XLSX file to Django fixtures."""
+        if not is_xlsx_file(csv_file_path):
+            return self._convert_csv_to_fixtures(csv_file_path)
+
+        converted_path = xlsx_to_csv(csv_file_path, dest_dir=os.path.dirname(csv_file_path))
+        try:
+            return self._convert_csv_to_fixtures(converted_path)
+        finally:
+            if os.path.exists(converted_path):
+                os.remove(converted_path)
+
+    def _convert_csv_to_fixtures(self, csv_file_path):
         """Convert CSV file to Django fixtures using the existing convert_csv.py logic"""
         fixtures = []
         pk_counter = defaultdict(lambda: 1)
+        self.skipped_empty_rows = 0
 
         # Mapping dictionaries to track created objects
         sources = {}
@@ -439,6 +542,9 @@ class DataImportView(TemplateView):
                 missing = required_columns - row.keys()
                 if missing:
                     raise KeyError(f"Missing required columns: {sorted(missing)}. Found: {sorted(row.keys())}")
+                if is_location_only_row(row) or is_note_row(row):
+                    self.skipped_empty_rows += 1
+                    continue
                 # Create Source if not exists
                 source_name = row['Source'] or 'Unknown'
                 if source_name not in sources:

@@ -27,9 +27,9 @@
         {% endif %}
 
         <div class="import-form">
-            <h3><i class="material-icons-round">file_upload</i> Upload CSV File</h3>
+            <h3><i class="material-icons-round">file_upload</i> Upload Data File</h3>
             <p class="form-description">
-                Import sample data from CSV files. The system will automatically create sources, samples, storage locations, and aliquots based on your data.
+                Import sample data from CSV or XLSX files. The system will automatically create sources, samples, storage locations, and aliquots based on your data.
             </p>
 
             <form method="post" enctype="multipart/form-data">
@@ -130,6 +130,11 @@
                         <div class="preview-list-item">
                             <strong>With Locations:</strong> {{ preview_data.locations }}
                         </div>
+                        {% if preview_data.skipped_rows %}
+                        <div class="preview-list-item">
+                            <strong>Skipped (empty slots and note rows):</strong> {{ preview_data.skipped_rows }}
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
