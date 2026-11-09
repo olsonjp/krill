@@ -108,6 +108,7 @@ The storage hierarchy is built automatically:
 
 ### Disposition
 - Current status of the aliquot
+- The column must be present, but a blank value defaults to "In Storage" (e.g. for an audit export where every tube is in the freezer)
 - Creates a new AliquotDisposition record if it doesn't exist
 - Accepted values:
 
