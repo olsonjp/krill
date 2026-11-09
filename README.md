@@ -241,13 +241,11 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 
 **Data**
 - [Data Import Guide](docs/DATA_IMPORT.md) - How to structure CSV files for importing sample data
-- [Database Setup Guide](docs/deployment/DATABASE_SETUP.md) - SQLite and PostgreSQL configuration
+- [Database Setup Guide](docs/database.md) - SQLite and PostgreSQL configuration
 
 **Deployment**
-- [Docker Guide](docs/deployment/DOCKER.md) - Building and running the Docker images
-- [Dockerfile Deployment Guide](docs/deployment/DOCKERFILE_DEPLOYMENT.md) - How the Dockerfile handles the working directory
-- [Production Deployment Guide](docs/deployment/PRODUCTION_DEPLOYMENT.md) - Complete production deployment instructions
-- [DigitalOcean App Platform Quick Reference](docs/deployment/DO_APP_PLATFORM_QUICK_REF.md) - DO-specific deployment guide
+- [Deployment Guide](docs/deployment/README.md) - Docker images, environment variables, security checklist, troubleshooting
+- [DigitalOcean App Platform](docs/deployment/digitalocean.md) - Platform-specific setup and `doctl` commands
 
 See also the [docs index](docs/README.md).
 

@@ -1,5 +1,7 @@
 # Database Setup Guide
 
+Run `manage.py` commands from the `krill/` directory (or use the `make` targets). For production deployment see the [deployment guide](deployment/README.md).
+
 This guide explains how to set up and switch between SQLite (local development) and PostgreSQL (production) databases in the Krill project.
 
 ## Overview
@@ -53,7 +55,7 @@ The project is configured to support both database engines:
 The project includes several environment file templates:
 
 - `env.example` - Basic configuration for local development
-- [`env.production.example`](env.production.example) - Production configuration with PostgreSQL
+- [`env.production.example`](deployment/env.production.example) - Production configuration with PostgreSQL
 - `.env` - Your actual environment file (create this)
 
 ### Key Environment Variables
@@ -231,9 +233,6 @@ python manage.py dbshell
 
 # Check Django settings
 python manage.py check
-
-# Validate models
-python manage.py validate
 
 # Show database info
 python manage.py setup_db --check

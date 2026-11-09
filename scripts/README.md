@@ -47,12 +47,12 @@ This ensures that all committed code has consistent whitespace formatting.
 
 Builds the Docker images (`development`, `testing`, `production`, `all`, `test`, `push`).
 Normally invoked through `make build-*` / `make test-docker`. See
-[the Docker guide](../docs/deployment/DOCKER.md).
+[the deployment guide](../docs/deployment/README.md).
 
 ## deploy.sh
 
 Helper for deploying to DigitalOcean App Platform with `doctl`. See
-[the production deployment guide](../docs/deployment/PRODUCTION_DEPLOYMENT.md).
+[the DigitalOcean guide](../docs/deployment/digitalocean.md).
 
 ## init.sql
 
