@@ -12,7 +12,14 @@ Krill supports importing sample data via CSV files. The import process creates:
 - **Tubes**: Individual tubes within aliquots
 - **Locations**: Physical storage positions within boxes
 
-## CSV Format Requirements
+## File Format Requirements
+
+Upload either a **CSV** or an **XLSX** workbook. For XLSX only the **first sheet** is read; blank rows are skipped, formulas are read as their last saved value, and legacy `.xls` files must be re-saved as `.xlsx` or CSV. The sections below describe the CSV details; an XLSX is treated as the same table of columns.
+
+### Rows that are skipped
+A row is skipped when it has **no value in any column except** `Site`, `Freezer Name`, `Position 1`-`4` and `Aliquot Type`. These are typically empty slots listed in a pre-filled box grid. The import preview shows how many rows were skipped. A row with any other value (for example only a passage number or lab member) is still imported. Skipped slots can be added later in Krill if a tube is found there.
+
+A row with **no cell line and no location** (no site, freezer or positions) is also skipped. These are comments typed into the sheet, such as "COMPLETE BOX H MISSING" in the `Experiment #` column. A row that has a cell line but no location is still imported.
 
 ### File Format
 - **Delimiter**: Auto-detected — comma (`,`), semicolon (`;`), tab (`\t`), or pipe (`|`) all work
@@ -101,6 +108,7 @@ The storage hierarchy is built automatically:
 
 ### Disposition
 - Current status of the aliquot
+- The column must be present, but a blank value defaults to "In Storage" (e.g. for an audit export where every tube is in the freezer)
 - Creates a new AliquotDisposition record if it doesn't exist
 - Accepted values:
 
