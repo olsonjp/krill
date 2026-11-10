@@ -6,10 +6,9 @@ This guide explains how to structure CSV files for importing sample data into Kr
 
 Krill supports importing sample data via CSV files. The import process creates:
 - **Sources**: Sample sources/origins
-- **Samples**: Cell lines or sample types
+- **Samples**: Cell lines or other specimen types (the `Cell Line` column becomes a Sample in Krill)
 - **Storage Hierarchy**: Sites → Devices (freezers) → Shelves → Racks → Boxes
-- **Aliquots**: Individual sample aliquots
-- **Tubes**: Individual tubes within aliquots
+- **Aliquots**: One per physical tube. An aliquot is a single portion of a sample
 - **Locations**: Physical storage positions within boxes
 
 ## File Format Requirements
@@ -53,7 +52,7 @@ The CSV file must include the following columns (in any order):
 | Column Name | Required | Description | Example |
 |------------|----------|-------------|---------|
 | `Source` | Yes | Name of the sample source/origin | "Example Lab" |
-| `Cell Line` | Yes | Name/identifier of the cell line or sample | "MM134" |
+| `Cell Line` | Yes | Name of the cell line or other specimen type. It becomes a Sample in Krill | "MM134" |
 | `Experiment #` | No | Experiment identifier | "EXP_001" |
 | `Sample Notes` | No | Notes about the sample | "Legacy sample from 2017" |
 | `Site` | No | Name of the storage site/location | "Main Lab", "Satellite Facility" |
@@ -63,7 +62,7 @@ The CSV file must include the following columns (in any order):
 | `Position 3` | No | Row position within the box (1-based) | "1" |
 | `Position 4` | No | Column position within the box (1-based) | "5" |
 | `Aliquot Type` | Yes | Type of aliquot | "Cells", "DNA", "RNA" |
-| `Number of Aliquots Total` | Yes | Total number of tubes/aliquots | "6" |
+| `Number of Aliquots Total` | Yes | How many aliquots (tubes) this row represents | "6" |
 | `Disposition` | Yes | Current status of the aliquot | "stored", "in_use", "exhausted", "disposed" (or legacy aliases) |
 | `Passage Number` | No | Passage when the aliquot was frozen, stored as written on the aliquot | "p8", "p20EV p39+4-5" |
 | `Lab Member` | No | Initials of who prepared the aliquot | "JS" |
@@ -138,9 +137,9 @@ How `Position 1` and `Position 2` map onto the hierarchy is set by the optional 
 - Examples: "Cells", "DNA", "RNA", "Plasma", etc.
 
 ### Number of Aliquots Total
-- Determines how many tubes are created for this aliquot
+- Determines how many aliquots (tubes) are created for the row
 - Must be a positive integer
-- Each tube gets a sequential tube number (1, 2, 3, ...)
+- The row's box position (`Position 3` and `Position 4`) is stored on the first of them
 - If empty or invalid, defaults to 1
 
 ### Disposition
@@ -205,9 +204,8 @@ For each row in your CSV:
    - Site → Device → Shelf → Rack → Box
 4. **AliquotType** (if new)
 5. **AliquotDisposition** (if new)
-6. **Aliquot** (one per row)
-7. **AliquotTubes** (one per `Number of Aliquots Total`)
-8. **AliquotLocation** (if Position 3 and Position 4 provided)
+6. **Aliquots** (one per `Number of Aliquots Total`; each is one tube)
+7. **AliquotLocation** (if Position 3 and Position 4 provided)
 
 ### Duplicate Handling
 
@@ -226,7 +224,7 @@ For each row in your CSV:
 ### Issue: Samples imported but no storage locations
 **Solution**: Ensure `Freezer Name`, `Position 1`, and `Position 2` are provided. `Position 3` and `Position 4` are optional but both must be present together.
 
-### Issue: Wrong number of tubes created
+### Issue: Wrong number of aliquots created
 **Solution**: Check the `Number of Aliquots Total` column. It must be a positive integer. Empty values default to 1.
 
 ### Issue: Disposition not recognized

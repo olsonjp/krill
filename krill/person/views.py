@@ -281,7 +281,7 @@ def is_xlsx_file(path):
 class DataImportForm(forms.Form):
     csv_file = forms.FileField(
         label='Data File',
-        help_text='Upload a CSV or XLSX file with sample data (for XLSX, the first sheet is used). Expected columns: Source;Cell Line;Experiment #;Sample Notes;Site;Freezer Name;Position 1;Position 2;Position 3;Position 4;Aliquot Type;Number of Aliquots Total;Disposition (Site is optional, defaults to "Default Site")'
+        help_text='Upload a CSV or XLSX file with sample data (for XLSX, the first sheet is used). Each Cell Line becomes a Sample, and each tube becomes an aliquot. Expected columns: Source;Cell Line;Experiment #;Sample Notes;Site;Freezer Name;Position 1;Position 2;Position 3;Position 4;Aliquot Type;Number of Aliquots Total;Disposition (Site is optional, defaults to "Default Site")'
     )
 
     def clean_csv_file(self):

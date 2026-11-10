@@ -810,3 +810,30 @@ class AliquotSearchViewPageSizeTest(TestCase):
         response = self.client.get(reverse('sample:aliquot_search') + '?page_size=999')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context['aliquots'].paginator.per_page, 50)
+
+
+class SampleWordingAndExperimentTest(SampleViewTest):
+    """A sample is a cell line or other specimen type; an aliquot is one tube. Experiment is editable."""
+
+    def test_sample_list_explains_samples_and_aliquots(self):
+        self.client.force_login(self.user)
+        page = self.client.get(reverse('sample:sample_list'))
+        self.assertContains(page, 'A sample is a cell line or other specimen type')
+        page = self.client.get(reverse('sample:sample_list'), {'type': 'aliquot'})
+        self.assertContains(page, 'An aliquot is one tube')
+
+    def test_create_form_offers_the_experiment_field_and_saves_it(self):
+        self.client.force_login(self.user)
+        url = reverse('sample:sample_create') + '?type=sample'
+        self.assertContains(self.client.get(url), 'name="experiment"')
+        response = self.client.post(url, {
+            'name': 'MCF7', 'experiment': 'EXP_W21B', 'source': self.source.pk,
+            'notes': '', 'access_level': 'all_members',
+        })
+        self.assertIn(response.status_code, (200, 302))
+        self.assertEqual(Sample.objects.get(name='MCF7').experiment, 'EXP_W21B')
+
+    def test_detail_page_shows_the_experiment_field_for_editing(self):
+        self.client.force_login(self.user)
+        page = self.client.get(reverse('sample:detail', kwargs={'type': 'sample', 'pk': self.sample.pk}))
+        self.assertContains(page, 'name="experiment"')
