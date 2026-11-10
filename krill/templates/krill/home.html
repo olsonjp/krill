@@ -2,37 +2,46 @@
 {% load static %}
 
 {% block content %}
-<div class="home-container">
-    <!-- Welcome Section -->
-    <div class="welcome-section">
-        <h1>Welcome to Krill</h1>
-        <p class="subtitle">Laboratory Information Management System</p>
+<div class="home-container dashboard">
+    <div class="dashboard-header">
+        <h1>Dashboard</h1>
+        <p class="subtitle">
+            {{ stats.aliquots }} aliquot{{ stats.aliquots|pluralize }} of {{ stats.active_samples }} sample{{ stats.active_samples|pluralize }}
+            &bull; {{ stats.used_slots }} of {{ stats.total_slots }} storage slots used ({{ stats.storage_usage }}%)
+        </p>
     </div>
 
-    <!-- Quick Stats -->
+    <!-- Quick Stats: every card leads somewhere useful -->
     <div class="stats-container">
         <a href="{% url 'sample:sample_list' %}" class="stat-card clickable">
             <span class="material-icons-round">science</span>
             <div class="stat-info">
-                <h3>Active Samples</h3>
+                <h3>Samples</h3>
                 <p>{{ stats.active_samples|default:"0" }}</p>
             </div>
         </a>
-        <a href="{% url 'storage:storage_list' %}" class="stat-card clickable">
+        <a href="{% url 'sample:sample_list' %}?type=aliquot" class="stat-card clickable">
+            <span class="material-icons-round">biotech</span>
+            <div class="stat-info">
+                <h3>Aliquots</h3>
+                <p>{{ stats.aliquots|default:"0" }}</p>
+            </div>
+        </a>
+        <a href="{% url 'storage:storage_list' %}" class="stat-card clickable {% if stats.storage_usage > 90 %}stat-card-warning{% endif %}">
             <span class="material-icons-round">inventory_2</span>
             <div class="stat-info">
-                <h3>Storage Usage</h3>
+                <h3>Storage Used</h3>
                 <p>{{ stats.storage_usage|default:"0" }}%</p>
             </div>
         </a>
-        <a href="{% url 'reports:reports_dashboard' %}" class="stat-card clickable">
-            <span class="material-icons-round">description</span>
+        <a href="{% url 'reports:audit_list' %}" class="stat-card clickable {% if audits_in_progress %}stat-card-warning{% endif %}">
+            <span class="material-icons-round">fact_check</span>
             <div class="stat-info">
-                <h3>Reports</h3>
-                <p>{% if stats.recent_reports %}{{ stats.recent_reports }} this week{% else %}None this week{% endif %}</p>
+                <h3>Audits</h3>
+                <p>{% if audits_in_progress %}{{ audits_in_progress|length }} in progress{% else %}None in progress{% endif %}</p>
             </div>
         </a>
-        <a href="{% url 'reports:alert_list' %}" class="stat-card clickable">
+        <a href="{% url 'reports:alert_list' %}" class="stat-card clickable {% if stats.alerts %}stat-card-warning{% endif %}">
             <span class="material-icons-round">warning</span>
             <div class="stat-info">
                 <h3>Alerts</h3>
@@ -57,58 +66,8 @@
         {% endif %}
     </div>
 
-    <!-- Recent Activity -->
-    <div class="recent-activity">
-        <div class="section-header">
-            <h2>Recent Activity</h2>
-            <a href="{% url 'person:audit_log' %}" class="view-all">View All</a>
-        </div>
-        <div class="activity-list">
-            {% if recent_activity %}
-                {% for activity in recent_activity %}
-                {% if activity.action_type == 'system_init' %}
-                <div class="activity-item">
-                    <span class="material-icons-round">info</span>
-                    <div class="activity-info">
-                        <p>{{ activity.message }}</p>
-                        <small>{{ activity.time_ago }}</small>
-                    </div>
-                </div>
-                {% else %}
-                <a href="{% if activity.target_id %}{% if 'sample' in activity.action_type or activity.target_type == 'Sample' %}{% url 'sample:detail' type='sample' pk=activity.target_id %}{% elif 'aliquot' in activity.action_type or activity.target_type == 'Aliquot' %}{% url 'sample:detail' type='aliquot' pk=activity.target_id %}{% elif activity.target_type == 'User' %}{% url 'person:user_detail' activity.target_id %}{% else %}{% url 'sample:sample_list' %}{% endif %}{% else %}{% if 'aliquot' in activity.action_type %}{% url 'sample:sample_list' %}?type=aliquot{% else %}{% url 'sample:sample_list' %}{% endif %}{% endif %}" class="activity-item clickable">
-                    <span class="material-icons-round">
-                        {% if activity.action_type == 'sample_created' or activity.action_type == 'aliquot_created' %}
-                            add_circle
-                        {% elif activity.action_type == 'sample_updated' or activity.action_type == 'aliquot_updated' %}
-                            edit
-                        {% elif activity.action_type == 'sample_deleted' %}
-                            delete
-                        {% else %}
-                            info
-                        {% endif %}
-                    </span>
-                    <div class="activity-info">
-                        <p>{{ activity.message }}</p>
-                        <small>{{ activity.time_ago }}</small>
-                    </div>
-                </a>
-                {% endif %}
-                {% endfor %}
-            {% else %}
-                <div class="activity-item">
-                    <span class="material-icons-round">info</span>
-                    <div class="activity-info">
-                        <p>No activity yet</p>
-                        <small>Create a sample or aliquot to get started</small>
-                    </div>
-                </div>
-            {% endif %}
-        </div>
-    </div>
-
     <!-- Quick Actions -->
     <div class="quick-actions">
-        <h2>Quick Actions</h2>
         <div class="action-grid">
             <a href="{% url 'sample:sample_create' %}?type=aliquot" class="action-btn">
                 <span class="material-icons-round">add_circle</span>
@@ -118,14 +77,90 @@
                 <span class="material-icons-round">search</span>
                 Find Aliquot
             </a>
-            <a href="{% url 'reports:reports_dashboard' %}" class="action-btn">
-                <span class="material-icons-round">summarize</span>
-                Generate Report
+            <a href="{% url 'reports:generate_audit_report' %}" class="action-btn">
+                <span class="material-icons-round">fact_check</span>
+                Start Audit
             </a>
-            <a href="{% url 'settings' %}" class="action-btn">
-                <span class="material-icons-round">settings</span>
-                Settings
+        </div>
+    </div>
+
+    <!-- Freezers -->
+    <div class="recent-activity">
+        <div class="section-header">
+            <h2>Freezers</h2>
+            <a href="{% url 'storage:storage_list' %}" class="view-all">View All</a>
+        </div>
+        {% if freezers %}
+        <div class="freezer-grid">
+            {% for card in freezers %}
+            <a href="{% url 'storage:detail' type='device' pk=card.device.pk %}" class="freezer-card level-{{ card.level }}">
+                <div class="freezer-top">
+                    <strong>{{ card.device.name }}</strong>
+                    <span class="freezer-percent">{{ card.percent }}%</span>
+                </div>
+                <div class="fill-bar" role="progressbar" aria-valuenow="{{ card.percent }}" aria-valuemin="0" aria-valuemax="100"
+                     aria-label="{{ card.device.name }} is {{ card.percent }} percent full">
+                    <div class="fill-bar-value" style="width: {{ card.percent }}%"></div>
+                </div>
+                <div class="freezer-meta">
+                    <span>{{ card.used }} of {{ card.total }} slots</span>
+                    <span>{{ card.device.site.name }}</span>
+                </div>
+                <small class="freezer-last">Last change: {{ card.last_activity }}</small>
             </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="activity-list"><div class="activity-item"><div class="activity-info"><p>No freezers yet</p></div></div></div>
+        {% endif %}
+    </div>
+
+    {% if audits_in_progress %}
+    <div class="recent-activity">
+        <div class="section-header">
+            <h2>In progress</h2>
+            <a href="{% url 'reports:audit_list' %}" class="view-all">All audits</a>
+        </div>
+        <div class="activity-list">
+            {% for item in audits_in_progress %}
+            <a href="{% url 'reports:audit_detail' item.report.id %}" class="activity-item clickable">
+                <span class="material-icons-round">fact_check</span>
+                <div class="activity-info">
+                    <p>{{ item.report.name }}</p>
+                    <small>{{ item.progress.checked }} of {{ item.progress.total }} checked
+                        {% if item.progress.wrong %}&bull; {{ item.progress.wrong }} wrong{% endif %}
+                        &bull; started by {{ item.report.created_by.username }}</small>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Recent Activity -->
+    <div class="recent-activity">
+        <div class="section-header">
+            <h2>Recent Activity</h2>
+            <a href="{% url 'person:audit_log' %}" class="view-all">View All</a>
+        </div>
+        <div class="activity-list">
+            {% for activity in recent_activity %}
+            <a href="{{ activity.url }}" class="activity-item clickable">
+                <span class="material-icons-round">{% if 'created' in activity.verb %}add_circle{% elif 'updated' in activity.verb %}edit{% elif 'archived' in activity.verb %}delete{% else %}info{% endif %}</span>
+                <div class="activity-info">
+                    <p><strong>{{ activity.user }}</strong> {{ activity.verb }}{% if activity.target %} <strong>{{ activity.target }}</strong>{% endif %}{% if activity.place %} in {{ activity.place }}{% endif %}</p>
+                    <small>{{ activity.time_ago }}</small>
+                </div>
+            </a>
+            {% empty %}
+            <div class="activity-item">
+                <span class="material-icons-round">info</span>
+                <div class="activity-info">
+                    <p>No activity yet</p>
+                    <small>Create a sample or aliquot to get started</small>
+                </div>
+            </div>
+            {% endfor %}
         </div>
     </div>
 </div>
@@ -134,6 +169,23 @@
 <script src="{% static 'js/dashboard.js' %}"></script>
 
 <style>
+    .dashboard { max-width: 1600px; margin: 0 auto; }
+    .dashboard-header { margin-bottom: 20px; }
+    .dashboard-header .subtitle { color: var(--color-dark-variant); margin-top: 6px; }
+    .freezer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+    .freezer-card { display: flex; flex-direction: column; gap: 10px; padding: 16px; text-decoration: none;
+        background: var(--color-white); color: var(--color-dark); border: 1px solid var(--color-light);
+        border-radius: var(--border-radius-1); transition: box-shadow .2s; }
+    .freezer-card:hover { box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15); }
+    .freezer-top, .freezer-meta { display: flex; justify-content: space-between; gap: 8px; }
+    .freezer-percent { font-weight: 600; }
+    .freezer-meta { color: var(--color-dark-variant); font-size: 0.85rem; }
+    .freezer-last { color: var(--color-dark-variant); }
+    .fill-bar { height: 10px; border-radius: 999px; background: var(--color-gray-medium, #e9ecef); overflow: hidden; }
+    .fill-bar-value { height: 100%; border-radius: 999px; background: var(--color-success); }
+    .level-warn .fill-bar-value { background: var(--color-warning, #f5a623); }
+    .level-full .fill-bar-value { background: var(--color-danger); }
+    .level-full .freezer-percent { color: var(--color-danger); }
     .storage-card .progress svg circle {
         stroke-dashoffset: calc(227 - (227 * var(--percentage)) / 100);
     }
