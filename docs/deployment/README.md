@@ -20,7 +20,7 @@ The multi-stage [`Dockerfile`](../../Dockerfile) installs dependencies with `uv`
 |--------|---------|---------|
 | `development` | Local container with dev dependencies | `runserver 0.0.0.0:8000` |
 | `testing` | Isolated test run | `manage.py test --verbosity=2` |
-| `production` | Non-root user, static files collected | `manage.py migrate` then `gunicorn krill.wsgi:application` (3 workers) |
+| `production` | Non-root user, static files collected | `manage.py migrate` then `gunicorn krill.wsgi:application` (3 workers, control socket off) |
 
 The Django project lives in the `krill/` subdirectory, so the production stage sets
 `WORKDIR /app/krill`. That is what makes `krill.wsgi:application` resolve to
