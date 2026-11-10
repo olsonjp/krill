@@ -1255,3 +1255,70 @@ class ImportBuildsOnExistingDataTest(TestCase):
         with self.assertRaises(ImportConflictError) as ctx:
             self._convert(self.CSV.replace('HeLa;', 'HELA;'))
         self.assertIn('probably already been imported', str(ctx.exception))
+
+
+class ImportStorageTypeTest(TestCase):
+    """The optional 'Storage Type' column: Dewar hangs every cane under one shelf, Freezer (default) uses Position 2 as the shelf."""
+
+    HEADER = ('Cell Line;Source;Freezer Name;Site;Position 1;Position 2;Position 3;Position 4;'
+              'Aliquot Type;Disposition;Sample Notes;Experiment #;Storage Type\n')
+
+    def _convert(self, rows, header=None):
+        import tempfile, os
+        with tempfile.NamedTemporaryFile(suffix='.csv', delete=False, mode='w') as f:
+            f.write((header or self.HEADER) + ''.join(rows))
+        try:
+            return DataImportView().convert_csv_to_fixtures(f.name)
+        finally:
+            os.unlink(f.name)
+
+    def test_dewar_hangs_all_canes_under_one_shelf(self):
+        # Only one row per freezer needs to say "Dewar".
+        fixtures = self._convert([
+            'HeLa;Lab;Dewer;Main;1;A;1;1;Cells;In Storage;;;Dewar\n',
+            'HeLa;Lab;Dewer;Main;2;B;1;1;Cells;In Storage;;;\n',
+            'HeLa;Lab;Dewer;Main;4;J;1;2;Cells;In Storage;;;\n',
+        ])
+        shelves = [f for f in fixtures if f['model'] == 'storage.shelf']
+        racks = [f for f in fixtures if f['model'] == 'storage.rack']
+        self.assertEqual([s['fields']['name'] for s in shelves], ['Canes'])
+        self.assertEqual({r['fields']['shelf'] for r in racks}, {shelves[0]['pk']})
+        self.assertEqual(sorted(r['fields']['name'] for r in racks), ['1', '2', '4'])
+        self.assertEqual(sorted(b['fields']['name'] for b in fixtures if b['model'] == 'storage.box'), ['1_A', '2_B', '4_J'])
+
+    def test_freezer_is_the_default_without_the_column_and_uses_position_2_as_the_shelf(self):
+        header = self.HEADER.replace(';Storage Type', '')
+        fixtures = self._convert([
+            'HeLa;Lab;Freezer;Main;1;Top;1;1;Cells;In Storage;;\n',
+            'HeLa;Lab;Freezer;Main;1;Bottom;1;1;Cells;In Storage;;\n',
+        ], header)
+        shelves = {f['pk']: f['fields']['name'] for f in fixtures if f['model'] == 'storage.shelf'}
+        self.assertEqual(sorted(shelves.values()), ['Bottom', 'Top'])
+        racks = [f['fields'] for f in fixtures if f['model'] == 'storage.rack']
+        # The same rack name on two shelves is two racks, one per shelf.
+        self.assertEqual(sorted(shelves[r['shelf']] for r in racks), ['Bottom', 'Top'])
+
+    def test_dewar_and_freezer_can_share_a_file_and_header_case_is_ignored(self):
+        header = self.HEADER.replace('Storage Type', 'STORAGE TYPE')
+        fixtures = self._convert([
+            'HeLa;Lab;Dewer;Main;1;A;1;1;Cells;In Storage;;;dewar\n',
+            'HeLa;Lab;Freezer;Main;1;Top;1;1;Cells;In Storage;;;Freezer\n',
+        ], header)
+        devices = {f['pk']: f['fields']['name'] for f in fixtures if f['model'] == 'storage.device'}
+        shelf_names = {devices[f['fields']['device']]: f['fields']['name'] for f in fixtures if f['model'] == 'storage.shelf'}
+        self.assertEqual(shelf_names, {'Dewer': 'Canes', 'Freezer': 'Top'})
+
+    def test_unknown_storage_type_is_an_error_naming_the_row(self):
+        with self.assertRaises(ValueError) as ctx:
+            self._convert(['HeLa;Lab;Dewer;Main;1;A;1;1;Cells;In Storage;;;Shed\n'])
+        self.assertIn("Row 2: Storage Type must be 'Freezer' or 'Dewar'", str(ctx.exception))
+
+    def test_boxes_default_to_9x9_and_grow_to_fit(self):
+        fixtures = self._convert([
+            'HeLa;Lab;Dewer;Main;1;A;9;9;Cells;In Storage;;;Dewar\n',
+            'HeLa;Lab;Dewer;Main;3;C;10;10;Cells;In Storage;;;\n',
+            'HeLa;Lab;Dewer;Main;3;D;2;3;Cells;In Storage;;;\n',
+        ])
+        sizes = {b['fields']['name']: (b['fields']['rows'], b['fields']['columns'])
+                 for b in fixtures if b['model'] == 'storage.box'}
+        self.assertEqual(sizes, {'1_A': (9, 9), '3_C': (10, 10), '3_D': (9, 9)})

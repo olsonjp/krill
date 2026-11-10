@@ -18,12 +18,13 @@ Upload either a **CSV** or an **XLSX** workbook. For XLSX only the **first sheet
 
 ### Importing into a database that already has data
 The import adds to what is already in Krill. It never overwrites or renames existing records:
-- **Matched by exact name and reused:** sources, aliquot types, dispositions and sites. **Cell lines** are matched ignoring upper/lower case and surrounding spaces (`MM134`, `mm134` and `MM134 ` are the same sample); a new sample keeps the first spelling seen in the file. Freezers are matched by name within their site, and shelves, racks and boxes by name within their freezer. The preview lists what was matched ("Matched to existing records") and only counts the genuinely new ones.
+- **Matched by exact name and reused:** sources, aliquot types, dispositions and sites. **Cell lines** are matched ignoring upper/lower case and surrounding spaces (`MM134`, `mm134` and `MM134 ` are the same sample); a new sample keeps the first spelling seen in the file. Freezers are matched by name within their site, and shelves and boxes by name within their freezer and racks by name within their shelf. The preview lists what was matched ("Matched to existing records") and only counts the genuinely new ones.
 - **Existing records are left as they are.** An existing sample keeps its notes; new aliquots are attached to it.
 - **Anything not matched is created** alongside the existing data, so a freezer or site spelled differently from the one already in Krill becomes a second, separate freezer. Use the same `Site` and `Freezer Name` as in Krill to add to an existing one.
 - **Storage slots are never double-booked.** If a slot is already occupied (by existing data, or by two rows of the file), the import stops before changing anything and lists the slots.
 - Importing the same file twice is therefore refused; to replace data, remove it first (for example `manage.py wipe_samples`).
 - To replace an old freezer layout with the one in your sheet, remove it first with `manage.py delete_storage --site 'Old Site'` (or `--freezer 'Old Freezer'` for one freezer). It deletes the site or freezer with its shelves, racks and boxes, is a dry run unless you add `--yes`, and refuses while any aliquot is still stored in those boxes (run `wipe_samples` first). Take a database backup before using either command.
+- Data imported before the `Canes` shelf change has one shelf per box letter, with every cane under the first. Repair it in place, without re-importing, using `manage.py fix_canes_layout` (a dry run unless you add `--yes`). It renames the shelf that holds the racks to `Canes`, removes the empty shelves, and shrinks 10x10 boxes to 9x9 when no tube sits beyond that. Aliquots and their locations are not touched, and freezers whose racks are spread over several shelves are left alone.
 
 ### Linking lab members to users
 `Lab Member` initials are stored as written. To link them to user accounts after an import, map initials to usernames:
@@ -58,7 +59,7 @@ The CSV file must include the following columns (in any order):
 | `Site` | No | Name of the storage site/location | "Main Lab", "Satellite Facility" |
 | `Freezer Name` | Yes* | Name of the freezer/storage device | "Freezer A" |
 | `Position 1` | Yes* | Rack identifier | "4" |
-| `Position 2` | Yes* | Shelf identifier | "F" |
+| `Position 2` | Yes* | Shelf (freezer layout) or box letter on the cane (dewar layout) | "F" |
 | `Position 3` | No | Row position within the box (1-based) | "1" |
 | `Position 4` | No | Column position within the box (1-based) | "5" |
 | `Aliquot Type` | Yes | Type of aliquot | "Cells", "DNA", "RNA" |
@@ -66,6 +67,7 @@ The CSV file must include the following columns (in any order):
 | `Disposition` | Yes | Current status of the aliquot | "stored", "in_use", "exhausted", "disposed" (or legacy aliases) |
 | `Passage Number` | No | Passage when the aliquot was frozen, stored as written on the aliquot | "p8", "p20EV p39+4-5" |
 | `Lab Member` | No | Initials of who prepared the aliquot | "JS" |
+| `Storage Type` | No | `Freezer` (default) or `Dewar`; see Storage Hierarchy | "Dewar" |
 | `Sample date` | No | Date the aliquot was prepared | "2019-11-01", "7/2021" |
 
 \* Required if you want to assign storage locations. If omitted, samples will be imported without storage assignments.
@@ -112,9 +114,16 @@ The storage hierarchy is built automatically:
 
 1. **Site**: Created from `Site` column, or defaults to "Default Site" if not provided
 2. **Device (Freezer)**: Created from `Freezer Name`
-3. **Shelf**: Created from `Position 2`
-4. **Rack**: Created from `Position 1`
-5. **Box**: Created with name `{Position 1}_{Position 2}` (e.g., "4_F")
+3. **Shelf**: depends on the **Storage type** (Freezer or Dewar) given in the `Storage Type` column (see below)
+4. **Rack**: Created from `Position 1`, matched by name within its shelf
+5. **Box**: Named `{Position 1}_{Position 2}` (e.g., "4_F"). New boxes are 9x9 and grow only if a position in the sheet is larger. Existing boxes are never resized
+
+How `Position 1` and `Position 2` map onto the hierarchy is set by the optional `Storage Type` column (`Freezer` or `Dewar`, any case). Filling it on one row of a freezer is enough for every row of that freezer; leave the column out, or blank, for `Freezer`. One file can mix both. Any other value stops the import and names the row.
+
+| Storage type | Shelf | Rack | Box |
+|---|---|---|---|
+| **Freezer** (default) | `Position 2` | `Position 1`, on that shelf | `{Position 1}_{Position 2}` |
+| **Dewar** | one shelf named `Canes` | `Position 1` (the cane) | `{Position 1}_{Position 2}` (the box on that cane) |
 
 **Note**: All storage objects are created automatically if they don't exist. Duplicate names are reused.
 

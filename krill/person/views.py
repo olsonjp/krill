@@ -40,7 +40,7 @@ IMPORT_COLUMNS = (
     'Source', 'Cell Line', 'Experiment #', 'Sample Notes', 'Site', 'Freezer Name',
     'Position 1', 'Position 2', 'Position 3', 'Position 4', 'Aliquot Type',
     'Number of Aliquots Total', 'Collef Aliquots Total', 'Disposition',
-    'Passage Number', 'Lab Member', 'Sample date',
+    'Passage Number', 'Lab Member', 'Sample date', 'Storage Type',
 )
 
 
@@ -61,6 +61,17 @@ def normalize_import_headers(fieldnames):
             result.append(header)
     return result
 
+
+# The optional 'Storage Type' column says how Position 1 and Position 2 map onto the
+# hierarchy for that freezer. Freezer (the default): Position 2 is the shelf, Position 1
+# the rack on it. Dewar: one shelf holds every cane (Position 1) and Position 2 is the
+# box on the cane. Filling it on one row of a freezer is enough.
+STORAGE_TYPE_FREEZER = 'freezer'
+STORAGE_TYPE_DEWAR = 'dewar'
+DEWAR_SHELF_NAME = 'Canes'
+
+# Boxes are 9x9 unless the sheet places a tube beyond that.
+DEFAULT_BOX_SIZE = 9
 
 # Columns that only say where a tube is and what kind it is. A row with a value in
 # none of the *other* columns carries no sample information (typically an empty slot
@@ -165,8 +176,9 @@ def load_existing_import_context():
     """Read what the import must build on: existing rows by natural key, the next free
     primary key per model, and the storage slots that are already occupied.
 
-    Names are matched exactly. Shelves, racks and boxes are matched by name within
-    their freezer, which preserves how earlier imports shaped the hierarchy.
+    Names are matched exactly. Shelves and boxes are matched by name within their
+    freezer and racks by name within their shelf, which preserves how earlier imports
+    shaped the hierarchy.
     """
     from django.db.models import Max
     from sample.models.source import Source
@@ -201,7 +213,7 @@ def load_existing_import_context():
         'sites': first_by_name(Site.objects),
         'devices': scoped(Device.objects, 'site_id'),
         'shelves': scoped(Shelf.objects, 'device_id'),
-        'racks': scoped(Rack.objects, 'shelf__device_id'),
+        'racks': scoped(Rack.objects, 'shelf_id'),
         'boxes': scoped(Box.objects, 'rack__shelf__device_id'),
         'occupied_slots': {
             (box_id, row, column): ('existing', aliquot_id, sample_name)
@@ -685,6 +697,22 @@ class DataImportView(TemplateView):
             summary += " Every refused row matches an aliquot already in those slots, so this file has probably already been imported."
         return summary
 
+    @staticmethod
+    def find_dewars(rows):
+        """Return the (site, freezer) pairs the 'Storage Type' column marks as dewars."""
+        dewars = set()
+        for number, row in enumerate(rows, start=2):   # row 1 is the header
+            kind = (row.get('Storage Type') or '').strip().casefold()
+            if not kind:
+                continue
+            if kind not in (STORAGE_TYPE_FREEZER, STORAGE_TYPE_DEWAR):
+                raise ValueError(
+                    f"Row {number}: Storage Type must be 'Freezer' or 'Dewar' (or left blank), not '{row['Storage Type']}'."
+                )
+            if kind == STORAGE_TYPE_DEWAR:
+                dewars.add(((row.get('Site') or '').strip() or 'Default Site', row.get('Freezer Name')))
+        return dewars
+
     def _convert_csv_to_fixtures(self, csv_file_path):
         """Convert CSV file to Django fixtures using the existing convert_csv.py logic"""
         fixtures = []
@@ -698,6 +726,7 @@ class DataImportView(TemplateView):
         pk_counter = defaultdict(lambda: 1, existing['next_pk'])
         occupied_slots = dict(existing['occupied_slots'])   # slot -> who holds it
         slot_conflicts = []
+        box_extent = {}   # box pk -> [highest row, highest column] used in this file
         reused = {name: set() for name in
                   ('sources', 'samples', 'aliquot_types', 'dispositions', 'sites', 'devices', 'shelves', 'racks', 'boxes')}
 
@@ -741,7 +770,9 @@ class DataImportView(TemplateView):
                 delimiter = ';'
             reader = csv.DictReader(f, delimiter=delimiter)
             reader.fieldnames = normalize_import_headers(reader.fieldnames)
-            for row in reader:
+            rows = list(reader)
+            dewars = self.find_dewars(rows)
+            for row in rows:
                 missing = required_columns - row.keys()
                 if missing:
                     raise KeyError(f"Missing required columns: {sorted(missing)}. Found: {sorted(row.keys())}")
@@ -799,9 +830,11 @@ class DataImportView(TemplateView):
                 # Use Site column if provided, otherwise default to "Default Site"
                 site_name = row.get('Site', '').strip() or 'Default Site'
                 freezer_name = row['Freezer Name']
-                shelf_name = row['Position 2']  # e.g., "F"
                 rack_name = row['Position 1']   # e.g., "4"
-                box_name = f"{rack_name}_{shelf_name}"  # e.g., "4_F"
+                box_letter = row['Position 2']  # e.g., "F"
+                box_name = f"{rack_name}_{box_letter}"  # e.g., "4_F"
+                # Freezer: Position 2 is the shelf. Dewar: one shelf holds every cane (Position 1).
+                shelf_name = DEWAR_SHELF_NAME if (site_name, freezer_name) in dewars else box_letter
 
                 if site_name in existing['sites']:
                     reused['sites'].add(site_name)
@@ -837,7 +870,7 @@ class DataImportView(TemplateView):
                         pk_counter['device'] += 1
                     device_pk = storage['devices'][device_key]
 
-                if device_pk is not None and shelf_name and rack_name:
+                if device_pk is not None and box_letter and rack_name:
                     shelf_key = (device_pk, shelf_name)
                     if shelf_key in existing['shelves']:
                         reused['shelves'].add(shelf_key)
@@ -854,7 +887,7 @@ class DataImportView(TemplateView):
                         })
                         pk_counter['shelf'] += 1
 
-                    rack_key = (device_pk, rack_name)
+                    rack_key = (storage['shelves'][shelf_key], rack_name)
                     if rack_key in existing['racks']:
                         reused['racks'].add(rack_key)
                     if rack_key not in storage['racks']:
@@ -882,8 +915,8 @@ class DataImportView(TemplateView):
                                 'name': box_name,
                                 'description': '',
                                 'rack': storage['racks'][rack_key],
-                                'rows': 10,
-                                'columns': 10
+                                'rows': DEFAULT_BOX_SIZE,
+                                'columns': DEFAULT_BOX_SIZE
                             }
                         })
                         pk_counter['box'] += 1
@@ -970,6 +1003,8 @@ class DataImportView(TemplateView):
                         row_pos = int(row['Position 3'])
                         col_pos = int(row['Position 4'])
                         if row_pos > 0 and col_pos > 0:  # Only create location for valid positions
+                            extent = box_extent.setdefault(storage['boxes'][box_key], [0, 0])
+                            extent[0], extent[1] = max(extent[0], row_pos), max(extent[1], col_pos)
                             slot = (storage['boxes'][box_key], row_pos, col_pos)
                             if slot in occupied_slots:
                                 holder = occupied_slots[slot]
@@ -1000,6 +1035,13 @@ class DataImportView(TemplateView):
                     except (ValueError, TypeError) as e:
                         # Log error but continue with import
                         print(f"Warning: Could not create location for aliquot {first_aliquot_pk}: {e}")
+
+        # New boxes are 9x9 unless a tube sits beyond that; existing boxes are left as they are.
+        for fixture in fixtures:
+            if fixture['model'] == 'storage.box' and fixture['pk'] in box_extent:
+                rows, columns = box_extent[fixture['pk']]
+                fixture['fields']['rows'] = max(DEFAULT_BOX_SIZE, rows)
+                fixture['fields']['columns'] = max(DEFAULT_BOX_SIZE, columns)
 
         if slot_conflicts:
             raise ImportConflictError(self._conflict_summary(slot_conflicts), slot_conflicts)
