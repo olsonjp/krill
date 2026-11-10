@@ -62,6 +62,11 @@ def normalize_import_headers(fieldnames):
     return result
 
 
+# One shelf holds every cane (Position 1) in a freezer or dewar; boxes are 9x9 unless
+# the sheet places a tube beyond that.
+IMPORT_SHELF_NAME = 'Canes'
+DEFAULT_BOX_SIZE = 9
+
 # Columns that only say where a tube is and what kind it is. A row with a value in
 # none of the *other* columns carries no sample information (typically an empty slot
 # in a pre-filled box grid) and is skipped on import.
@@ -698,6 +703,7 @@ class DataImportView(TemplateView):
         pk_counter = defaultdict(lambda: 1, existing['next_pk'])
         occupied_slots = dict(existing['occupied_slots'])   # slot -> who holds it
         slot_conflicts = []
+        box_extent = {}   # box pk -> [highest row, highest column] used in this file
         reused = {name: set() for name in
                   ('sources', 'samples', 'aliquot_types', 'dispositions', 'sites', 'devices', 'shelves', 'racks', 'boxes')}
 
@@ -799,9 +805,12 @@ class DataImportView(TemplateView):
                 # Use Site column if provided, otherwise default to "Default Site"
                 site_name = row.get('Site', '').strip() or 'Default Site'
                 freezer_name = row['Freezer Name']
-                shelf_name = row['Position 2']  # e.g., "F"
+                # Position 1 is the cane (stored as a rack), Position 2 the box letter on it.
+                # A dewar has one shelf, so every cane hangs under the same shelf.
+                shelf_name = IMPORT_SHELF_NAME
                 rack_name = row['Position 1']   # e.g., "4"
-                box_name = f"{rack_name}_{shelf_name}"  # e.g., "4_F"
+                box_letter = row['Position 2']  # e.g., "F"
+                box_name = f"{rack_name}_{box_letter}"  # e.g., "4_F"
 
                 if site_name in existing['sites']:
                     reused['sites'].add(site_name)
@@ -837,7 +846,7 @@ class DataImportView(TemplateView):
                         pk_counter['device'] += 1
                     device_pk = storage['devices'][device_key]
 
-                if device_pk is not None and shelf_name and rack_name:
+                if device_pk is not None and box_letter and rack_name:
                     shelf_key = (device_pk, shelf_name)
                     if shelf_key in existing['shelves']:
                         reused['shelves'].add(shelf_key)
@@ -882,8 +891,8 @@ class DataImportView(TemplateView):
                                 'name': box_name,
                                 'description': '',
                                 'rack': storage['racks'][rack_key],
-                                'rows': 10,
-                                'columns': 10
+                                'rows': DEFAULT_BOX_SIZE,
+                                'columns': DEFAULT_BOX_SIZE
                             }
                         })
                         pk_counter['box'] += 1
@@ -970,6 +979,8 @@ class DataImportView(TemplateView):
                         row_pos = int(row['Position 3'])
                         col_pos = int(row['Position 4'])
                         if row_pos > 0 and col_pos > 0:  # Only create location for valid positions
+                            extent = box_extent.setdefault(storage['boxes'][box_key], [0, 0])
+                            extent[0], extent[1] = max(extent[0], row_pos), max(extent[1], col_pos)
                             slot = (storage['boxes'][box_key], row_pos, col_pos)
                             if slot in occupied_slots:
                                 holder = occupied_slots[slot]
@@ -1000,6 +1011,13 @@ class DataImportView(TemplateView):
                     except (ValueError, TypeError) as e:
                         # Log error but continue with import
                         print(f"Warning: Could not create location for aliquot {first_aliquot_pk}: {e}")
+
+        # New boxes are 9x9 unless a tube sits beyond that; existing boxes are left as they are.
+        for fixture in fixtures:
+            if fixture['model'] == 'storage.box' and fixture['pk'] in box_extent:
+                rows, columns = box_extent[fixture['pk']]
+                fixture['fields']['rows'] = max(DEFAULT_BOX_SIZE, rows)
+                fixture['fields']['columns'] = max(DEFAULT_BOX_SIZE, columns)
 
         if slot_conflicts:
             raise ImportConflictError(self._conflict_summary(slot_conflicts), slot_conflicts)
