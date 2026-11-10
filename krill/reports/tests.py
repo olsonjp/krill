@@ -355,3 +355,76 @@ class StorageAuditReportTest(ReportsViewTest):
         today = timezone.now().strftime('%Y-%m-%d')
         self.assertContains(response, f'value="Storage Audit - {today}"')
         self.assertNotContains(response, '2024-01-15')
+
+
+class ResumableAuditTest(StorageAuditReportTest):
+    """Marks are saved per slot, so an audit can be left and resumed."""
+
+    def make_audit(self, **body):
+        response = self.post_audit(**dict({'sample_size': 3}, **body))
+        self.assertEqual(response.status_code, 200, response.content)
+        return response.json()
+
+    def save(self, report_id, **body):
+        return self.client.post(reverse('reports:save_audit_result', args=[report_id]),
+                                json.dumps(body), content_type='application/json')
+
+    def test_generating_returns_the_url_to_resume_at(self):
+        payload = self.make_audit()
+        self.assertEqual(payload['url'], reverse('reports:audit_detail', args=[payload['report_id']]))
+
+    def test_marks_are_saved_and_shown_again_when_reopened(self):
+        report_id = self.make_audit()['report_id']
+        response = self.save(report_id, kind='audit_slots', index=1, result='wrong', notes='box was swapped')
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(response.json()['progress'], {'total': 3, 'checked': 1, 'correct': 0, 'wrong': 1, 'complete': False})
+        self.save(report_id, kind='audit_slots', index=0, result='correct', notes='')
+
+        page = self.client.get(reverse('reports:audit_detail', args=[report_id]))
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, 'box was swapped')
+        self.assertContains(page, '2 of 3')
+        saved = Report.objects.get(pk=report_id).result_data['audit_slots']
+        self.assertEqual([s['result'] for s in saved[:2]], ['correct', 'wrong'])
+
+    def test_audit_is_complete_when_every_slot_is_marked(self):
+        report_id = self.make_audit(include_empty_checks=True)['report_id']
+        data = Report.objects.get(pk=report_id).result_data
+        for key in ('audit_slots', 'empty_audit_slots'):
+            for index in range(len(data[key])):
+                response = self.save(report_id, kind=key, index=index, result='correct')
+        self.assertTrue(response.json()['progress']['complete'])
+
+    def test_a_mark_can_be_cleared(self):
+        report_id = self.make_audit()['report_id']
+        self.save(report_id, kind='audit_slots', index=0, result='correct')
+        response = self.save(report_id, kind='audit_slots', index=0, result='')
+        self.assertEqual(response.json()['progress']['checked'], 0)
+
+    def test_bad_saves_are_rejected(self):
+        report_id = self.make_audit()['report_id']
+        for body in ({'kind': 'audit_slots', 'index': 0, 'result': 'maybe'},
+                     {'kind': 'other', 'index': 0, 'result': 'correct'},
+                     {'kind': 'audit_slots', 'index': 'x', 'result': 'correct'}):
+            self.assertEqual(self.save(report_id, **body).status_code, 400)
+        self.assertEqual(self.save(report_id, kind='audit_slots', index=99, result='correct').status_code, 404)
+
+    def test_another_user_cannot_open_or_change_my_audit(self):
+        report_id = self.make_audit()['report_id']
+        other = User.objects.create_user(username='other', password='x')
+        self.client.force_login(other)
+        self.assertEqual(self.client.get(reverse('reports:audit_detail', args=[report_id])).status_code, 404)
+        self.assertEqual(self.save(report_id, kind='audit_slots', index=0, result='correct').status_code, 404)
+
+    def test_audits_are_listed_on_the_form_page_to_resume(self):
+        report_id = self.make_audit()['report_id']
+        self.save(report_id, kind='audit_slots', index=0, result='correct')
+        page = self.client.get(reverse('reports:generate_audit_report'))
+        self.assertContains(page, 'Your Audits')
+        self.assertContains(page, '1 of 3 checked')
+        self.assertContains(page, reverse('reports:audit_detail', args=[report_id]))
+
+    def test_report_detail_for_an_audit_opens_the_checklist(self):
+        report_id = self.make_audit()['report_id']
+        response = self.client.get(reverse('reports:report_detail', args=[report_id]))
+        self.assertRedirects(response, reverse('reports:audit_detail', args=[report_id]))

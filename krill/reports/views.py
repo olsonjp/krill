@@ -9,9 +9,11 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator
 from django.db.models import Count, Q, Sum, Avg
 from django.http import JsonResponse, HttpResponse
-from django.shortcuts import render, get_object_or_404
+from django.db import transaction
+from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 from django.utils import timezone
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_POST
 from django.views.generic import ListView, DetailView
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
@@ -251,15 +253,77 @@ def generate_audit_report(request):
                 'report_id': report.id,
                 'status': report.status,
                 'message': 'Audit report generated successfully',
+                'url': reverse('reports:audit_detail', args=[report.id]),
                 'data': audit_data
             })
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
 
-    # GET request - show audit report form
+    # GET request - show audit report form, with the user's earlier audits to resume
+    recent = Report.objects.filter(created_by=request.user, template__report_type='storage_audit')[:10]
     return render(request, 'reports/audit_report_form.html', {
         'default_name': f'Storage Audit - {timezone.now().strftime("%Y-%m-%d")}',
+        'recent_audits': [{'report': r, 'progress': audit_progress(r.result_data)} for r in recent],
     })
+
+
+AUDIT_SLOT_KEYS = ('audit_slots', 'empty_audit_slots')   # occupied slots, then slots expected empty
+AUDIT_RESULTS = ('', 'correct', 'wrong')
+
+
+def audit_progress(result_data):
+    """Count how many audit slots have been checked, and how many were right or wrong."""
+    slots = [slot for key in AUDIT_SLOT_KEYS for slot in (result_data or {}).get(key, [])]
+    correct = sum(1 for slot in slots if slot.get('result') == 'correct')
+    wrong = sum(1 for slot in slots if slot.get('result') == 'wrong')
+    return {
+        'total': len(slots), 'checked': correct + wrong, 'correct': correct, 'wrong': wrong,
+        'complete': bool(slots) and correct + wrong == len(slots),
+    }
+
+
+def get_audit_or_404(request, report_id):
+    return get_object_or_404(Report, id=report_id, created_by=request.user, template__report_type='storage_audit')
+
+
+@login_required
+def audit_detail(request, report_id):
+    """Open an audit checklist, with the results saved so far, to carry on checking."""
+    report = get_audit_or_404(request, report_id)
+    data = report.result_data or {}
+    return render(request, 'reports/audit_detail.html', {
+        'report': report,
+        'data': data,
+        'occupied': [dict(slot, index=i) for i, slot in enumerate(data.get('audit_slots', []))],
+        'empty': [dict(slot, index=i) for i, slot in enumerate(data.get('empty_audit_slots', []))],
+        'progress': audit_progress(data),
+    })
+
+
+@login_required
+@require_POST
+def save_audit_result(request, report_id):
+    """Save the result and note for one slot as soon as it is marked."""
+    get_audit_or_404(request, report_id)
+    try:
+        body = json.loads(request.body)
+        kind, index = body['kind'], int(body['index'])
+        result, notes = body.get('result', ''), str(body.get('notes', ''))[:500]
+    except (ValueError, KeyError, TypeError):
+        return JsonResponse({'error': 'Invalid request'}, status=400)
+    if kind not in AUDIT_SLOT_KEYS or result not in AUDIT_RESULTS:
+        return JsonResponse({'error': 'Invalid request'}, status=400)
+
+    with transaction.atomic():
+        report = Report.objects.select_for_update().get(id=report_id)
+        slots = report.result_data.get(kind, [])
+        if not 0 <= index < len(slots):
+            return JsonResponse({'error': 'No such slot'}, status=404)
+        slots[index]['result'] = result
+        slots[index]['notes'] = notes
+        slots[index]['checked_at'] = timezone.now().isoformat() if result else None
+        report.save(update_fields=['result_data', 'updated_at'])
+    return JsonResponse({'success': True, 'progress': audit_progress(report.result_data)})
 
 
 @login_required
@@ -285,6 +349,8 @@ def report_list(request):
 def report_detail(request, report_id):
     """View report details"""
     report = get_object_or_404(Report, id=report_id, created_by=request.user)
+    if report.template.report_type == 'storage_audit':
+        return redirect('reports:audit_detail', report_id=report.id)
     context = {'report': report}
     return render(request, 'reports/report_detail.html', context)
 
