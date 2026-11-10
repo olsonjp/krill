@@ -105,6 +105,11 @@
                 </div>
             </div>
             {% endfor %}
+            {% if audit_count > 5 %}
+            <div class="info-item"><div class="info-content"><p><a href="{% url 'reports:audit_list' %}">View all {{ audit_count }} audits</a></p></div></div>
+            {% elif audit_count %}
+            <div class="info-item"><div class="info-content"><p><a href="{% url 'reports:audit_list' %}">Manage audits</a></p></div></div>
+            {% endif %}
         </div>
     </div>
     {% endif %}

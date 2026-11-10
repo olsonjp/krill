@@ -7,7 +7,7 @@
 <div class="home-container">
     <div class="welcome-section">
         <h1>{{ report.name }}</h1>
-        <p class="subtitle">Check each location and mark it. Your marks are saved as you go, so you can leave and come back.</p>
+        <p class="subtitle">Started by {{ report.created_by.username }}, {{ report.created_at|date:"M j, Y" }}. {% if can_edit %}Check each location and mark it. Your marks are saved as you go, so you can leave and come back.{% else %}You can view this audit; only {{ report.created_by.username }} or a lab manager can change it.{% endif %}</p>
     </div>
 
     <div class="stats-container">
@@ -52,15 +52,15 @@
                 <div class="audit-fields">
                     <div class="field-group">
                         <label>Result</label>
-                        <select class="form-control audit-result" aria-label="Result for slot {{ forloop.counter }}">
+                        <select class="form-control audit-result"{% if not can_edit %} disabled{% endif %} aria-label="Result for slot {{ forloop.counter }}">
                             <option value="" {% if not slot.result %}selected{% endif %}>Not checked</option>
                             <option value="correct" {% if slot.result == 'correct' %}selected{% endif %}>Correct: the tube is there</option>
                             <option value="wrong" {% if slot.result == 'wrong' %}selected{% endif %}>Wrong: missing or different</option>
                         </select>
                     </div>
                     <div class="field-group full-width">
-                        <label>Notes</label>
-                        <input type="text" class="form-control audit-notes" maxlength="500" value="{{ slot.notes|default:'' }}" placeholder="Notes...">
+                        <label>Notes{% if slot.checked_by %} <span class="audit-place">&middot; checked by {{ slot.checked_by }}</span>{% endif %}</label>
+                        <input type="text" class="form-control audit-notes"{% if not can_edit %} disabled{% endif %} maxlength="500" value="{{ slot.notes|default:'' }}" placeholder="Notes...">
                     </div>
                 </div>
             </div>
@@ -86,15 +86,15 @@
                 <div class="audit-fields">
                     <div class="field-group">
                         <label>Result</label>
-                        <select class="form-control audit-result" aria-label="Result for empty slot {{ forloop.counter }}">
+                        <select class="form-control audit-result"{% if not can_edit %} disabled{% endif %} aria-label="Result for empty slot {{ forloop.counter }}">
                             <option value="" {% if not slot.result %}selected{% endif %}>Not checked</option>
                             <option value="correct" {% if slot.result == 'correct' %}selected{% endif %}>Correct: it is empty</option>
                             <option value="wrong" {% if slot.result == 'wrong' %}selected{% endif %}>Wrong: something is there</option>
                         </select>
                     </div>
                     <div class="field-group full-width">
-                        <label>Notes</label>
-                        <input type="text" class="form-control audit-notes" maxlength="500" value="{{ slot.notes|default:'' }}" placeholder="Notes...">
+                        <label>Notes{% if slot.checked_by %} <span class="audit-place">&middot; checked by {{ slot.checked_by }}</span>{% endif %}</label>
+                        <input type="text" class="form-control audit-notes"{% if not can_edit %} disabled{% endif %} maxlength="500" value="{{ slot.notes|default:'' }}" placeholder="Notes...">
                     </div>
                 </div>
             </div>
@@ -107,7 +107,7 @@
         <button class="btn btn-primary" onclick="window.print()">
             <span class="material-icons-round">print</span> Print
         </button>
-        <a href="{% url 'reports:generate_audit_report' %}" class="btn btn-secondary">
+        <a href="{% url 'reports:audit_list' %}" class="btn btn-secondary">
             <span class="material-icons-round">arrow_back</span> All audits
         </a>
     </div>

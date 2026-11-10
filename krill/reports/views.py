@@ -8,8 +8,10 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator
 from django.db.models import Count, Q, Sum, Avg
+from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse, HttpResponse
 from django.db import transaction
+from django.contrib import messages
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.utils import timezone
@@ -22,7 +24,7 @@ from .models import ReportTemplate, Report, ScheduledReport, Alert
 from sample.models import Sample, Aliquot
 from sample.models.aliquot import AliquotLocation
 from storage.models.storage import Device, Box
-from person.models import UserAuditLog
+from person.models import UserAuditLog, UserRole
 
 logger = logging.getLogger(__name__)
 
@@ -260,12 +262,12 @@ def generate_audit_report(request):
             return JsonResponse({'error': str(e)}, status=500)
 
     # GET request - show audit report form, with the user's earlier audits to resume
-    recent = Report.objects.filter(
-        created_by=request.user, template__report_type='storage_audit', status='complete'
-    )[:10]
+    mine = Report.objects.filter(created_by=request.user, template__report_type='storage_audit', status='complete')
+    recent = mine[:5]
     return render(request, 'reports/audit_report_form.html', {
         'default_name': f'Storage Audit - {timezone.now().strftime("%Y-%m-%d")}',
         'recent_audits': [{'report': r, 'progress': audit_progress(r.result_data)} for r in recent],
+        'audit_count': mine.count(),
     })
 
 
@@ -284,8 +286,48 @@ def audit_progress(result_data):
     }
 
 
+def can_edit_audit(user, report):
+    """Everyone signed in can view any audit. Only its creator, or a lab manager or admin,
+    can mark it or delete it."""
+    return report.created_by_id == user.id or UserRole.get_or_create_for_user(user).role in ('lab_manager', 'lab_admin')
+
+
 def get_audit_or_404(request, report_id):
-    return get_object_or_404(Report, id=report_id, created_by=request.user, template__report_type='storage_audit')
+    """Any audit, for viewing."""
+    return get_object_or_404(Report, id=report_id, template__report_type='storage_audit')
+
+
+def get_editable_audit_or_404(request, report_id):
+    report = get_audit_or_404(request, report_id)
+    if not can_edit_audit(request.user, report):
+        raise PermissionDenied('Only the person who started this audit, or a lab manager, can change it.')
+    return report
+
+
+@login_required
+def audit_list(request):
+    """Everyone's audits, newest first, or only the user's own with ?show=mine."""
+    mine_only = request.GET.get('show') == 'mine'
+    audits = Report.objects.filter(template__report_type='storage_audit', status='complete').select_related('created_by')
+    if mine_only:
+        audits = audits.filter(created_by=request.user)
+    page = Paginator(audits, 20).get_page(request.GET.get('page'))
+    return render(request, 'reports/audit_list.html', {
+        'page': page,
+        'rows': [{'report': r, 'progress': audit_progress(r.result_data)} for r in page],
+        'mine_only': mine_only,
+    })
+
+
+@login_required
+@require_POST
+def delete_audit(request, report_id):
+    """Remove an audit that is no longer needed."""
+    report = get_editable_audit_or_404(request, report_id)
+    name = report.name
+    report.delete()
+    messages.success(request, f'Deleted audit "{name}".')
+    return redirect('reports:audit_list')
 
 
 @login_required
@@ -317,6 +359,7 @@ def audit_detail(request, report_id):
         'occupied': [dict(slot, index=i, **describe(slot)) for i, slot in enumerate(data.get('audit_slots', []))],
         'empty': [dict(slot, index=i) for i, slot in enumerate(data.get('empty_audit_slots', []))],
         'progress': audit_progress(data),
+        'can_edit': can_edit_audit(request.user, report),
     })
 
 
@@ -324,7 +367,7 @@ def audit_detail(request, report_id):
 @require_POST
 def save_audit_result(request, report_id):
     """Save the result and note for one slot as soon as it is marked."""
-    get_audit_or_404(request, report_id)
+    get_editable_audit_or_404(request, report_id)
     try:
         body = json.loads(request.body)
         kind, index = body['kind'], int(body['index'])
@@ -342,6 +385,7 @@ def save_audit_result(request, report_id):
         slots[index]['result'] = result
         slots[index]['notes'] = notes
         slots[index]['checked_at'] = timezone.now().isoformat() if result else None
+        slots[index]['checked_by'] = request.user.get_username() if result else None
         report.save(update_fields=['result_data', 'updated_at'])
     return JsonResponse({'success': True, 'progress': audit_progress(report.result_data)})
 
@@ -368,9 +412,11 @@ def report_list(request):
 @login_required
 def report_detail(request, report_id):
     """View report details"""
-    report = get_object_or_404(Report, id=report_id, created_by=request.user)
+    report = get_object_or_404(Report, id=report_id)
     if report.template.report_type == 'storage_audit':
         return redirect('reports:audit_detail', report_id=report.id)
+    if report.created_by_id != request.user.id:
+        raise PermissionDenied
     context = {'report': report}
     return render(request, 'reports/report_detail.html', context)
 

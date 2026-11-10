@@ -13,6 +13,8 @@ urlpatterns = [
     # Report Generation
     path('generate/', views.generate_report, name='generate_report'),
     path('audit/', views.generate_audit_report, name='generate_audit_report'),
+    path('audit/list/', views.audit_list, name='audit_list'),
+    path('audit/<int:report_id>/delete/', views.delete_audit, name='delete_audit'),
     path('audit/<int:report_id>/', views.audit_detail, name='audit_detail'),
     path('audit/<int:report_id>/save/', views.save_audit_result, name='save_audit_result'),
     path('list/', views.report_list, name='report_list'),

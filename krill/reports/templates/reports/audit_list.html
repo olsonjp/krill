@@ -1,0 +1,59 @@
+{% extends 'base/layout.html' %}
+
+{% block title %}Storage Audits - Krill{% endblock %}
+
+{% block content %}
+{% include 'reports/_audit_styles.html' %}
+<div class="home-container">
+    <div class="welcome-section">
+        <h1>Storage Audits</h1>
+        <p class="subtitle">{% if mine_only %}Your audits{% else %}Everyone's audits{% endif %}</p>
+    </div>
+
+    <div class="form-actions" style="margin-top: 0;">
+        <a href="{% url 'reports:generate_audit_report' %}" class="btn btn-primary">
+            <span class="material-icons-round">add</span> New audit
+        </a>
+        {% if mine_only %}
+        <a href="{% url 'reports:audit_list' %}" class="btn btn-secondary">Show everyone's</a>
+        {% else %}
+        <a href="{% url 'reports:audit_list' %}?show=mine" class="btn btn-secondary">Show only mine</a>
+        {% endif %}
+    </div>
+
+    <div class="recent-activity">
+        <div class="activity-list">
+            {% for item in rows %}
+            <div class="info-item">
+                <span class="material-icons-round">{% if item.progress.complete %}check_circle{% else %}pending{% endif %}</span>
+                <div class="info-content" style="flex: 1;">
+                    <p><strong><a href="{% url 'reports:audit_detail' item.report.id %}">{{ item.report.name }}</a></strong></p>
+                    <small>{{ item.progress.checked }} of {{ item.progress.total }} checked
+                        {% if item.progress.wrong %}&bull; {{ item.progress.wrong }} wrong{% endif %}
+                        &bull; {{ item.report.created_at|date:"M j, Y" }}
+                        &bull; by {{ item.report.created_by.username }}
+                        &bull; {% if item.progress.complete %}Complete{% else %}In progress{% endif %}</small>
+                </div>
+                <form method="post" action="{% url 'reports:delete_audit' item.report.id %}"
+                      onsubmit="return confirm('Delete this audit and everything marked in it? This cannot be undone.');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-secondary" aria-label="Delete {{ item.report.name }}">
+                        <span class="material-icons-round">delete</span>
+                    </button>
+                </form>
+            </div>
+            {% empty %}
+            <div class="info-item"><div class="info-content"><p>No audits yet.</p></div></div>
+            {% endfor %}
+        </div>
+    </div>
+
+    {% if page.has_other_pages %}
+    <div class="form-actions">
+        {% if page.has_previous %}<a class="btn btn-secondary" href="?{% if mine_only %}show=mine&amp;{% endif %}page={{ page.previous_page_number }}">Previous</a>{% endif %}
+        <span style="align-self: center;">Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+        {% if page.has_next %}<a class="btn btn-secondary" href="?{% if mine_only %}show=mine&amp;{% endif %}page={{ page.next_page_number }}">Next</a>{% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

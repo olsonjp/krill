@@ -409,12 +409,68 @@ class ResumableAuditTest(StorageAuditReportTest):
             self.assertEqual(self.save(report_id, **body).status_code, 400)
         self.assertEqual(self.save(report_id, kind='audit_slots', index=99, result='correct').status_code, 404)
 
-    def test_another_user_cannot_open_or_change_my_audit(self):
+    def other_user(self, role='lab_member', username='other'):
+        user = User.objects.create_user(username=username, password='x')
+        user.role.role = role
+        user.role.save()
+        return user
+
+    def test_anyone_can_view_an_audit_but_not_change_it(self):
         report_id = self.make_audit()['report_id']
-        other = User.objects.create_user(username='other', password='x')
+        self.client.force_login(self.other_user())
+        page = self.client.get(reverse('reports:audit_detail', args=[report_id]))
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, 'testuser')                       # who started it
+        self.assertContains(page, 'only testuser or a lab manager can change it')
+        self.assertContains(page, ' disabled')
+        self.assertEqual(self.save(report_id, kind='audit_slots', index=0, result='correct').status_code, 403)
+        self.client.post(reverse('reports:delete_audit', args=[report_id]))
+        self.assertTrue(Report.objects.filter(pk=report_id).exists())
+
+    def test_even_a_viewer_can_view(self):
+        report_id = self.make_audit()['report_id']
+        self.client.force_login(self.other_user('viewer', 'readonly'))
+        self.assertEqual(self.client.get(reverse('reports:audit_detail', args=[report_id])).status_code, 200)
+        self.assertEqual(self.client.get(reverse('reports:audit_list')).status_code, 200)
+
+    def test_a_lab_manager_can_mark_and_delete_anyones_audit(self):
+        report_id = self.make_audit()['report_id']
+        self.client.force_login(self.other_user('lab_manager', 'pi'))
+        response = self.save(report_id, kind='audit_slots', index=0, result='wrong', notes='moved')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Report.objects.get(pk=report_id).result_data['audit_slots'][0]['checked_by'], 'pi')
+        self.client.post(reverse('reports:delete_audit', args=[report_id]))
+        self.assertFalse(Report.objects.filter(pk=report_id).exists())
+
+    def test_creator_can_delete_their_own_audit(self):
+        report_id = self.make_audit()['report_id']
+        response = self.client.post(reverse('reports:delete_audit', args=[report_id]))
+        self.assertRedirects(response, reverse('reports:audit_list'))
+        self.assertFalse(Report.objects.filter(pk=report_id).exists())
+        self.assertEqual(self.client.get(reverse('reports:delete_audit', args=[report_id])).status_code, 405)
+
+    def test_list_shows_everyones_audits_and_can_be_limited_to_mine(self):
+        self.make_audit(name='Mine')
+        other = self.other_user()
         self.client.force_login(other)
-        self.assertEqual(self.client.get(reverse('reports:audit_detail', args=[report_id])).status_code, 404)
-        self.assertEqual(self.save(report_id, kind='audit_slots', index=0, result='correct').status_code, 404)
+        self.client.post(reverse('reports:generate_audit_report'), json.dumps({'sample_size': 2, 'name': 'Theirs'}),
+                         content_type='application/json')
+        self.assertEqual(Report.objects.get(name='Theirs').created_by, other)
+        everyone = self.client.get(reverse('reports:audit_list'))
+        self.assertContains(everyone, 'Mine')
+        self.assertContains(everyone, 'Theirs')
+        only_mine = self.client.get(reverse('reports:audit_list') + '?show=mine')
+        self.assertContains(only_mine, 'Theirs')          # logged in as the other user
+        self.assertNotContains(only_mine, '>Mine<')
+
+    def test_list_is_paginated(self):
+        for n in range(23):
+            self.make_audit(name=f'Audit {n:02d}')
+        first = self.client.get(reverse('reports:audit_list'))
+        self.assertEqual(len(first.context['rows']), 20)
+        self.assertContains(first, 'Page 1 of 2')
+        second = self.client.get(reverse('reports:audit_list') + '?page=2')
+        self.assertEqual(len(second.context['rows']), 3)
 
     def test_audits_are_listed_on_the_form_page_to_resume(self):
         report_id = self.make_audit()['report_id']
