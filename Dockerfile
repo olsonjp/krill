@@ -2,7 +2,7 @@
 # Supports both development and production environments
 
 # Base stage with common dependencies
-FROM python:3.15-slim as base
+FROM python:3.15-slim AS base
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -32,7 +32,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev
 
 # Development stage
-FROM base as development
+FROM base AS development
 
 # Install dev dependencies
 RUN uv sync --frozen
@@ -53,7 +53,7 @@ EXPOSE 8000
 CMD ["uv", "run", "python", "krill/manage.py", "runserver", "0.0.0.0:8000"]
 
 # Production stage
-FROM base as production
+FROM base AS production
 
 # Copy project files
 COPY . .
@@ -82,7 +82,7 @@ EXPOSE 8000
 CMD ["sh", "-c", "uv run python manage.py migrate && uv run gunicorn --bind 0.0.0.0:8000 --workers 3 --timeout 120 krill.wsgi:application"]
 
 # Testing stage
-FROM base as testing
+FROM base AS testing
 
 # Copy project files
 COPY . .
