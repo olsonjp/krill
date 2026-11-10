@@ -240,6 +240,9 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 - [Utility Scripts](scripts/README.md) - Helper scripts (whitespace cleanup, PostgreSQL migration)
 - [Security Notes](krill/SECURITY.md) - Security configuration and checks
 
+**Using Krill**
+- [Reports and storage audits](krill/reports/README.md) - Spot-check storage, resume and review audits, alerts
+
 **Data**
 - [Data Import Guide](docs/DATA_IMPORT.md) - How to structure CSV files for importing sample data
 - [Database Setup Guide](docs/database.md) - SQLite and PostgreSQL configuration

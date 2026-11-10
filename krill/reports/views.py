@@ -32,48 +32,27 @@ logger = logging.getLogger(__name__)
 # Main Reports Dashboard
 @login_required
 def reports_dashboard(request):
-    """Main reports dashboard view"""
-    try:
-        # Get basic statistics
-        total_reports = Report.objects.count()
-        pending_reports = Report.objects.filter(status='pending').count()
-        active_alerts = Alert.objects.filter(status='active').count()
-        open_issues = 0  # Issue tracking removed
+    """Reports home: the storage audit, and the alerts."""
+    audits = []
+    in_progress = 0
+    for report in Report.objects.filter(
+        template__report_type='storage_audit', status='complete'
+    ).select_related('created_by')[:200]:
+        progress = audit_progress(report.result_data)
+        if progress['total'] and not progress['complete']:
+            in_progress += 1
+        if len(audits) < 5:
+            audits.append({'report': report, 'progress': progress})
 
-        # Get recent reports
-        recent_reports = Report.objects.filter(created_by=request.user).order_by('-created_at')[:5]
-
-        # Get recent alerts
-        recent_alerts = Alert.objects.filter(status='active').order_by('-created_at')[:5]
-
-        # Get recent issues (removed - issue tracking disabled)
-        recent_issues = []
-
-        context = {
-            'total_reports': total_reports,
-            'pending_reports': pending_reports,
-            'active_alerts': active_alerts,
-            'open_issues': open_issues,
-            'recent_reports': recent_reports,
-            'recent_alerts': recent_alerts,
-            'recent_issues': recent_issues,
-        }
-
-        return render(request, 'reports/reports_dashboard.html', context)
-    except Exception as e:
-        # Fallback to basic template if there are any errors
-        return render(request, 'reports/reports_dashboard.html', {
-            'total_reports': 0,
-            'pending_reports': 0,
-            'active_alerts': 0,
-            'open_issues': 0,
-            'recent_reports': [],
-            'recent_alerts': [],
-            'recent_issues': [],
-        })
+    return render(request, 'reports/reports_dashboard.html', {
+        'audits': audits,
+        'audit_count': Report.objects.filter(template__report_type='storage_audit', status='complete').count(),
+        'audits_in_progress': in_progress,
+        'active_alerts': Alert.objects.filter(status='active').count(),
+        'recent_alerts': Alert.objects.filter(status='active').order_by('-created_at')[:5],
+    })
 
 
-# Dashboard Statistics API
 @login_required
 def dashboard_stats(request):
     """Enhanced dashboard statistics API with resilient error handling"""

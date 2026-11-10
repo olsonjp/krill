@@ -5,103 +5,73 @@
 
 {% block content %}
 <div class="home-container">
-    <!-- Welcome Section -->
     <div class="welcome-section">
-        <h1>Reports Dashboard</h1>
-        <p class="subtitle">Generate reports, manage alerts, and track system activity</p>
+        <h1>Reports</h1>
+        <p class="subtitle">Check that what Krill says is in storage is really there, and review alerts</p>
     </div>
 
-    <!-- Quick Stats -->
     <div class="stats-container">
-        <div class="stat-card">
-            <span class="material-icons-round">description</span>
+        <a href="{% url 'reports:audit_list' %}" class="stat-card clickable">
+            <span class="material-icons-round">fact_check</span>
             <div class="stat-info">
-                <h3>Total Reports</h3>
-                <p id="totalReports">{{ total_reports|default:"0" }}</p>
+                <h3>Storage Audits</h3>
+                <p>{{ audit_count }}</p>
             </div>
-        </div>
-        <div class="stat-card">
-            <span class="material-icons-round">schedule</span>
+        </a>
+        <a href="{% url 'reports:audit_list' %}" class="stat-card clickable {% if audits_in_progress %}stat-card-warning{% endif %}">
+            <span class="material-icons-round">pending_actions</span>
             <div class="stat-info">
-                <h3>Pending Reports</h3>
-                <p id="pendingReports">{{ pending_reports|default:"0" }}</p>
+                <h3>In Progress</h3>
+                <p>{{ audits_in_progress }}</p>
             </div>
-        </div>
-        <div class="stat-card">
+        </a>
+        <a href="{% url 'reports:alert_list' %}" class="stat-card clickable {% if active_alerts %}stat-card-warning{% endif %}">
             <span class="material-icons-round">warning</span>
             <div class="stat-info">
                 <h3>Active Alerts</h3>
-                <p id="activeAlerts">{{ active_alerts|default:"0" }}</p>
+                <p>{{ active_alerts }}</p>
             </div>
-        </div>
-        <div class="stat-card">
-            <span class="material-icons-round">assignment_turned_in</span>
-            <div class="stat-info">
-                <h3>Storage Audit</h3>
-                <p>Available</p>
-            </div>
-        </div>
+        </a>
     </div>
 
-    <!-- Quick Actions -->
     <div class="quick-actions">
-        <h2>Quick Actions</h2>
         <div class="action-grid">
+            <a href="{% url 'reports:generate_audit_report' %}" class="action-btn">
+                <span class="material-icons-round">assignment_turned_in</span>
+                Start Storage Audit
+            </a>
             <a href="{% url 'sample:sample_search' %}" class="action-btn">
                 <span class="material-icons-round">search</span>
                 Search Samples
             </a>
-            <a href="{% url 'reports:alert_list' %}" class="action-btn">
-                <span class="material-icons-round">warning</span>
-                View Alerts
-            </a>
-            <a href="{% url 'reports:generate_audit_report' %}" class="action-btn">
-                <span class="material-icons-round">assignment_turned_in</span>
-                Storage Audit
-            </a>
-            <a href="{% url 'reports:report_list' %}" class="action-btn">
-                <span class="material-icons-round">list_alt</span>
-                All Reports
-            </a>
         </div>
     </div>
 
-    <!-- Recent Activity -->
     <div class="recent-activity">
         <div class="section-header">
-            <h2>Recent Reports</h2>
-            <button class="view-all" onclick="window.location.href='{% url 'reports:report_list' %}'">View All</button>
+            <h2>Recent Audits</h2>
+            <a href="{% url 'reports:audit_list' %}" class="view-all">View All</a>
         </div>
         <div class="activity-list">
-            {% if recent_reports %}
-                {% for report in recent_reports %}
-                <div class="activity-item">
-                    <span class="material-icons-round">
-                        {% if report.status == 'complete' %}
-                            check_circle
-                        {% elif report.status == 'pending' %}
-                            schedule
-                        {% elif report.status == 'failed' %}
-                            error
-                        {% else %}
-                            description
-                        {% endif %}
-                    </span>
-                    <div class="activity-info">
-                        <p><strong>{{ report.name }}</strong> - {{ report.template.report_type|title }} report</p>
-                        <small>{{ report.created_at|timesince }} ago - Status: {{ report.get_status_display }}</small>
-                    </div>
+            {% for item in audits %}
+            <a href="{% url 'reports:audit_detail' item.report.id %}" class="activity-item clickable">
+                <span class="material-icons-round">{% if item.progress.complete %}check_circle{% else %}pending{% endif %}</span>
+                <div class="activity-info">
+                    <p><strong>{{ item.report.name }}</strong></p>
+                    <small>{{ item.progress.checked }} of {{ item.progress.total }} checked
+                        {% if item.progress.wrong %}&bull; {{ item.progress.wrong }} wrong{% endif %}
+                        &bull; {{ item.report.created_by.username }} &bull; {{ item.report.created_at|timesince }} ago</small>
                 </div>
-                {% endfor %}
-            {% else %}
-                <div class="activity-item">
-                    <span class="material-icons-round">info</span>
-                    <div class="activity-info">
-                        <p>No recent reports found</p>
-                        <small>Generate your first report to see activity here</small>
-                    </div>
+            </a>
+            {% empty %}
+            <div class="activity-item">
+                <span class="material-icons-round">info</span>
+                <div class="activity-info">
+                    <p>No audits yet</p>
+                    <small>Start a storage audit to spot-check that tubes are where Krill says</small>
                 </div>
-            {% endif %}
+            </div>
+            {% endfor %}
         </div>
     </div>
 
@@ -143,25 +113,4 @@
     </div>
 </div>
 
-<script>
-// Load dashboard statistics
-function loadDashboardStats() {
-    fetch('{% url "reports:dashboard_stats" %}')
-        .then(response => response.json())
-        .then(data => {
-            document.getElementById('totalReports').textContent = data.total_reports || 0;
-            document.getElementById('pendingReports').textContent = data.pending_reports || 0;
-            document.getElementById('activeAlerts').textContent = data.alerts || 0;
-        })
-        .catch(error => console.error('Error loading stats:', error));
-}
-
-// Initialize dashboard
-document.addEventListener('DOMContentLoaded', function() {
-    loadDashboardStats();
-
-    // Auto-refresh stats every 30 seconds
-    setInterval(loadDashboardStats, 30000);
-});
-</script>
 {% endblock %}

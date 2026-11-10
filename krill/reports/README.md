@@ -1,182 +1,50 @@
-# Reports App
+# Reports app
 
-The Reports app provides comprehensive reporting functionality for the Krill system, including report generation, alert management, issue tracking, and sample search capabilities.
+Reports is where you check that what Krill says is in storage is really there (the **storage audit**), and where alerts are listed. Open it from **Reports** in the sidebar.
 
-## Features
+## Storage audit
 
-### 1. Report Generation
-- **Report Templates**: Predefined templates for common report types
-- **Multiple Formats**: Support for PDF, Excel, CSV, and JSON output
-- **Parameterized Reports**: Customizable report parameters
-- **Scheduled Reports**: Automated report generation on schedule
+A spot check of storage. Krill picks stored aliquots at random and gives you a checklist of where to find each one. You go to the freezer, look, and mark each location.
 
-### 2. Alert System
-- **System Alerts**: Monitor and manage system alerts
-- **Severity Levels**: Low, Medium, High, and Critical alert levels
-- **Alert Types**: Categorize alerts by type (storage, temperature, etc.)
-- **Workflow Management**: Acknowledge and resolve alerts
+### Run one
+1. **Reports > Start Storage Audit** (or **Start Audit** on the dashboard).
+2. Give it a name (it defaults to today's date) and a sample size (1 to 100, default 10). Optionally tick **Include empty slot verification** to also check a few slots that should be empty.
+3. **Generate Audit Report** opens the checklist.
 
-### 3. Issue Tracking
-- **Issue Reporting**: Report bugs, feature requests, and maintenance issues
-- **Priority Management**: Low, Medium, High, and Urgent priority levels
-- **Assignment System**: Assign issues to team members
-- **Status Tracking**: Track issue progress from open to resolved
+### The checklist
+Each row shows the cell line and aliquot type, the full location (freezer > cane > box > row, column), and the details that help you recognise the tube: passage, date frozen, lab member, disposition, aliquot number and the sample notes.
 
-### 4. Sample Search
-- **Advanced Search**: Search samples by name, type, and disposition
-- **Filtering**: Multiple filter options for refined results
-- **Export Results**: Download search results in various formats
-- **Real-time Updates**: Live search with debouncing
+Mark each row **Correct** (the tube is there; for an empty-slot check, it is empty), **Wrong** (missing or different), and add a note if useful. Every mark is saved as you make it, so you can walk away and carry on later. The row's left edge turns green or red, and the counts at the top (checked, correct, wrong) update.
 
-### 5. Storage Dashboard
-- **Capacity Monitoring**: Track storage usage and availability
-- **Device Status**: Monitor storage device health and status
-- **Statistics**: Comprehensive storage statistics and metrics
+### Resume, review and clean up
+- **Reports** and the **Storage Audits** list (`/reports/audit/list/`) show audits with progress ("12 of 20 checked") and whether each is in progress or complete. The dashboard lists audits still in progress.
+- Open any audit to carry on or review it. The list shows everyone's audits (20 per page); **Show only mine** narrows it.
+- A row records who checked it, so a review by a lab manager shows up as theirs.
+- The trash button deletes an audit permanently, after a confirmation.
 
-## Models
+### Who can do what
+| | View | Mark slots | Delete |
+|---|---|---|---|
+| Anyone signed in | Any audit | Only audits they started | Only audits they started |
+| Lab managers and admins | Any audit | Any audit | Any audit |
 
-### ReportTemplate
-- Defines report structure and configuration
-- Supports multiple report types (sample inventory, storage capacity, etc.)
-- JSON-based template configuration
+Other people see the checklist with the fields disabled.
 
-### Report
-- Generated report instances
-- Tracks generation status and results
-- Supports multiple output formats
+### How it works
+- An audit is a `Report` whose template has the type `storage_audit`. The random sample and each mark live in the report's `result_data` (`audit_slots`, and `empty_audit_slots` if requested), so there is no separate table.
+- Each aliquot is one tube, so every occupied slot expects exactly one. The details on each row are read from the aliquot when the page opens, so older audits show current information.
+- Saving a mark is `POST /reports/audit/<id>/save/` with the slot's kind, index, result and note.
+- If building the sample fails, no report is created.
 
-### Alert
-- System alerts and notifications
-- Configurable severity and status levels
-- Target-specific alerts (freezer, sample, etc.)
+Code: `reports/views.py` (`generate_audit_report`, `generate_storage_audit_data`, `audit_detail`, `audit_list`, `save_audit_result`, `delete_audit`), templates in `reports/templates/reports/`, tests in `reports/tests.py`.
 
-### Issue
-- Issue tracking and management
-- Priority and status management
-- Assignment and resolution tracking
+## Alerts
 
-### ScheduledReport
-- Automated report generation
-- Configurable frequency and recipients
-- Parameter management for scheduled reports
+**Reports > View Alerts** lists alerts with their severity (low, medium, high, critical), type (storage, sample, system, security, general) and status (active, acknowledged, resolved, dismissed). An active alert can be acknowledged and then resolved. The Reports page shows the count of active alerts and the latest five.
 
-## API Endpoints
+## Other pieces
 
-### Dashboard Statistics
-- `GET /reports/dashboard/stats/` - Enhanced dashboard statistics
-
-### Report Generation
-- `POST /reports/generate/` - Generate new report
-- `GET /reports/list/` - List user reports
-- `GET /reports/detail/<id>/` - View report details
-- `GET /reports/download/<id>/` - Download generated report
-
-### Alert Management
-- `GET /reports/alerts/` - List all alerts
-- `POST /reports/alerts/create/` - Create new alert
-- `POST /reports/alerts/<id>/acknowledge/` - Acknowledge alert
-- `POST /reports/alerts/<id>/resolve/` - Resolve alert
-
-### Issue Tracking
-- `GET /reports/issues/` - List all issues
-- `POST /reports/issues/report/` - Report new issue
-
-### Sample Search
-- `GET /reports/samples/search/` - Search samples with filters
-
-### Storage Dashboard
-- `GET /reports/storage/dashboard/` - Storage overview statistics
-
-## Usage
-
-### Generating Reports
-1. Navigate to Reports Dashboard
-2. Click "Generate Report"
-3. Select template and configure parameters
-4. Choose output format
-5. Submit for generation
-
-### Managing Alerts
-1. View active alerts in the Alerts section
-2. Acknowledge alerts when reviewed
-3. Resolve alerts when issues are fixed
-4. Create new alerts for system issues
-
-### Reporting Issues
-1. Use the Issue Tracking section
-2. Fill out issue details and priority
-3. Assign to team members if needed
-4. Track resolution progress
-
-### Searching Samples
-1. Use the Sample Search interface
-2. Enter search criteria and filters
-3. View results with pagination
-4. Export results as needed
-
-## Configuration
-
-### Report Templates
-Configure report templates in the Django admin:
-- Define report structure and parameters
-- Set output format options
-- Configure access permissions
-
-### Alert Rules
-Set up alert rules for:
-- Storage capacity thresholds
-- Temperature monitoring
-- System performance metrics
-- User activity monitoring
-
-### Scheduled Reports
-Configure automated reports for:
-- Daily/weekly/monthly summaries
-- Regulatory compliance reports
-- Performance monitoring
-- Data archiving
-
-## Dependencies
-
-- Django 5.0+
-- Python 3.10+
-- SQLite/PostgreSQL/MySQL database
-- Material Icons for UI elements
-
-## Installation
-
-1. Add `reports` to `INSTALLED_APPS` in Django settings
-2. Run migrations: `python manage.py migrate`
-3. Include reports URLs in main URL configuration
-4. Access via `/reports/` URL path
-
-## Customization
-
-### Adding New Report Types
-1. Extend the `ReportTemplate` model choices
-2. Create custom report generation logic
-3. Add template configuration options
-4. Update admin interface
-
-### Custom Alert Types
-1. Define new alert types in the Alert model
-2. Create alert generation logic
-3. Configure alert rules and thresholds
-4. Add custom alert handling
-
-### Extended Search
-1. Add new search fields to Sample model
-2. Extend search form and logic
-3. Update search results display
-4. Add export functionality
-
-## Contributing
-
-1. Follow Django coding standards
-2. Add tests for new functionality
-3. Update documentation
-4. Submit pull requests
-
-## License
-
-This app is part of the Krill system and follows the same licensing terms.
+- `/reports/list/` lists the signed-in user's own reports, including audits.
+- `/reports/storage/dashboard/` shows storage capacity statistics.
+- `/reports/dashboard/stats/` returns summary numbers as JSON.
+- The `generate_report` endpoint and the report types in `ReportTemplate` (sample inventory, storage capacity, user activity, aliquot tracking) are not offered anywhere in the interface. Only the storage audit can be run from the page today.
