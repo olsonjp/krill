@@ -236,6 +236,9 @@ def generate_audit_report(request):
                 'include_empty_checks': include_empty_checks
             }
 
+            # Build the audit first, so a failure leaves no half-made report behind
+            audit_data = generate_storage_audit_data(parameters)
+
             report = Report.objects.create(
                 template=template,
                 name=report_name,
@@ -243,9 +246,6 @@ def generate_audit_report(request):
                 parameters=parameters,
                 created_by=request.user
             )
-
-            # Generate audit data
-            audit_data = generate_storage_audit_data(parameters)
             report.mark_complete(result_data=audit_data)
 
             return JsonResponse({
@@ -260,7 +260,9 @@ def generate_audit_report(request):
             return JsonResponse({'error': str(e)}, status=500)
 
     # GET request - show audit report form, with the user's earlier audits to resume
-    recent = Report.objects.filter(created_by=request.user, template__report_type='storage_audit')[:10]
+    recent = Report.objects.filter(
+        created_by=request.user, template__report_type='storage_audit', status='complete'
+    )[:10]
     return render(request, 'reports/audit_report_form.html', {
         'default_name': f'Storage Audit - {timezone.now().strftime("%Y-%m-%d")}',
         'recent_audits': [{'report': r, 'progress': audit_progress(r.result_data)} for r in recent],

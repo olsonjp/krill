@@ -428,3 +428,18 @@ class ResumableAuditTest(StorageAuditReportTest):
         report_id = self.make_audit()['report_id']
         response = self.client.get(reverse('reports:report_detail', args=[report_id]))
         self.assertRedirects(response, reverse('reports:audit_detail', args=[report_id]))
+
+
+class FailedAuditLeavesNothingBehindTest(StorageAuditReportTest):
+    def test_a_failed_generation_creates_no_report(self):
+        with patch.object(reports_views, 'generate_storage_audit_data', side_effect=RuntimeError('boom')):
+            response = self.post_audit(sample_size=3)
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(Report.objects.count(), 0)
+
+    def test_unfinished_reports_are_not_listed_as_audits(self):
+        from reports.models import ReportTemplate
+        template = ReportTemplate.objects.create(name='t', report_type='storage_audit', created_by=self.user)
+        Report.objects.create(template=template, name='Stuck', status='pending', created_by=self.user)
+        self.client.force_login(self.user)
+        self.assertNotContains(self.client.get(reverse('reports:generate_audit_report')), 'Stuck')
