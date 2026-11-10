@@ -1,0 +1,21 @@
+{% extends 'base/layout.html' %}
+
+{% block title %}Revoke Permission - Krill{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <div class="form-header">
+        <h1>Revoke Permission</h1>
+        <p class="form-description">Remove {{ permission.get_permission_type_display|lower }} access from {{ permission.user.username }} to {{ target }}?</p>
+    </div>
+    <div class="form-content">
+        <form method="post" class="detail-form">
+            {% csrf_token %}
+            <div class="form-buttons">
+                <button type="submit" class="btn btn-primary">Revoke</button>
+                <a href="{% url 'person:permission_list' %}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
