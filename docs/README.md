@@ -4,6 +4,9 @@
 - [Data Import Guide](DATA_IMPORT.md) - CSV format for importing sample data
 - [Database Setup](database.md) - SQLite and PostgreSQL configuration
 
+## Using Krill
+- [Reports and storage audits](../krill/reports/README.md) - spot-check storage, resume and review audits, alerts
+
 ## Deployment (`deployment/`)
 - [Deployment Guide](deployment/README.md) - Docker images, environment variables, security, troubleshooting
 - [DigitalOcean App Platform](deployment/digitalocean.md)

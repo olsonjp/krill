@@ -522,3 +522,39 @@ class AuditShowsAliquotDetailsTest(StorageAuditReportTest):
         for expected in ('HeLa', 'Pellet', 'Passage p8', 'Nov 1, 2019', 'By MS',
                          f'Aliquot #{aliquot.id}', 'In Storage', 'ER+ line'):
             self.assertContains(page, expected)
+
+
+class ReportsHomeTest(StorageAuditReportTest):
+    """The Reports page leads with the storage audit and shows only numbers that are true."""
+
+    def home(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('reports:reports_dashboard'))
+        self.assertEqual(response.status_code, 200)
+        return response
+
+    def test_counts_audits_and_those_still_in_progress(self):
+        first = self.post_audit(sample_size=2).json()['report_id']
+        self.post_audit(sample_size=2)
+        self.client.post(reverse('reports:save_audit_result', args=[first]),
+                         json.dumps({'kind': 'audit_slots', 'index': 0, 'result': 'correct'}), content_type='application/json')
+        page = self.home()
+        self.assertEqual((page.context['audit_count'], page.context['audits_in_progress']), (2, 2))
+        for index in (1,):
+            self.client.post(reverse('reports:save_audit_result', args=[first]),
+                             json.dumps({'kind': 'audit_slots', 'index': index, 'result': 'wrong'}), content_type='application/json')
+        self.assertEqual(self.home().context['audits_in_progress'], 1)       # the first is now finished
+
+    def test_recent_audits_link_to_the_checklist(self):
+        report_id = self.post_audit(sample_size=2).json()['report_id']
+        self.assertContains(self.home(), reverse('reports:audit_detail', args=[report_id]))
+
+    def test_page_has_no_script_that_overwrites_the_counts_and_no_dead_report_types(self):
+        page = self.home()
+        self.assertNotContains(page, 'loadDashboardStats')      # it reset Total/Pending Reports to 0 every 30s
+        self.assertNotContains(page, 'Pending Reports')
+        self.assertNotContains(page, 'All Reports')
+        self.assertContains(page, 'Start Storage Audit')
+
+    def test_page_with_nothing_yet_explains_what_to_do(self):
+        self.assertContains(self.home(), 'No audits yet')
