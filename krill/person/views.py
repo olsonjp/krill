@@ -1209,6 +1209,21 @@ def user_role_edit(request, user_id):
     return render(request, 'person/user_role_edit.html', context)
 
 
+def describe_permission_target(permission):
+    """What a permission is for, in words. Never raises: the item may have been deleted, or its
+    model removed from Krill, and the page must still load."""
+    content_type = permission.content_type
+    model = content_type.model_class()
+    kind = (model._meta.verbose_name if model else content_type.model).title()
+    if model is None:
+        return f"{kind} #{permission.object_id} (this kind of item no longer exists)"
+    try:
+        item = model._default_manager.get(pk=permission.object_id)
+    except model.DoesNotExist:
+        return f"{kind} #{permission.object_id} (no longer exists)"
+    return f"{kind}: {item}"
+
+
 @login_required
 @require_minimum_role('lab_manager')
 def permission_list(request):
@@ -1230,6 +1245,7 @@ def permission_list(request):
     page_obj = paginator.get_page(page_number)
     context = {
         'page_obj': page_obj,
+        'rows': [{'permission': p, 'target': describe_permission_target(p)} for p in page_obj],
         'total_permissions': permissions.count(),
     }
     return render(request, 'person/permission_list.html', context)
@@ -1266,6 +1282,7 @@ def revoke_permission(request, permission_id):
         return redirect('person:permission_list')
     context = {
         'permission': permission,
+        'target': describe_permission_target(permission),
     }
     return render(request, 'person/permission_confirm_delete.html', context)
 
