@@ -3,6 +3,7 @@
 {% block title %}{{ report.name }} - Krill{% endblock %}
 
 {% block content %}
+{% include 'reports/_audit_styles.html' %}
 <div class="home-container">
     <div class="welcome-section">
         <h1>{{ report.name }}</h1>
@@ -32,12 +33,20 @@
         <div class="section-header"><h2>Occupied slots</h2></div>
         <div class="activity-list">
             {% for slot in occupied %}
-            <div class="audit-item" data-kind="audit_slots" data-index="{{ slot.index }}">
+            <div class="audit-item{% if slot.result == 'correct' %} is-correct{% elif slot.result == 'wrong' %} is-wrong{% endif %}" data-kind="audit_slots" data-index="{{ slot.index }}">
                 <div class="audit-header">
                     <span class="material-icons-round">location_on</span>
                     <div class="audit-location">
-                        <strong>{{ slot.site }} - {{ slot.device }} - cane {{ slot.rack }} - box {{ slot.box }} (row {{ slot.row }}, column {{ slot.column }})</strong>
-                        <small>Expect one tube of {{ slot.sample_name }}</small>
+                        <strong>{{ slot.sample_name }}{% if slot.aliquot_type %} <span class="audit-place">&middot; {{ slot.aliquot_type }}</span>{% endif %}</strong>
+                        <small>{{ slot.device }} &rsaquo; cane {{ slot.rack }} &rsaquo; box {{ slot.box }} &rsaquo; row {{ slot.row }}, column {{ slot.column }}</small>
+                        <div class="audit-meta">
+                            {% if slot.passage %}<span class="audit-chip">Passage {{ slot.passage }}</span>{% endif %}
+                            {% if slot.sample_date %}<span class="audit-chip">Frozen {{ slot.sample_date|date:"M j, Y" }}</span>{% endif %}
+                            {% if slot.lab_member %}<span class="audit-chip">By {{ slot.lab_member }}</span>{% endif %}
+                            {% if slot.disposition %}<span class="audit-chip">{{ slot.disposition }}</span>{% endif %}
+                            <span class="audit-chip muted">Aliquot #{{ slot.aliquot_id }}</span>
+                        </div>
+                        {% if slot.sample_notes %}<span class="audit-note-line">Sample notes: {{ slot.sample_notes }}</span>{% endif %}
                     </div>
                 </div>
                 <div class="audit-fields">
@@ -66,7 +75,7 @@
         <div class="section-header"><h2>Slots that should be empty</h2></div>
         <div class="activity-list">
             {% for slot in empty %}
-            <div class="audit-item empty-slot" data-kind="empty_audit_slots" data-index="{{ slot.index }}">
+            <div class="audit-item empty-slot{% if slot.result == 'correct' %} is-correct{% elif slot.result == 'wrong' %} is-wrong{% endif %}" data-kind="empty_audit_slots" data-index="{{ slot.index }}">
                 <div class="audit-header">
                     <span class="material-icons-round">location_on</span>
                     <div class="audit-location">
@@ -138,7 +147,11 @@
             clearTimeout(timers.get(item));
             timers.set(item, setTimeout(() => save(item), delay));
         };
-        item.querySelector('.audit-result').addEventListener('change', () => queue(0));
+        item.querySelector('.audit-result').addEventListener('change', e => {
+            item.classList.toggle('is-correct', e.target.value === 'correct');
+            item.classList.toggle('is-wrong', e.target.value === 'wrong');
+            queue(0);
+        });
         item.querySelector('.audit-notes').addEventListener('input', () => queue(600));
     });
 })();

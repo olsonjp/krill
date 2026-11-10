@@ -293,10 +293,28 @@ def audit_detail(request, report_id):
     """Open an audit checklist, with the results saved so far, to carry on checking."""
     report = get_audit_or_404(request, report_id)
     data = report.result_data or {}
+    # What is on the tube is read live, so older audits show it too.
+    aliquots = Aliquot.objects.select_related('sample', 'aliquot_type', 'disposition', 'lab_member').in_bulk(
+        [slot.get('aliquot_id') for slot in data.get('audit_slots', []) if slot.get('aliquot_id')]
+    )
+
+    def describe(slot):
+        aliquot = aliquots.get(slot.get('aliquot_id'))
+        if aliquot is None:
+            return {}
+        return {
+            'aliquot_type': aliquot.aliquot_type.name if aliquot.aliquot_type else '',
+            'passage': aliquot.passage,
+            'sample_date': aliquot.sample_date,
+            'lab_member': aliquot.lab_member_display,
+            'disposition': aliquot.disposition.name if aliquot.disposition else '',
+            'sample_notes': aliquot.sample.notes if aliquot.sample else '',
+        }
+
     return render(request, 'reports/audit_detail.html', {
         'report': report,
         'data': data,
-        'occupied': [dict(slot, index=i) for i, slot in enumerate(data.get('audit_slots', []))],
+        'occupied': [dict(slot, index=i, **describe(slot)) for i, slot in enumerate(data.get('audit_slots', []))],
         'empty': [dict(slot, index=i) for i, slot in enumerate(data.get('empty_audit_slots', []))],
         'progress': audit_progress(data),
     })

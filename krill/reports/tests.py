@@ -443,3 +443,26 @@ class FailedAuditLeavesNothingBehindTest(StorageAuditReportTest):
         Report.objects.create(template=template, name='Stuck', status='pending', created_by=self.user)
         self.client.force_login(self.user)
         self.assertNotContains(self.client.get(reverse('reports:generate_audit_report')), 'Stuck')
+
+
+class AuditShowsAliquotDetailsTest(StorageAuditReportTest):
+    def test_checklist_shows_what_is_on_each_tube(self):
+        import datetime
+        from django.contrib.auth import get_user_model
+        from sample.models.aliquot import AliquotType, AliquotDisposition
+        AliquotLocation.objects.exclude(column=1).delete()
+        aliquot = AliquotLocation.objects.get().aliquot
+        aliquot.aliquot_type = AliquotType.objects.create(name='Pellet')
+        aliquot.disposition = AliquotDisposition.objects.create(name='In Storage', disposition_type='stored')
+        aliquot.passage = 'p8'
+        aliquot.sample_date = datetime.date(2019, 11, 1)
+        aliquot.lab_member_initials = 'MS'
+        aliquot.save()
+        self.sample.notes = 'ER+ line'
+        self.sample.save()
+
+        report_id = self.post_audit(sample_size=1).json()['report_id']
+        page = self.client.get(reverse('reports:audit_detail', args=[report_id]))
+        for expected in ('HeLa', 'Pellet', 'Passage p8', 'Nov 1, 2019', 'By MS',
+                         f'Aliquot #{aliquot.id}', 'In Storage', 'ER+ line'):
+            self.assertContains(page, expected)
