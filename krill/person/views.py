@@ -67,8 +67,8 @@ def normalize_import_headers(fieldnames):
 LAYOUT_FREEZER = 'freezer'   # Position 2 = shelf, Position 1 = rack, on that shelf
 LAYOUT_DEWAR = 'dewar'       # a dewar has one shelf: Position 1 = cane (rack), Position 2 = box letter
 STORAGE_LAYOUT_CHOICES = [
-    (LAYOUT_FREEZER, 'Freezer with shelves (Position 2 is the shelf, Position 1 the rack)'),
-    (LAYOUT_DEWAR, 'Dewar with canes (Position 1 is the cane, Position 2 the box on it; one shelf)'),
+    (LAYOUT_FREEZER, 'Freezer'),
+    (LAYOUT_DEWAR, 'Dewar'),
 ]
 DEWAR_SHELF_NAME = 'Canes'
 
@@ -287,12 +287,12 @@ class DataImportForm(forms.Form):
     )
 
     storage_layout = forms.ChoiceField(
-        label='Storage layout',
+        label='Storage type',
         choices=STORAGE_LAYOUT_CHOICES,
         initial=LAYOUT_FREEZER,
         required=False,   # left out (e.g. by a script) means the freezer layout
-        widget=forms.RadioSelect,
-        help_text='How the Position 1 and Position 2 columns map onto the storage hierarchy. Applies to the whole file.',
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text='Applies to the whole file. Freezer: Position 2 is the shelf and Position 1 the rack on it. Dewar: one shelf holds every cane (Position 1), and Position 2 is the box on the cane.',
     )
 
     def clean_storage_layout(self):

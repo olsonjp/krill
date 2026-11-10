@@ -113,16 +113,16 @@ The storage hierarchy is built automatically:
 
 1. **Site**: Created from `Site` column, or defaults to "Default Site" if not provided
 2. **Device (Freezer)**: Created from `Freezer Name`
-3. **Shelf**: depends on the **Storage layout** chosen on the import form (see below)
+3. **Shelf**: depends on the **Storage type** (Freezer or Dewar) chosen on the import form (see below)
 4. **Rack**: Created from `Position 1`, matched by name within its shelf
 5. **Box**: Named `{Position 1}_{Position 2}` (e.g., "4_F"). New boxes are 9x9 and grow only if a position in the sheet is larger. Existing boxes are never resized
 
 The sheet does not say how `Position 1` and `Position 2` map onto the hierarchy, so the import form asks. The choice applies to the whole file and is shown again on the preview.
 
-| Storage layout | Shelf | Rack | Box |
+| Storage type | Shelf | Rack | Box |
 |---|---|---|---|
-| **Freezer with shelves** (default) | `Position 2` | `Position 1`, on that shelf | `{Position 1}_{Position 2}` |
-| **Dewar with canes** | one shelf named `Canes` | `Position 1` (the cane) | `{Position 1}_{Position 2}` (the box on that cane) |
+| **Freezer** (default) | `Position 2` | `Position 1`, on that shelf | `{Position 1}_{Position 2}` |
+| **Dewar** | one shelf named `Canes` | `Position 1` (the cane) | `{Position 1}_{Position 2}` (the box on that cane) |
 
 **Note**: All storage objects are created automatically if they don't exist. Duplicate names are reused.
 
