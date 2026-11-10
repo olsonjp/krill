@@ -67,6 +67,7 @@ The CSV file must include the following columns (in any order):
 | `Disposition` | Yes | Current status of the aliquot | "stored", "in_use", "exhausted", "disposed" (or legacy aliases) |
 | `Passage Number` | No | Passage when the aliquot was frozen, stored as written on the aliquot | "p8", "p20EV p39+4-5" |
 | `Lab Member` | No | Initials of who prepared the aliquot | "JS" |
+| `Storage Type` | No | `Freezer` (default) or `Dewar`; see Storage Hierarchy | "Dewar" |
 | `Sample date` | No | Date the aliquot was prepared | "2019-11-01", "7/2021" |
 
 \* Required if you want to assign storage locations. If omitted, samples will be imported without storage assignments.
@@ -113,11 +114,11 @@ The storage hierarchy is built automatically:
 
 1. **Site**: Created from `Site` column, or defaults to "Default Site" if not provided
 2. **Device (Freezer)**: Created from `Freezer Name`
-3. **Shelf**: depends on the **Storage type** (Freezer or Dewar) chosen on the import form (see below)
+3. **Shelf**: depends on the **Storage type** (Freezer or Dewar) given in the `Storage Type` column (see below)
 4. **Rack**: Created from `Position 1`, matched by name within its shelf
 5. **Box**: Named `{Position 1}_{Position 2}` (e.g., "4_F"). New boxes are 9x9 and grow only if a position in the sheet is larger. Existing boxes are never resized
 
-The sheet does not say how `Position 1` and `Position 2` map onto the hierarchy, so the import form asks. The choice applies to the whole file and is shown again on the preview.
+How `Position 1` and `Position 2` map onto the hierarchy is set by the optional `Storage Type` column (`Freezer` or `Dewar`, any case). Filling it on one row of a freezer is enough for every row of that freezer; leave the column out, or blank, for `Freezer`. One file can mix both. Any other value stops the import and names the row.
 
 | Storage type | Shelf | Rack | Box |
 |---|---|---|---|

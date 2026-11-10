@@ -61,19 +61,6 @@
                     {% endif %}
                 </div>
 
-                <div class="detail-field">
-                    {{ form.storage_layout.label_tag }}
-                    {{ form.storage_layout }}
-                    <div class="help-text">{{ form.storage_layout.help_text }}</div>
-                    {% if form.storage_layout.errors %}
-                        <div class="field-errors">
-                            {% for error in form.storage_layout.errors %}
-                                <span class="error">{{ error }}</span>
-                            {% endfor %}
-                        </div>
-                    {% endif %}
-                </div>
-
                 <div class="form-buttons">
                     <button type="submit" class="btn btn-primary">
                         <i class="material-icons-round">preview</i>
@@ -178,7 +165,6 @@
                     {% csrf_token %}
                     <input type="hidden" name="proceed_with_import" value="true">
                     <input type="hidden" name="import_id" value="{{ import_id }}">
-                    <input type="hidden" name="storage_layout" value="{{ storage_layout }}">
                     <button type="submit" class="btn btn-success">
                         <i class="material-icons-round">cloud_upload</i>
                         Proceed with Import

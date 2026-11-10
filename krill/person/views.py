@@ -40,7 +40,7 @@ IMPORT_COLUMNS = (
     'Source', 'Cell Line', 'Experiment #', 'Sample Notes', 'Site', 'Freezer Name',
     'Position 1', 'Position 2', 'Position 3', 'Position 4', 'Aliquot Type',
     'Number of Aliquots Total', 'Collef Aliquots Total', 'Disposition',
-    'Passage Number', 'Lab Member', 'Sample date',
+    'Passage Number', 'Lab Member', 'Sample date', 'Storage Type',
 )
 
 
@@ -62,14 +62,12 @@ def normalize_import_headers(fieldnames):
     return result
 
 
-# How Position 1 and Position 2 map onto the storage hierarchy. The sheet does not say,
-# so whoever imports chooses.
-LAYOUT_FREEZER = 'freezer'   # Position 2 = shelf, Position 1 = rack, on that shelf
-LAYOUT_DEWAR = 'dewar'       # a dewar has one shelf: Position 1 = cane (rack), Position 2 = box letter
-STORAGE_LAYOUT_CHOICES = [
-    (LAYOUT_FREEZER, 'Freezer'),
-    (LAYOUT_DEWAR, 'Dewar'),
-]
+# The optional 'Storage Type' column says how Position 1 and Position 2 map onto the
+# hierarchy for that freezer. Freezer (the default): Position 2 is the shelf, Position 1
+# the rack on it. Dewar: one shelf holds every cane (Position 1) and Position 2 is the
+# box on the cane. Filling it on one row of a freezer is enough.
+STORAGE_TYPE_FREEZER = 'freezer'
+STORAGE_TYPE_DEWAR = 'dewar'
 DEWAR_SHELF_NAME = 'Canes'
 
 # Boxes are 9x9 unless the sheet places a tube beyond that.
@@ -286,18 +284,6 @@ class DataImportForm(forms.Form):
         help_text='Upload a CSV or XLSX file with sample data (for XLSX, the first sheet is used). Expected columns: Source;Cell Line;Experiment #;Sample Notes;Site;Freezer Name;Position 1;Position 2;Position 3;Position 4;Aliquot Type;Number of Aliquots Total;Disposition (Site is optional, defaults to "Default Site")'
     )
 
-    storage_layout = forms.ChoiceField(
-        label='Storage type',
-        choices=STORAGE_LAYOUT_CHOICES,
-        initial=LAYOUT_FREEZER,
-        required=False,   # left out (e.g. by a script) means the freezer layout
-        widget=forms.Select(attrs={'class': 'form-control'}),
-        help_text='Applies to the whole file. Freezer: Position 2 is the shelf and Position 1 the rack on it. Dewar: one shelf holds every cane (Position 1), and Position 2 is the box on the cane.',
-    )
-
-    def clean_storage_layout(self):
-        return self.cleaned_data.get('storage_layout') or LAYOUT_FREEZER
-
     def clean_csv_file(self):
         uploaded = self.cleaned_data['csv_file']
         if uploaded.name.lower().endswith('.xls'):
@@ -334,14 +320,10 @@ class DataImportView(TemplateView):
                 messages.error(request, 'Import file not found. Please upload your file again.')
                 return redirect('person:data_import')
 
-            storage_layout = request.POST.get('storage_layout', '').strip()
-            if storage_layout not in (LAYOUT_FREEZER, LAYOUT_DEWAR):
-                storage_layout = LAYOUT_FREEZER
-
             try:
                 logger.info(f"Starting data import for user {request.user.username}")
 
-                import_result = self.perform_import(csv_file, storage_layout)
+                import_result = self.perform_import(csv_file)
                 details = import_result.get('details', {})
                 message = f'Successfully imported {import_result["total"]} records: '
                 message += f'{details.get("sources", 0)} sources, '
@@ -376,12 +358,11 @@ class DataImportView(TemplateView):
                 # Reset file pointer for preview
                 csv_file.seek(0)
 
-                preview_data = self.preview_import(csv_file, form.cleaned_data['storage_layout'])
+                preview_data = self.preview_import(csv_file)
                 context = self.get_context_data()
                 context['preview_data'] = preview_data
                 context['form'] = form
                 context['import_id'] = import_id
-                context['storage_layout'] = form.cleaned_data['storage_layout']
                 context['file_stored'] = True
                 return render(request, self.template_name, context)
 
@@ -400,7 +381,7 @@ class DataImportView(TemplateView):
         context['form'] = form
         return render(request, self.template_name, context)
 
-    def preview_import(self, csv_file, storage_layout=LAYOUT_FREEZER):
+    def preview_import(self, csv_file):
         """Preview the import data without creating records"""
         preview_data = {
             'sources': set(),
@@ -422,7 +403,7 @@ class DataImportView(TemplateView):
                     temp_file.write(chunk)
 
             # Use the existing convert_csv.py functionality
-            fixtures = self.convert_csv_to_fixtures(temp_csv_path, storage_layout)
+            fixtures = self.convert_csv_to_fixtures(temp_csv_path)
 
             # Count what would be imported
             preview_data['sources'] = set([f['fields']['name'] for f in fixtures if f['model'] == 'sample.source'])
@@ -583,7 +564,7 @@ class DataImportView(TemplateView):
         except Exception as e:
             logger.error(f"Error cleaning up temp file {import_id}: {e}")
 
-    def perform_import(self, csv_file, storage_layout=LAYOUT_FREEZER):
+    def perform_import(self, csv_file):
         """Actually perform the import"""
         temp_csv_path = None
         fixtures_file = None
@@ -599,7 +580,7 @@ class DataImportView(TemplateView):
                     temp_file.write(chunk)
 
             # Use the existing convert_csv.py functionality
-            fixtures = self.convert_csv_to_fixtures(temp_csv_path, storage_layout)
+            fixtures = self.convert_csv_to_fixtures(temp_csv_path)
 
             # Save fixtures to temporary file
             fixtures_file = os.path.join(temp_dir, f'import_fixtures_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json')
@@ -686,9 +667,8 @@ class DataImportView(TemplateView):
                 os.remove(temp_csv_path)
             raise Exception(f"Import failed: {str(e)}")
 
-    def convert_csv_to_fixtures(self, csv_file_path, storage_layout=LAYOUT_FREEZER):
+    def convert_csv_to_fixtures(self, csv_file_path):
         """Convert an uploaded CSV or XLSX file to Django fixtures."""
-        self.storage_layout = storage_layout
         if not is_xlsx_file(csv_file_path):
             return self._convert_csv_to_fixtures(csv_file_path)
 
@@ -716,6 +696,22 @@ class DataImportView(TemplateView):
         if in_krill == len(conflicts) and all(normalize_sample_name(c['existing_sample']) == normalize_sample_name(c['cell_line']) for c in conflicts):
             summary += " Every refused row matches an aliquot already in those slots, so this file has probably already been imported."
         return summary
+
+    @staticmethod
+    def find_dewars(rows):
+        """Return the (site, freezer) pairs the 'Storage Type' column marks as dewars."""
+        dewars = set()
+        for number, row in enumerate(rows, start=2):   # row 1 is the header
+            kind = (row.get('Storage Type') or '').strip().casefold()
+            if not kind:
+                continue
+            if kind not in (STORAGE_TYPE_FREEZER, STORAGE_TYPE_DEWAR):
+                raise ValueError(
+                    f"Row {number}: Storage Type must be 'Freezer' or 'Dewar' (or left blank), not '{row['Storage Type']}'."
+                )
+            if kind == STORAGE_TYPE_DEWAR:
+                dewars.add(((row.get('Site') or '').strip() or 'Default Site', row.get('Freezer Name')))
+        return dewars
 
     def _convert_csv_to_fixtures(self, csv_file_path):
         """Convert CSV file to Django fixtures using the existing convert_csv.py logic"""
@@ -774,7 +770,9 @@ class DataImportView(TemplateView):
                 delimiter = ';'
             reader = csv.DictReader(f, delimiter=delimiter)
             reader.fieldnames = normalize_import_headers(reader.fieldnames)
-            for row in reader:
+            rows = list(reader)
+            dewars = self.find_dewars(rows)
+            for row in rows:
                 missing = required_columns - row.keys()
                 if missing:
                     raise KeyError(f"Missing required columns: {sorted(missing)}. Found: {sorted(row.keys())}")
@@ -836,7 +834,7 @@ class DataImportView(TemplateView):
                 box_letter = row['Position 2']  # e.g., "F"
                 box_name = f"{rack_name}_{box_letter}"  # e.g., "4_F"
                 # Freezer: Position 2 is the shelf. Dewar: one shelf holds every cane (Position 1).
-                shelf_name = DEWAR_SHELF_NAME if getattr(self, 'storage_layout', LAYOUT_FREEZER) == LAYOUT_DEWAR else box_letter
+                shelf_name = DEWAR_SHELF_NAME if (site_name, freezer_name) in dewars else box_letter
 
                 if site_name in existing['sites']:
                     reused['sites'].add(site_name)
