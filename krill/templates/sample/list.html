@@ -6,6 +6,11 @@
     <div class="list-header">
         <h1>{{ model_name }}</h1>
         <p>Browse and manage {{ model_name|lower }}</p>
+        {% if model_type == 'sample' %}
+        <p class="list-hint">A sample is a cell line or other specimen type. Each tube of it is an aliquot.</p>
+        {% elif model_type == 'aliquot' %}
+        <p class="list-hint">An aliquot is one tube: a single portion of a sample.</p>
+        {% endif %}
     </div>
 
     <!-- Filter toolbar (aliquot) / search card (other types) -->
