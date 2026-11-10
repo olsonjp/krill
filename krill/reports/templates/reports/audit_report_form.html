@@ -53,7 +53,7 @@
                 <div class="form-group">
                     <label for="reportName">Report Name</label>
                     <input type="text" class="form-control" id="reportName" name="name"
-                           placeholder="Storage Audit - 2024-01-15" required>
+                           value="{{ default_name }}" placeholder="Storage Audit" required>
                 </div>
 
                 <div class="form-group">
@@ -235,7 +235,7 @@ function displayAuditResults(auditData) {
                     <div class="audit-header">
                         <span class="material-icons-round">location_on</span>
                         <div class="audit-location">
-                            <strong>${slot.site} - ${slot.device} - ${slot.box} (${slot.row},${slot.column})</strong>
+                            <strong>${slot.site} - ${slot.device} - cane ${slot.rack} - box ${slot.box} (row ${slot.row}, column ${slot.column})</strong>
                             <small>Sample: ${slot.sample_name} (ID: ${slot.sample_id})</small>
                         </div>
                     </div>

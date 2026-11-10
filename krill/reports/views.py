@@ -257,7 +257,9 @@ def generate_audit_report(request):
             return JsonResponse({'error': str(e)}, status=500)
 
     # GET request - show audit report form
-    return render(request, 'reports/audit_report_form.html')
+    return render(request, 'reports/audit_report_form.html', {
+        'default_name': f'Storage Audit - {timezone.now().strftime("%Y-%m-%d")}',
+    })
 
 
 @login_required
@@ -502,8 +504,8 @@ def generate_storage_audit_data(parameters):
             'aliquot_id': location.aliquot.id if location.aliquot else None,
             'sample_name': location.aliquot.sample.name if location.aliquot and location.aliquot.sample else 'Unknown',
             'sample_id': location.aliquot.sample.id if location.aliquot and location.aliquot.sample else None,
-            'aliquot_quantity': location.aliquot.quantity if location.aliquot else 0,
-            'expected_tubes': location.aliquot.quantity if location.aliquot else 0,
+            'rack': location.box.rack.name,
+            'expected_tubes': 1 if location.aliquot else 0,   # each aliquot is one physical tube
             'actual_tubes': 0,  # This would be filled in during physical audit
             'discrepancy': False,  # This would be calculated during physical audit
             'notes': '',  # For audit notes

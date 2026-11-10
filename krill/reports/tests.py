@@ -297,3 +297,61 @@ class AlertListViewPageSizeTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.context['alerts']), 20)
 
+
+
+class StorageAuditReportTest(ReportsViewTest):
+    """The storage audit picks random stored aliquots and lists where to find them."""
+
+    def setUp(self):
+        super().setUp()
+        from sample.models.source import Source
+        from storage.models.site import Site
+        from storage.models.storage import Rack, Shelf
+        site = Site.objects.create(name='Main')
+        device = Device.objects.create(name='Dewer', site=site)
+        shelf = Shelf.objects.create(name='Canes', device=device)
+        rack = Rack.objects.create(name='2', shelf=shelf)
+        self.box = Box.objects.create(name='2_B', rack=rack, rows=9, columns=9)
+        self.sample = Sample.objects.create(name='HeLa', source=Source.objects.create(name='Lab'))
+        for column in range(1, 6):
+            aliquot = Aliquot.objects.create(sample=self.sample)
+            AliquotLocation.objects.create(aliquot=aliquot, box=self.box, row=1, column=column)
+
+    def post_audit(self, **body):
+        self.client.force_login(self.user)
+        return self.client.post(reverse('reports:generate_audit_report'), json.dumps(body), content_type='application/json')
+
+    def test_audit_lists_the_requested_number_of_slots_with_cane_and_box(self):
+        response = self.post_audit(sample_size=3)
+        self.assertEqual(response.status_code, 200, response.content)
+        slots = response.json()['data']['audit_slots']
+        self.assertEqual(len(slots), 3)
+        for slot in slots:
+            self.assertEqual((slot['device'], slot['rack'], slot['box']), ('Dewer', '2', '2_B'))
+            self.assertEqual(slot['sample_name'], 'HeLa')
+            self.assertEqual(slot['expected_tubes'], 1)        # one aliquot = one tube
+
+    def test_sample_size_is_capped_at_the_number_of_stored_aliquots(self):
+        data = self.post_audit(sample_size=50).json()['data']
+        self.assertEqual(data['sample_size'], 5)
+        self.assertEqual(len({s['location_id'] for s in data['audit_slots']}), 5)
+
+    def test_empty_slot_checks_are_added_on_request(self):
+        data = self.post_audit(sample_size=2, include_empty_checks=True).json()['data']
+        self.assertEqual(len(data['empty_audit_slots']), 5)
+        self.assertTrue(all(s['expected_empty'] for s in data['empty_audit_slots']))
+
+    def test_audit_with_nothing_stored_is_not_an_error(self):
+        AliquotLocation.objects.all().delete()
+        response = self.post_audit(sample_size=3)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['data']['audit_slots'], [])
+
+    def test_form_defaults_the_report_name_to_today(self):
+        from django.utils import timezone
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('reports:generate_audit_report'))
+        self.assertEqual(response.status_code, 200)
+        today = timezone.now().strftime('%Y-%m-%d')
+        self.assertContains(response, f'value="Storage Audit - {today}"')
+        self.assertNotContains(response, '2024-01-15')
