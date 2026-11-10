@@ -5,10 +5,6 @@
 <div class="home-container dashboard">
     <div class="dashboard-header">
         <h1>Dashboard</h1>
-        <p class="subtitle">
-            {{ stats.aliquots }} aliquot{{ stats.aliquots|pluralize }} of {{ stats.active_samples }} sample{{ stats.active_samples|pluralize }}
-            &bull; {{ stats.used_slots }} of {{ stats.total_slots }} storage slots used ({{ stats.storage_usage }}%)
-        </p>
     </div>
 
     <!-- Quick Stats: every card leads somewhere useful -->
@@ -104,7 +100,7 @@
                 </div>
                 <div class="freezer-meta">
                     <span>{{ card.used }} of {{ card.total }} slots</span>
-                    <span>{{ card.device.site.name }}</span>
+                    {% if show_sites %}<span>{{ card.device.site.name }}</span>{% endif %}
                 </div>
                 <small class="freezer-last">Last change: {{ card.last_activity }}</small>
             </a>
@@ -165,13 +161,9 @@
     </div>
 </div>
 
-<!-- Add the dashboard.js script -->
-<script src="{% static 'js/dashboard.js' %}"></script>
-
 <style>
     .dashboard { max-width: 1600px; margin: 0 auto; }
     .dashboard-header { margin-bottom: 20px; }
-    .dashboard-header .subtitle { color: var(--color-dark-variant); margin-top: 6px; }
     .freezer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
     .freezer-card { display: flex; flex-direction: column; gap: 10px; padding: 16px; text-decoration: none;
         background: var(--color-white); color: var(--color-dark); border: 1px solid var(--color-light);

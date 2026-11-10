@@ -27,9 +27,11 @@ class HomeView(View):
     def get(self, request):
         # Get dashboard statistics
         stats = get_dashboard_statistics()
+        freezers = get_freezer_cards()
         return render(request, self.template_name, {
             'stats': stats,
-            'freezers': get_freezer_cards(),
+            'freezers': freezers,
+            'show_sites': len({card['device'].site_id for card in freezers}) > 1,
             'audits_in_progress': get_audits_in_progress(),
             'recent_activity': get_recent_activity(),
         })

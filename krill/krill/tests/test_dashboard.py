@@ -58,12 +58,19 @@ class DashboardTest(TestCase):
         self.assertEqual((card['percent'], card['level']), (100, 'full'))
         self.assertEqual(card['last_activity'], 'Just now')
 
-    def test_header_summarises_instead_of_welcoming(self):
+    def test_page_is_plain_and_does_not_blank_its_numbers_with_a_loading_script(self):
         self.store(3)
         page = self.page()
-        self.assertContains(page, '3 aliquots of 1 sample')
         self.assertNotContains(page, 'Welcome to Krill')
         self.assertNotContains(page, 'Laboratory Information Management System')
+        self.assertNotContains(page, 'dashboard.js')       # it replaced every card with "Loading..."
+        self.assertNotContains(page, 'storage slots used')  # the cards already say it
+        self.assertEqual(page.context['stats']['aliquots'], 3)
+
+    def test_site_name_only_appears_on_freezer_cards_when_there_are_several_sites(self):
+        self.assertFalse(self.page().context['show_sites'])
+        Device.objects.create(name='Other', site=Site.objects.create(name='Annex'))
+        self.assertTrue(self.page().context['show_sites'])
 
     def test_quick_actions_drop_settings_and_offer_an_audit(self):
         page = self.page()
