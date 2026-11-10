@@ -24,6 +24,7 @@ The import adds to what is already in Krill. It never overwrites or renames exis
 - **Storage slots are never double-booked.** If a slot is already occupied (by existing data, or by two rows of the file), the import stops before changing anything and lists the slots.
 - Importing the same file twice is therefore refused; to replace data, remove it first (for example `manage.py wipe_samples`).
 - To replace an old freezer layout with the one in your sheet, remove it first with `manage.py delete_storage --site 'Old Site'` (or `--freezer 'Old Freezer'` for one freezer). It deletes the site or freezer with its shelves, racks and boxes, is a dry run unless you add `--yes`, and refuses while any aliquot is still stored in those boxes (run `wipe_samples` first). Take a database backup before using either command.
+- Data imported before the `Canes` shelf change has one shelf per box letter, with every cane under the first. Repair it in place, without re-importing, using `manage.py fix_canes_layout` (a dry run unless you add `--yes`). It renames the shelf that holds the racks to `Canes`, removes the empty shelves, and shrinks 10x10 boxes to 9x9 when no tube sits beyond that. Aliquots and their locations are not touched, and freezers whose racks are spread over several shelves are left alone.
 
 ### Linking lab members to users
 `Lab Member` initials are stored as written. To link them to user accounts after an import, map initials to usernames:
