@@ -12,7 +12,7 @@ from ..forms import (
     CreateUserForm, UserRoleForm, PermissionForm, BulkPermissionForm,
     UserSearchForm, AuditLogFilterForm
 )
-from ..views import DataImportView
+from ..views import DataImportForm, DataImportView
 from sample.models.sample import Sample
 from sample.models.source import Source
 
@@ -661,7 +661,7 @@ MDA MB 134VI (MM134);UPMC/MJS;Sikora LN2 #1;4;F;1;2;Cells;3;Checked Out;Legacy M
             self.assertEqual(storage_fixtures['storage.device']['fields']['name'], 'Sikora LN2 #1')
 
             self.assertIn('storage.shelf', storage_fixtures)
-            self.assertEqual(storage_fixtures['storage.shelf']['fields']['name'], 'Canes')
+            self.assertEqual(storage_fixtures['storage.shelf']['fields']['name'], 'F')
 
             self.assertIn('storage.rack', storage_fixtures)
             self.assertEqual(storage_fixtures['storage.rack']['fields']['name'], '4')
@@ -1064,7 +1064,7 @@ class ImportBuildsOnExistingDataTest(TestCase):
         self.disp = AliquotDisposition.objects.create(pk=1, name='In Storage', disposition_type='stored')
         self.site = Site.objects.create(pk=1, name='Main')
         self.device = Device.objects.create(pk=1, name='Freezer 1', site=self.site)
-        self.shelf = Shelf.objects.create(pk=1, name='Canes', device=self.device)
+        self.shelf = Shelf.objects.create(pk=1, name='F', device=self.device)
         self.rack = Rack.objects.create(pk=1, name='4', shelf=self.shelf)
         self.box = Box.objects.create(pk=1, name='4_F', rack=self.rack, rows=10, columns=10)
         self.sample = Sample.objects.create(pk=1, name='HeLa', source=self.source, notes='keep me')
@@ -1258,26 +1258,27 @@ class ImportBuildsOnExistingDataTest(TestCase):
 
 
 class ImportStorageLayoutTest(TestCase):
-    """Canes (Position 1) share one shelf per freezer; boxes are 9x9 unless a tube sits beyond that."""
+    """Dewar: canes (Position 1) share one shelf. Freezer: Position 2 is the shelf. Boxes are 9x9 unless a tube sits beyond that."""
 
     HEADER = ('Cell Line;Source;Freezer Name;Site;Position 1;Position 2;Position 3;Position 4;'
               'Aliquot Type;Disposition;Sample Notes;Experiment #\n')
 
-    def _convert(self, rows):
+    def _convert(self, rows, layout=None):
         import tempfile, os
         with tempfile.NamedTemporaryFile(suffix='.csv', delete=False, mode='w') as f:
             f.write(self.HEADER + ''.join(rows))
         try:
-            return DataImportView().convert_csv_to_fixtures(f.name)
+            view = DataImportView()
+            return view.convert_csv_to_fixtures(f.name) if layout is None else view.convert_csv_to_fixtures(f.name, layout)
         finally:
             os.unlink(f.name)
 
-    def test_all_canes_hang_under_one_shelf(self):
+    def test_dewar_hangs_all_canes_under_one_shelf(self):
         fixtures = self._convert([
             'HeLa;Lab;Dewer;Main;1;A;1;1;Cells;In Storage;;\n',
             'HeLa;Lab;Dewer;Main;2;B;1;1;Cells;In Storage;;\n',
             'HeLa;Lab;Dewer;Main;4;J;1;2;Cells;In Storage;;\n',
-        ])
+        ], 'dewar')
         shelves = [f for f in fixtures if f['model'] == 'storage.shelf']
         racks = [f for f in fixtures if f['model'] == 'storage.rack']
         self.assertEqual([s['fields']['name'] for s in shelves], ['Canes'])
@@ -1285,12 +1286,33 @@ class ImportStorageLayoutTest(TestCase):
         self.assertEqual(sorted(r['fields']['name'] for r in racks), ['1', '2', '4'])
         self.assertEqual(sorted(b['fields']['name'] for b in fixtures if b['model'] == 'storage.box'), ['1_A', '2_B', '4_J'])
 
+    def test_freezer_is_the_default_and_uses_position_2_as_the_shelf(self):
+        fixtures = self._convert([
+            'HeLa;Lab;Freezer;Main;1;Top;1;1;Cells;In Storage;;\n',
+            'HeLa;Lab;Freezer;Main;1;Bottom;1;1;Cells;In Storage;;\n',
+        ])
+        shelves = {f['pk']: f['fields']['name'] for f in fixtures if f['model'] == 'storage.shelf'}
+        self.assertEqual(sorted(shelves.values()), ['Bottom', 'Top'])
+        racks = [f['fields'] for f in fixtures if f['model'] == 'storage.rack']
+        # The same rack name on two shelves is two racks, one per shelf.
+        self.assertEqual(sorted(shelves[r['shelf']] for r in racks), ['Bottom', 'Top'])
+
     def test_boxes_default_to_9x9_and_grow_to_fit(self):
         fixtures = self._convert([
             'HeLa;Lab;Dewer;Main;1;A;9;9;Cells;In Storage;;\n',
             'HeLa;Lab;Dewer;Main;3;C;10;10;Cells;In Storage;;\n',
             'HeLa;Lab;Dewer;Main;3;D;2;3;Cells;In Storage;;\n',
-        ])
+        ], 'dewar')
         sizes = {b['fields']['name']: (b['fields']['rows'], b['fields']['columns'])
                  for b in fixtures if b['model'] == 'storage.box'}
         self.assertEqual(sizes, {'1_A': (9, 9), '3_C': (10, 10), '3_D': (9, 9)})
+
+    def test_form_requires_a_valid_layout_and_defaults_to_freezer(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        upload = {'csv_file': SimpleUploadedFile('a.csv', b'x')}
+        self.assertFalse(DataImportForm({'storage_layout': 'shed'}, upload).is_valid())
+        blank = DataImportForm({}, upload)
+        self.assertTrue(blank.is_valid())
+        self.assertEqual(blank.cleaned_data['storage_layout'], 'freezer')
+        self.assertEqual(DataImportForm().fields['storage_layout'].initial, 'freezer')
+        self.assertTrue(DataImportForm({'storage_layout': 'dewar'}, upload).is_valid())
