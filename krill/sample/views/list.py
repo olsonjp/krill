@@ -168,8 +168,11 @@ class SampleListView(LoginRequiredMixin, ListView):
             return False
         return UserRole.get_or_create_for_user(self.request.user).role in ('lab_manager', 'lab_admin')
 
-    def _toggle_url(self, param, value):
-        """Link that flips one yes/no filter, keeps every other parameter, and goes back to page 1."""
+    def _toggle_url(self, param, value, anchor=''):
+        """Link that flips one yes/no filter, keeps every other parameter, and goes back to page 1.
+
+        With an anchor the link ends in #anchor, so the page keeps its place after the toggle.
+        """
         params = self.request.GET.copy()
         params.pop('page', None)
         if params.get(param) == value:
@@ -177,7 +180,8 @@ class SampleListView(LoginRequiredMixin, ListView):
         else:
             params[param] = value
         query = params.urlencode()
-        return f'?{query}' if query else self.request.path
+        url = f'?{query}' if query else self.request.path
+        return f'{url}#{anchor}' if anchor else url
 
     def get_paginate_by(self, queryset):
         if self.request.GET.get('page_size') == '20':
@@ -225,8 +229,8 @@ class SampleListView(LoginRequiredMixin, ListView):
             context['hide_finished'] = self.request.GET.get('hide_finished') == '1'
             context['checked_out_by_me'] = self.request.GET.get('checked_out_by') == 'me'
             context['checked_out_all'] = self._checked_out_by_everyone()
-            context['checked_out_toggle_url'] = self._toggle_url('checked_out_by', 'me')
-            context['hide_finished_toggle_url'] = self._toggle_url('hide_finished', '1')
+            context['checked_out_toggle_url'] = self._toggle_url('checked_out_by', 'me', anchor='results-bar')
+            context['hide_finished_toggle_url'] = self._toggle_url('hide_finished', '1', anchor='results-bar')
             context['checked_out_count'] = Aliquot.objects.filter(
                 checked_out_by=self.request.user,
                 disposition__disposition_type='in_use',

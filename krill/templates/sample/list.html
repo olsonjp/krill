@@ -46,18 +46,6 @@
                 {% include 'sample/_filter_fields.html' with fields=filter_bar.more variant='panel' %}
             </div>
         </form>
-        <div class="toggle-pills">
-            <a href="{{ checked_out_toggle_url }}" class="toggle-pill{% if checked_out_by_me %} on{% endif %}"
-               aria-label="Checked out by me, {% if checked_out_by_me %}on. Select to turn off{% else %}off. Select to turn on{% endif %}">
-                {% if checked_out_by_me %}<span class="material-icons-round">check</span>{% endif %}
-                Checked out by me · {{ checked_out_count }}
-            </a>
-            <a href="{{ hide_finished_toggle_url }}" class="toggle-pill{% if hide_finished %} on{% endif %}"
-               aria-label="Hide exhausted, {% if hide_finished %}on. Select to turn off{% else %}off. Select to turn on{% endif %}">
-                {% if hide_finished %}<span class="material-icons-round">check</span>{% endif %}
-                Hide exhausted
-            </a>
-        </div>
         {% include 'sample/_filter_chips.html' %}
     </div>
     {% else %}
@@ -131,7 +119,21 @@
 
     <!-- Results -->
     <div class="search-results">
-        <div class="results-header">
+        <div class="results-header" id="results-bar">
+            {% if model_type == 'aliquot' %}
+        <div class="toggle-pills results-pills">
+            <a href="{{ checked_out_toggle_url }}" class="toggle-pill{% if checked_out_by_me %} on{% endif %}"
+               aria-label="Checked out by me, {% if checked_out_by_me %}on. Select to turn off{% else %}{{ checked_out_count }} aliquot{{ checked_out_count|pluralize }}, off. Select to turn on{% endif %}">
+                {% if checked_out_by_me %}<span class="material-icons-round">check</span>{% endif %}
+                Checked out by me{% if not checked_out_by_me %} &middot; {{ checked_out_count }}{% endif %}
+            </a>
+            <a href="{{ hide_finished_toggle_url }}" class="toggle-pill{% if hide_finished %} on{% endif %}"
+               aria-label="Hide exhausted, {% if hide_finished %}on. Select to turn off{% else %}off. Select to turn on{% endif %}">
+                {% if hide_finished %}<span class="material-icons-round">check</span>{% endif %}
+                Hide exhausted
+            </a>
+        </div>
+            {% endif %}
             <div class="results-info">
                 <span class="result-count">{{ paginator.count }} {% if paginator.count == 1 %}{{ model_name|singular|lower }}{% else %}{{ model_name|lower }}{% endif %} found</span>
                 {% if search_query %}
@@ -614,8 +616,11 @@ document.querySelectorAll('th[data-sort]').forEach(function(th) {
     padding: 20px;
     border-bottom: 1px solid var(--color-light);
     display: flex;
-    justify-content: flex-end;   /* the page heading above already names the list */
-    align-items: center;
+    justify-content: space-between;
+    align-items: center;          /* pills, count and the view toggle share one centre line */
+    flex-wrap: wrap;
+    gap: 12px 20px;
+    scroll-margin-top: 1rem;      /* the toggle links jump here; leave a little room above */
 }
 
 .results-header h2 {
@@ -625,7 +630,9 @@ document.querySelectorAll('th[data-sort]').forEach(function(th) {
 
 .results-info {
     display: flex;
-    gap: 20px;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    margin-left: auto;            /* always at the right, with or without pills on the left */
     color: var(--color-dark-variant);
     font-size: 0.9rem;
     align-items: center;
@@ -751,12 +758,6 @@ document.querySelectorAll('th[data-sort]').forEach(function(th) {
 
     .results-grid {
         grid-template-columns: 1fr;
-    }
-
-    .results-header {
-        flex-direction: column;
-        gap: 15px;
-        align-items: flex-start;
     }
 
     .form-actions {
