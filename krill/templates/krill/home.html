@@ -80,6 +80,43 @@
         </div>
     </div>
 
+    <!-- Checked out by you -->
+    {% url 'home' as home_url %}
+    {% if checked_out.total %}
+    <div class="recent-activity checked-out-card">
+        <div class="section-header">
+            <h2>Checked out by you ({{ checked_out.total }})</h2>
+            <a href="{% url 'sample:sample_list' %}?type=aliquot&checked_out_by=me" class="view-all">All checked out</a>
+        </div>
+        <div class="activity-list">
+            {% for row in checked_out.items %}
+            <div class="activity-item">
+                <span class="material-icons-round">shopping_cart</span>
+                <div class="activity-info">
+                    <p><a href="{% url 'sample:detail' type='aliquot' pk=row.aliquot.id %}" class="detail-link">{{ row.aliquot.sample.name }} #{{ row.aliquot.id }}</a>{% if row.aliquot.aliquot_type %} &middot; {{ row.aliquot.aliquot_type.name }}{% endif %}{% if row.aliquot.passage %} &middot; {{ row.aliquot.passage }}{% endif %}</p>
+                    <small>out {{ row.out|lower }} &bull; {{ row.children }} child{{ row.children|pluralize:"ren" }}</small>
+                </div>
+                <div class="activity-actions">
+                    <a href="{% url 'sample:sample_create' %}?type=aliquot&parent={{ row.aliquot.id }}&next={{ home_url|urlencode }}" class="btn btn-sm btn-primary">
+                        <span class="material-icons-round">add</span>
+                        Create child
+                    </a>
+                    <form method="post" action="{% url 'sample:aliquot_detail' pk=row.aliquot.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="done">
+                        <input type="hidden" name="next" value="{{ home_url }}">
+                        <button type="submit" class="btn btn-sm btn-plain"
+                                onclick="return confirm('Mark {{ row.aliquot.sample.name|escapejs }} #{{ row.aliquot.id }} as exhausted, with no child recorded?')">Done</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% else %}
+    <p class="checked-out-empty">Nothing checked out. <a href="{% url 'sample:sample_list' %}?type=aliquot" class="detail-link">Find an aliquot</a> to check one out.</p>
+    {% endif %}
+
     <!-- Freezers -->
     <div class="recent-activity">
         <div class="section-header">
@@ -163,6 +200,15 @@
 
 <style>
     .dashboard { max-width: 1600px; margin: 0 auto; }
+    .activity-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+    .activity-actions form { margin: 0; }
+    /* The row icon rule colours every icon primary; on a primary button the plus would vanish */
+    .activity-actions .btn .material-icons-round { color: inherit; font-size: 1.1rem; }
+    .activity-actions .btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; line-height: 1.2; }
+    .checked-out-card { margin-top: 16px; }
+    .btn-plain { background: transparent; color: var(--color-dark); border: 1px solid var(--color-gray-border); cursor: pointer; }
+    .btn-plain:hover { border-color: var(--color-primary); }
+    .checked-out-empty { margin: 8px 0 16px; color: var(--color-dark-variant); }
     .dashboard-header { margin-bottom: 20px; }
     .freezer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
     .freezer-card { display: flex; flex-direction: column; gap: 10px; padding: 16px; text-decoration: none;

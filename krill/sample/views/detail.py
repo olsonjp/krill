@@ -11,6 +11,8 @@ from ..models.aliquot import Aliquot, AliquotType, AliquotLocation
 from ..models.source import Source
 from ..forms import SampleForm, AliquotForm, AliquotTypeForm, SourceForm, AliquotMoveForm
 from ..models.aliquot import AliquotDisposition
+from person.models import UserAuditLog
+from .next_url import safe_next
 
 def remaining_aliquots(sample):
     """Aliquots of a sample still in the freezer: stored disposition and a box position."""
@@ -139,6 +141,8 @@ class AliquotDetailView(DetailView):
             return self._handle_move(request)
         elif action == 'checkout':
             return self._handle_checkout(request)
+        elif action == 'done':
+            return self._handle_done(request)
         else:
             return self._handle_edit(request)
 
@@ -224,6 +228,21 @@ class AliquotDetailView(DetailView):
             context = self.get_context_data()
             context['move_form'] = move_form
             return render(request, self.template_name, context)
+
+    def _handle_done(self, request):
+        """The aliquot is used up and no child is being recorded: mark it Exhausted."""
+        if self.object.disposition and self.object.disposition.disposition_type == 'in_use':
+            self.object.mark_exhausted()
+            UserAuditLog.log_action(
+                user=request.user,
+                action='aliquot_updated',
+                target_type='Aliquot',
+                target_id=self.object.id,
+                target_name=str(self.object),
+                details={'disposition': self.object.disposition.name, 'source': 'done'},
+                request=request,
+            )
+        return redirect(safe_next(request, reverse('sample:aliquot_detail', kwargs={'pk': self.object.pk})))
 
     def _handle_checkout(self, request):
         """Handle checkout action - change disposition to 'in_use'"""
