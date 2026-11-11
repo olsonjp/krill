@@ -1,0 +1,12 @@
+{% comment %}One removable chip per active filter, and Clear all when there are two or more{% endcomment %}
+{% if filter_bar.chips %}
+<div class="filter-chips">
+    {% for chip in filter_bar.chips %}
+    <span class="filter-chip">
+        {{ chip.text }}
+        <a class="chip-remove" href="{{ chip.remove_url }}" title="Remove" aria-label="Remove filter: {{ chip.text }}">&times;</a>
+    </span>
+    {% endfor %}
+    {% if filter_bar.show_clear_all %}<a class="filter-clear-all" href="{{ filter_bar.clear_all_url }}">Clear all</a>{% endif %}
+</div>
+{% endif %}
