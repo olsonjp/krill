@@ -87,15 +87,13 @@ class CheckedOutByMeFilterTest(SampleViewTest):
         self.assertEqual(list(response.context['items']), [mine])
         self.assertTrue(response.context['checked_out_by_me'])
 
-    def test_shows_checked_out_time_column_and_chip_only_when_filtered(self):
+    def test_shows_checked_out_time_column_only_when_filtered(self):
         self._make(self.user)
         filtered = self._list()
         self.assertContains(filtered, '<th>Checked Out</th>')
-        self.assertContains(filtered, 'Checked out by me')
         self.assertContains(filtered, 'name="checked_out_by" value="me"')
         plain = self.client.get(reverse('sample:sample_list'), {'type': 'aliquot'})
         self.assertNotContains(plain, '<th>Checked Out</th>')
-        self.assertNotContains(plain, 'Checked out by me')
 
     def test_works_with_search_and_sort(self):
         keep = self._make(self.user, passage='p8')
@@ -108,3 +106,67 @@ class CheckedOutByMeFilterTest(SampleViewTest):
         response = self.client.get(reverse('sample:sample_list'), {'type': 'aliquot', 'checked_out_by': str(self.other_user.pk)})
         self.assertFalse(response.context['checked_out_by_me'])
         self.assertEqual(len(response.context['items']), 2)  # nothing filtered: self.aliquot + theirs
+
+
+class ToggleKeyPillsTest(SampleViewTest):
+    """The two yes/no filters are pills (links) under the search bar."""
+
+    def setUp(self):
+        super().setUp()
+        self.client.force_login(self.user)
+        self.in_use = AliquotDisposition.objects.get_or_create(
+            name='In Use', defaults={'disposition_type': 'in_use'})[0]
+        self.exhausted = AliquotDisposition.objects.get_or_create(
+            name='Used', defaults={'disposition_type': 'exhausted'})[0]
+
+    def _list(self, **params):
+        return self.client.get(reverse('sample:sample_list'), {'type': 'aliquot', **params})
+
+    def test_pills_start_off_with_aria_state(self):
+        response = self._list()
+        self.assertContains(response, 'aria-label="Checked out by me, off. Select to turn on"')
+        self.assertContains(response, 'aria-label="Hide exhausted, off. Select to turn on"')
+        self.assertNotContains(response, 'toggle-pill on')
+
+    def test_pills_show_on_state_and_turn_off_links(self):
+        response = self._list(checked_out_by='me', hide_finished='1')
+        self.assertContains(response, 'aria-label="Checked out by me, on. Select to turn off"')
+        self.assertContains(response, 'aria-label="Hide exhausted, on. Select to turn off"')
+        self.assertEqual(response.content.decode().count('toggle-pill on'), 2)
+
+    def test_toggle_urls_flip_one_param_keep_others_and_reset_page(self):
+        response = self._list(q='p8', sort='passage', page='1', hide_finished='1')
+        on_url = response.context['checked_out_toggle_url']
+        self.assertIn('checked_out_by=me', on_url)
+        self.assertIn('hide_finished=1', on_url)
+        self.assertIn('q=p8', on_url)
+        self.assertIn('sort=passage', on_url)
+        self.assertNotIn('page=', on_url)
+        off_url = response.context['hide_finished_toggle_url']
+        self.assertNotIn('hide_finished', off_url)
+        self.assertIn('q=p8', off_url)
+        self.assertNotIn('page=', off_url)
+
+    def test_following_a_toggle_link_applies_the_filter(self):
+        mine = Aliquot.objects.create(
+            sample=self.sample, disposition=self.in_use,
+            checked_out_by=self.user, checked_out_at=timezone.now())
+        url = self._list().context['checked_out_toggle_url']
+        response = self.client.get(reverse('sample:sample_list') + url)
+        self.assertEqual(list(response.context['items']), [mine])
+
+    def test_checked_out_pill_counts_my_in_use_aliquots_only(self):
+        other = User.objects.create_user(username='colleague', password='x')
+        for owner, disp in ((self.user, self.in_use), (self.user, self.in_use),
+                            (self.user, self.exhausted), (other, self.in_use)):
+            Aliquot.objects.create(sample=self.sample, disposition=disp,
+                                   checked_out_by=owner, checked_out_at=timezone.now())
+        response = self._list()
+        self.assertEqual(response.context['checked_out_count'], 2)
+        self.assertContains(response, 'Checked out by me · 2')
+
+    def test_search_button_has_aria_label_and_singular_count(self):
+        response = self._list(q='Test Sample')
+        self.assertContains(response, 'aria-label="Search"')
+        self.assertContains(response, '1 aliquot found')
+        self.assertNotContains(response, '1 aliquots found')

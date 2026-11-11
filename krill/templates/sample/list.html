@@ -20,6 +20,7 @@
             <input type="hidden" name="type" value="aliquot">
             {% if sample_filter %}<input type="hidden" name="sample" value="{{ sample_filter.id }}">{% endif %}
             {% if checked_out_by_me %}<input type="hidden" name="checked_out_by" value="me">{% endif %}
+            {% if hide_finished %}<input type="hidden" name="hide_finished" value="1">{% endif %}
             {% if request.GET.sort %}<input type="hidden" name="sort" value="{{ request.GET.sort }}">{% endif %}
             {% if request.GET.order %}<input type="hidden" name="order" value="{{ request.GET.order }}">{% endif %}
             {% if request.GET.page_size %}<input type="hidden" name="page_size" value="{{ request.GET.page_size }}">{% endif %}
@@ -39,12 +40,7 @@
                     <option value="{{ at.id }}" {% if aliquot_type_filter == at.id|stringformat:"i" %}selected{% endif %}>{{ at.name }}</option>
                     {% endfor %}
                 </select>
-                <label class="toolbar-toggle">
-                    <input type="checkbox" name="hide_finished" value="1" {% if hide_finished %}checked{% endif %}
-                           onchange="this.form.submit()">
-                    Hide exhausted
-                </label>
-                <button type="submit" class="toolbar-btn-search" title="Search">
+                <button type="submit" class="toolbar-btn-search" title="Search" aria-label="Search">
                     <span class="material-icons-round">search</span>
                 </button>
                 <a class="btn btn-success" href="{% url 'sample:sample_create' %}?type=aliquot">
@@ -53,7 +49,19 @@
                 </a>
             </div>
         </form>
-        {% if search_query or disposition_filter or aliquot_type_filter or hide_finished or sample_filter or checked_out_by_me %}
+        <div class="toggle-pills">
+            <a href="{{ checked_out_toggle_url }}" class="toggle-pill{% if checked_out_by_me %} on{% endif %}"
+               aria-label="Checked out by me, {% if checked_out_by_me %}on. Select to turn off{% else %}off. Select to turn on{% endif %}">
+                {% if checked_out_by_me %}<span class="material-icons-round">check</span>{% endif %}
+                Checked out by me · {{ checked_out_count }}
+            </a>
+            <a href="{{ hide_finished_toggle_url }}" class="toggle-pill{% if hide_finished %} on{% endif %}"
+               aria-label="Hide exhausted, {% if hide_finished %}on. Select to turn off{% else %}off. Select to turn on{% endif %}">
+                {% if hide_finished %}<span class="material-icons-round">check</span>{% endif %}
+                Hide exhausted
+            </a>
+        </div>
+        {% if search_query or disposition_filter or aliquot_type_filter or sample_filter %}
         <div class="filter-chips">
             {% if search_query %}
             <span class="filter-chip">
@@ -67,22 +75,10 @@
                 <button type="button" class="chip-remove" onclick="removeFilterParam('disposition')" title="Remove">×</button>
             </span>
             {% endif %}
-            {% if checked_out_by_me %}
-            <span class="filter-chip">
-                Checked out by me
-                <button type="button" class="chip-remove" onclick="removeFilterParam('checked_out_by')" title="Remove">×</button>
-            </span>
-            {% endif %}
             {% if sample_filter %}
             <span class="filter-chip">
                 Sample: {{ sample_filter.name }}
                 <button type="button" class="chip-remove" onclick="removeFilterParam('sample')" title="Remove">×</button>
-            </span>
-            {% endif %}
-            {% if hide_finished %}
-            <span class="filter-chip">
-                Hiding exhausted
-                <button type="button" class="chip-remove" onclick="removeFilterParam('hide_finished')" title="Remove">×</button>
             </span>
             {% endif %}
             {% if aliquot_type_filter %}
@@ -151,7 +147,7 @@
         <div class="results-header">
             <h2>{{ model_name }}</h2>
             <div class="results-info">
-                <span class="result-count">{{ paginator.count }} {{ model_name|lower }} found</span>
+                <span class="result-count">{{ paginator.count }} {% if paginator.count == 1 %}{{ model_name|lower|slice:":-1" }}{% else %}{{ model_name|lower }}{% endif %} found</span>
                 {% if search_query %}
                     <span class="search-info">(filtered by "{{ search_query }}")</span>
                 {% endif %}

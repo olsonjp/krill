@@ -305,7 +305,9 @@ class SampleListViewTest(SampleViewTest):
         self.aliquot.save()
         response = self._aliquot_list(hide_finished='1', q='p5', sort='passage')
         self.assertEqual(list(response.context['items']), [self.aliquot])
-        self.assertContains(response, 'name="hide_finished" value="1" checked')
+        # The pill is on, and the search form keeps the toggle when it is submitted
+        self.assertContains(response, 'class="toggle-pill on"')
+        self.assertContains(response, '<input type="hidden" name="hide_finished" value="1">')
 
     def test_aliquot_list_context_includes_filter_choices(self):
         """Context includes disposition_choices, aliquot_types, and active filter values."""

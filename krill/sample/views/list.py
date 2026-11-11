@@ -131,6 +131,17 @@ class SampleListView(LoginRequiredMixin, ListView):
             match |= Q(id=int(number))
         return queryset.filter(match)
 
+    def _toggle_url(self, param, value):
+        """Link that flips one yes/no filter, keeps every other parameter, and goes back to page 1."""
+        params = self.request.GET.copy()
+        params.pop('page', None)
+        if params.get(param) == value:
+            params.pop(param)
+        else:
+            params[param] = value
+        query = params.urlencode()
+        return f'?{query}' if query else self.request.path
+
     def get_paginate_by(self, queryset):
         if self.request.GET.get('page_size') == '20':
             return 20
@@ -165,6 +176,12 @@ class SampleListView(LoginRequiredMixin, ListView):
             context['aliquot_type_filter'] = self.request.GET.get('aliquot_type', '')
             context['hide_finished'] = self.request.GET.get('hide_finished') == '1'
             context['checked_out_by_me'] = self.request.GET.get('checked_out_by') == 'me'
+            context['checked_out_toggle_url'] = self._toggle_url('checked_out_by', 'me')
+            context['hide_finished_toggle_url'] = self._toggle_url('hide_finished', '1')
+            context['checked_out_count'] = Aliquot.objects.filter(
+                checked_out_by=self.request.user,
+                disposition__disposition_type='in_use',
+            ).count()
             sample_filter = self.request.GET.get('sample', '')
             context['sample_filter'] = Sample.objects.filter(pk=int(sample_filter)).first() if sample_filter.isdigit() else None
             context['disposition_choices'] = AliquotDisposition.DISPOSITION_CHOICES
