@@ -49,6 +49,10 @@ class SampleListView(LoginRequiredMixin, ListView):
                 except (ValueError, TypeError):
                     pass
 
+            sample_filter = self.request.GET.get('sample', '')
+            if sample_filter.isdigit():
+                queryset = queryset.filter(sample_id=int(sample_filter))
+
             # Hide finished (exhausted) aliquots. Disposed ones stay visible.
             if self.request.GET.get('hide_finished') == '1':
                 queryset = queryset.exclude(disposition__disposition_type='exhausted')
@@ -153,12 +157,15 @@ class SampleListView(LoginRequiredMixin, ListView):
             context['disposition_filter'] = self.request.GET.get('disposition', '')
             context['aliquot_type_filter'] = self.request.GET.get('aliquot_type', '')
             context['hide_finished'] = self.request.GET.get('hide_finished') == '1'
+            sample_filter = self.request.GET.get('sample', '')
+            context['sample_filter'] = Sample.objects.filter(pk=int(sample_filter)).first() if sample_filter.isdigit() else None
             context['disposition_choices'] = AliquotDisposition.DISPOSITION_CHOICES
             context['aliquot_types'] = AliquotType.objects.order_by('name')
         else:
             context['disposition_filter'] = ''
             context['aliquot_type_filter'] = ''
             context['hide_finished'] = False
+            context['sample_filter'] = None
             context['disposition_choices'] = []
             context['aliquot_types'] = AliquotType.objects.none()
 

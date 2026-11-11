@@ -1,0 +1,26 @@
+<div class="detail-section">
+    <h3><i class="material-icons-round">account_tree</i> Lineage</h3>
+    <div class="detail-field">
+        <label>Parent:</label>
+        <span>
+            {% if aliquot.parent %}
+            <a href="{% url 'sample:detail' type='aliquot' pk=aliquot.parent.id %}" class="detail-link">{{ aliquot.parent.sample.name }} #{{ aliquot.parent.id }}</a>
+            {% else %}None{% endif %}
+        </span>
+    </div>
+    <div class="detail-field">
+        <label>Children:</label>
+        <span>
+            {% for child in children %}
+            <a href="{% url 'sample:detail' type='aliquot' pk=child.id %}" class="detail-link">#{{ child.id }}</a>
+            ({{ child.aliquot_type.name|default:"no type" }}{% if child.passage %}, {{ child.passage }}{% endif %}{% if child.disposition %}, {{ child.disposition.name }}{% endif %}){% if not forloop.last %}, {% endif %}
+            {% empty %}None{% endfor %}
+        </span>
+    </div>
+    <div class="detail-section-actions">
+        <a href="{% url 'sample:sample_create' %}?type=aliquot&parent={{ aliquot.id }}" class="btn btn-sm btn-success">
+            <span class="material-icons-round">add</span>
+            Create child aliquot
+        </a>
+    </div>
+</div>

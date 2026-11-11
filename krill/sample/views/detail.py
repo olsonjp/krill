@@ -11,6 +11,22 @@ from ..models.source import Source
 from ..forms import SampleForm, AliquotForm, AliquotTypeForm, SourceForm, AliquotMoveForm
 from ..models.aliquot import AliquotDisposition
 
+def remaining_aliquots(sample):
+    """Aliquots of a sample still in the freezer: stored disposition and a box position."""
+    return (
+        Aliquot.objects.filter(
+            sample=sample,
+            disposition__disposition_type='stored',
+            location__isnull=False,
+        )
+        .select_related(
+            'aliquot_type',
+            'location__box__rack__shelf__device',
+        )
+        .order_by('sample_date', 'id')
+    )
+
+
 @method_decorator(login_required, name='dispatch')
 class ModelDetailView(DetailView):
     template_name = 'sample/detail.html'
@@ -39,8 +55,13 @@ class ModelDetailView(DetailView):
         context = super().get_context_data(**kwargs)
         context['model_type'] = self.kwargs.get('type', 'sample')
         context['form'] = self.get_form_class()(instance=self.object)
+        if context['model_type'] == 'sample':
+            remaining = list(remaining_aliquots(self.object))
+            context['remaining_aliquots'] = remaining
+            context['remaining_count'] = len(remaining)
         # Add storage location information for aliquots
         if self.kwargs.get('type') == 'aliquot':
+            context['children'] = self.object.children.select_related('aliquot_type', 'disposition')
             try:
                 location = self.object.location
                 context['storage_location'] = {
@@ -83,6 +104,7 @@ class AliquotDetailView(DetailView):
             'aliquot_type',
             'disposition',
             'location__box__rack__shelf__device',
+            'parent__sample',
         )
 
     def get_context_data(self, **kwargs):
@@ -91,6 +113,7 @@ class AliquotDetailView(DetailView):
         # Add forms to context for editing and moving
         context['form'] = AliquotForm(instance=aliquot)
         context['move_form'] = AliquotMoveForm()
+        context['children'] = aliquot.children.select_related('aliquot_type', 'disposition')
         context['excluded_form_fields'] = ['count', 'assign_to_box', 'box', 'start_row', 'start_column']
         # Get storage location if aliquot is stored
         try:
