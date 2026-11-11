@@ -29,6 +29,18 @@ from person.models import UserAuditLog, UserRole
 logger = logging.getLogger(__name__)
 
 
+@login_required
+def checked_out_no_owner(request):
+    """In Use aliquots with no recorded owner: a cleanup list, mostly checkouts from before Krill tracked who."""
+    aliquots = (
+        Aliquot.objects.filter(disposition__disposition_type='in_use', checked_out_by__isnull=True)
+        .select_related('sample', 'aliquot_type')
+        .order_by('sample__name', 'id')
+    )
+    page = Paginator(aliquots, 50).get_page(request.GET.get('page'))
+    return render(request, 'reports/checked_out_no_owner.html', {'page_obj': page, 'total': page.paginator.count})
+
+
 # Main Reports Dashboard
 @login_required
 def reports_dashboard(request):

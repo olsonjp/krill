@@ -1,0 +1,50 @@
+{% extends 'base/layout.html' %}
+
+{% block title %}Checked Out, No Owner{% endblock %}
+
+{% block content %}
+<div class="detail-container">
+    <div class="detail-header">
+        <h1>Checked Out, No Owner</h1>
+    </div>
+    <div class="detail-content">
+        <p>
+            {{ total }} aliquot{{ total|pluralize }} marked In Use with no recorded owner. Most were checked out
+            before Krill recorded who, or had their status set to In Use by hand. A checked-out aliquot is used
+            and discarded, so these are mostly tubes that were used long ago and never marked Exhausted. Open one
+            to mark it Exhausted.
+        </p>
+        <div class="detail-section">
+            {% if page_obj %}
+            <div class="detail-table-wrap">
+            <table class="detail-table">
+                <thead>
+                    <tr><th>Aliquot</th><th>Type</th><th>Passage</th><th>Sample Date</th><th>Last Updated</th></tr>
+                </thead>
+                <tbody>
+                    {% for a in page_obj %}
+                    <tr>
+                        <td><a href="{% url 'sample:detail' type='aliquot' pk=a.id %}" class="detail-link">{{ a.sample.name }} #{{ a.id }}</a></td>
+                        <td>{{ a.aliquot_type.name|default:"—" }}</td>
+                        <td>{{ a.passage|default:"—" }}</td>
+                        <td>{{ a.sample_date|date:"Y-m-d"|default:"—" }}</td>
+                        <td>{{ a.updated_at|date:"Y-m-d" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            </div>
+            {% if page_obj.paginator.num_pages > 1 %}
+            <div class="detail-section-actions">
+                {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}" class="detail-link">&larr; Previous</a>{% endif %}
+                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}" class="detail-link">Next &rarr;</a>{% endif %}
+            </div>
+            {% endif %}
+            {% else %}
+            <p>No aliquots are checked out without an owner.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

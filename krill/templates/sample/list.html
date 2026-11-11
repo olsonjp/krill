@@ -19,6 +19,7 @@
         <form id="sampleListForm" action="{% url 'sample:sample_list' %}" method="get">
             <input type="hidden" name="type" value="aliquot">
             {% if sample_filter %}<input type="hidden" name="sample" value="{{ sample_filter.id }}">{% endif %}
+            {% if checked_out_by_me %}<input type="hidden" name="checked_out_by" value="me">{% endif %}
             {% if request.GET.sort %}<input type="hidden" name="sort" value="{{ request.GET.sort }}">{% endif %}
             {% if request.GET.order %}<input type="hidden" name="order" value="{{ request.GET.order }}">{% endif %}
             {% if request.GET.page_size %}<input type="hidden" name="page_size" value="{{ request.GET.page_size }}">{% endif %}
@@ -52,7 +53,7 @@
                 </a>
             </div>
         </form>
-        {% if search_query or disposition_filter or aliquot_type_filter or hide_finished or sample_filter %}
+        {% if search_query or disposition_filter or aliquot_type_filter or hide_finished or sample_filter or checked_out_by_me %}
         <div class="filter-chips">
             {% if search_query %}
             <span class="filter-chip">
@@ -64,6 +65,12 @@
             <span class="filter-chip">
                 Disposition: {{ disposition_filter|title }}
                 <button type="button" class="chip-remove" onclick="removeFilterParam('disposition')" title="Remove">×</button>
+            </span>
+            {% endif %}
+            {% if checked_out_by_me %}
+            <span class="filter-chip">
+                Checked out by me
+                <button type="button" class="chip-remove" onclick="removeFilterParam('checked_out_by')" title="Remove">×</button>
             </span>
             {% endif %}
             {% if sample_filter %}
@@ -173,6 +180,7 @@
                             <th data-sort="disposition" class="{% if sort_by == 'disposition' %}sort-{{ sort_order }}{% endif %}">Disposition</th>
                             <th data-sort="location" class="{% if sort_by == 'location' %}sort-{{ sort_order }}{% endif %}">Location</th>
                             <th data-sort="sample_date" class="{% if sort_by == 'sample_date' %}sort-{{ sort_order }}{% endif %}">Sample Date</th>
+                            {% if checked_out_by_me %}<th>Checked Out</th>{% endif %}
                             <th></th>
                         </tr>
                     </thead>
@@ -194,6 +202,7 @@
                                 {% else %}—{% endif %}
                             </td>
                             <td>{{ item.sample_date|date:"Y-m-d"|default:"—" }}</td>
+                            {% if checked_out_by_me %}<td>{{ item.checked_out_at|date:"Y-m-d H:i"|default:"—" }}</td>{% endif %}
                             <td>
                                 <a class="action-button view" href="{% url 'sample:detail' type='aliquot' pk=item.id %}" target="_blank" title="Open in new tab">
                                     <span class="material-icons-round">open_in_new</span>
@@ -201,8 +210,8 @@
                             </td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--color-dark-variant)">
-{% if search_query or disposition_filter or aliquot_type_filter or hide_finished or sample_filter %}
+                        <tr><td colspan="{% if checked_out_by_me %}8{% else %}7{% endif %}" style="text-align:center;padding:2rem;color:var(--color-dark-variant)">
+{% if search_query or disposition_filter or aliquot_type_filter or hide_finished or sample_filter or checked_out_by_me %}
 No aliquots match your filters — try clearing a filter above.
 {% else %}
 No aliquots yet. <a href="{% url 'sample:sample_create' %}?type=aliquot">Create your first aliquot</a> to get started.

@@ -1,6 +1,6 @@
 # Reports app
 
-Reports is where you check that what Krill says is in storage is really there (the **storage audit**), and where alerts are listed. Open it from **Reports** in the sidebar.
+Reports is where you check that what Krill says is in storage is really there (the **storage audit**), where alerts are listed, and where aliquots checked out with no recorded owner are listed. Open it from **Reports** in the sidebar.
 
 ## Storage audit
 
@@ -37,6 +37,16 @@ Other people see the checklist with the fields disabled.
 - If building the sample fails, no report is created.
 
 Code: `reports/views.py` (`generate_audit_report`, `generate_storage_audit_data`, `audit_detail`, `audit_list`, `save_audit_result`, `delete_audit`), templates in `reports/templates/reports/`, tests in `reports/tests.py`.
+
+## Checked out, no owner
+
+**Reports > Checked Out, No Owner** (`/reports/checked-out-no-owner/`) lists aliquots whose disposition is In Use but that have no recorded owner. Since Krill started recording who checks an aliquot out (the Check Out button saves the person and the time), every new checkout has an owner. The ones listed here were set to In Use before that, or by editing the aliquot by hand.
+
+A checked-out aliquot is used and discarded, so most of this list is tubes that were used long ago and never marked Exhausted. Open one to mark it Exhausted. The page shows the total and 50 aliquots per page, with sample, type, passage, sample date and last-updated date.
+
+A person's own checked-out aliquots are in the Aliquots list with the **Checked out by me** filter (`/samples/list/?type=aliquot&checked_out_by=me`). The owner and time stay on the aliquot after it is used up, as a record of who used it.
+
+Code: `checked_out_no_owner` in `reports/views.py`, template `reports/templates/reports/checked_out_no_owner.html`, tests in `reports/test_checked_out_no_owner.py`.
 
 ## Alerts
 

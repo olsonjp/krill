@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.db import IntegrityError, transaction
 from django.contrib import messages
+from django.utils import timezone
 from ..models.sample import Sample
 from ..models.aliquot import Aliquot, AliquotType, AliquotLocation
 from ..models.source import Source
@@ -234,6 +235,8 @@ class AliquotDetailView(DetailView):
         )
 
         self.object.disposition = in_use_disposition
+        self.object.checked_out_by = request.user
+        self.object.checked_out_at = timezone.now()
         self.object.save()
 
         # Remove storage location if aliquot was stored

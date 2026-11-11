@@ -38,6 +38,12 @@
                 <label>Lab Member:</label>
                 <span>{{ object.lab_member_display|default:"Not recorded" }}</span>
             </div>
+            {% if object.checked_out_at or object.checked_out_by %}
+            <div class="detail-field">
+                <label>Checked out by:</label>
+                <span>{{ object.checked_out_by_display|default:"Unknown" }}{% if object.checked_out_at %} on {{ object.checked_out_at|date:"M d, Y H:i" }}{% endif %}</span>
+            </div>
+            {% endif %}
             <div class="detail-field">
                 <label>Access Level:</label>
                 <span class="access-level-badge access-level-{{ object.access_level }}">

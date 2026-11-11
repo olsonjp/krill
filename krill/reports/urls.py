@@ -28,6 +28,9 @@ urlpatterns = [
     path('alerts/create/', views.create_alert, name='create_alert'),
 
 
+    # Aliquots checked out with no recorded owner
+    path('checked-out-no-owner/', views.checked_out_no_owner, name='checked_out_no_owner'),
+
     # Storage Dashboard
     path('storage/dashboard/', views.storage_dashboard, name='storage_dashboard'),
 

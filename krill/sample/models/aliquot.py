@@ -72,6 +72,19 @@ class Aliquot(models.Model):
         default='',
         help_text='Initials as recorded, used when the person has no linked user account',
     )
+    checked_out_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='aliquots_checked_out',
+        help_text='User who checked the aliquot out. Kept after it is used up, as a record of who used it.',
+    )
+    checked_out_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When the aliquot was checked out',
+    )
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
     deleted = models.BooleanField(default=False, db_index=True)
@@ -89,6 +102,13 @@ class Aliquot(models.Model):
         if self.lab_member_id:
             return self.lab_member.get_full_name() or self.lab_member.get_username()
         return self.lab_member_initials
+
+    @property
+    def checked_out_by_display(self):
+        """Name of the person who checked the aliquot out, or '' if not recorded."""
+        if self.checked_out_by_id:
+            return self.checked_out_by.get_full_name() or self.checked_out_by.get_username()
+        return ''
 
     def store_in_location(self, box, row, column):
         """Store this aliquot in a location"""
