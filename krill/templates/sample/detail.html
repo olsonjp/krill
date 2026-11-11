@@ -57,6 +57,7 @@
                 </div>
             </div>
             {% endif %}
+            {% include 'sample/_aliquot_lineage.html' with aliquot=object %}
             <div class="detail-section">
                 <div class="detail-field">
                     <a href="{% url 'sample:aliquot_detail' pk=object.id %}" class="btn btn-sm btn-primary">
@@ -99,6 +100,7 @@
                     {{ object.get_access_level_display }}
                 </span>
             </div>
+            {% include 'sample/_sample_remaining_aliquots.html' %}
         {% endif %}
     </div>
 

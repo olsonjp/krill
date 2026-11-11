@@ -25,6 +25,18 @@ class ModelCreateView(CreateView):
             return SourceForm
         else:
             return SampleForm
+    def get_initial(self):
+        """?type=aliquot&parent=<id> opens the form with the parent and its sample filled in."""
+        initial = super().get_initial()
+        if self.request.GET.get('type') == 'aliquot':
+            parent_id = self.request.GET.get('parent', '')
+            if parent_id.isdigit():
+                parent = Aliquot.objects.filter(pk=int(parent_id)).first()
+                if parent:
+                    initial['parent'] = parent.pk
+                    initial['sample'] = parent.sample_id
+        return initial
+
     def get_success_url(self):
         model_type = self.request.GET.get('type', 'sample')
         return f"{reverse('sample:sample_list')}?type={model_type}"

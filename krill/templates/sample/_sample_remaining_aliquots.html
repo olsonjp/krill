@@ -1,0 +1,31 @@
+<div class="detail-section">
+    <h3><i class="material-icons-round">inventory_2</i> Remaining aliquots ({{ remaining_count }})</h3>
+    {% if remaining_aliquots %}
+    <div class="detail-table-wrap">
+    <table class="detail-table">
+        <thead>
+            <tr><th>Aliquot</th><th>Type</th><th>Passage</th><th>Sample Date</th><th>Location</th></tr>
+        </thead>
+        <tbody>
+            {% for a in remaining_aliquots %}
+            <tr>
+                <td><a href="{% url 'sample:detail' type='aliquot' pk=a.id %}" class="detail-link">#{{ a.id }}</a></td>
+                <td>{{ a.aliquot_type.name|default:"—" }}</td>
+                <td>{{ a.passage|default:"—" }}</td>
+                <td>{{ a.sample_date|date:"Y-m-d"|default:"—" }}</td>
+                <td>{{ a.location.box.rack.shelf.device.name }} › {{ a.location.box.name }} › ({{ a.location.row }}, {{ a.location.column }})</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p>No aliquots of this sample are currently stored.</p>
+    {% endif %}
+    <div class="detail-section-actions">
+        <a href="{% url 'sample:sample_list' %}?type=aliquot&sample={{ object.id }}" class="btn btn-sm btn-primary">
+            <span class="material-icons-round">list</span>
+            All aliquots of this sample
+        </a>
+    </div>
+</div>
