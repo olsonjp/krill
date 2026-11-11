@@ -2590,6 +2590,16 @@ main table tbody tr:last-child td{
     outline-offset: 1px;
 }
 
+.toolbar-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+    color: var(--color-dark);
+    white-space: nowrap;
+    cursor: pointer;
+}
+
 .toolbar-btn-search {
     display: flex;
     align-items: center;

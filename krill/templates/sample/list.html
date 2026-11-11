@@ -37,6 +37,11 @@
                     <option value="{{ at.id }}" {% if aliquot_type_filter == at.id|stringformat:"i" %}selected{% endif %}>{{ at.name }}</option>
                     {% endfor %}
                 </select>
+                <label class="toolbar-toggle">
+                    <input type="checkbox" name="hide_finished" value="1" {% if hide_finished %}checked{% endif %}
+                           onchange="this.form.submit()">
+                    Hide exhausted
+                </label>
                 <button type="submit" class="toolbar-btn-search" title="Search">
                     <span class="material-icons-round">search</span>
                 </button>
@@ -46,7 +51,7 @@
                 </a>
             </div>
         </form>
-        {% if search_query or disposition_filter or aliquot_type_filter %}
+        {% if search_query or disposition_filter or aliquot_type_filter or hide_finished %}
         <div class="filter-chips">
             {% if search_query %}
             <span class="filter-chip">
@@ -58,6 +63,12 @@
             <span class="filter-chip">
                 Disposition: {{ disposition_filter|title }}
                 <button type="button" class="chip-remove" onclick="removeFilterParam('disposition')" title="Remove">×</button>
+            </span>
+            {% endif %}
+            {% if hide_finished %}
+            <span class="filter-chip">
+                Hiding exhausted
+                <button type="button" class="chip-remove" onclick="removeFilterParam('hide_finished')" title="Remove">×</button>
             </span>
             {% endif %}
             {% if aliquot_type_filter %}
@@ -151,9 +162,10 @@
                         <tr>
                             <th data-sort="sample" class="{% if sort_by == 'sample' %}sort-{{ sort_order }}{% endif %}">Aliquot</th>
                             <th data-sort="type" class="{% if sort_by == 'type' %}sort-{{ sort_order }}{% endif %}">Type</th>
+                            <th data-sort="passage" class="{% if sort_by == 'passage' %}sort-{{ sort_order }}{% endif %}">Passage</th>
                             <th data-sort="disposition" class="{% if sort_by == 'disposition' %}sort-{{ sort_order }}{% endif %}">Disposition</th>
                             <th data-sort="location" class="{% if sort_by == 'location' %}sort-{{ sort_order }}{% endif %}">Location</th>
-                            <th data-sort="created_at" class="{% if sort_by == 'created_at' %}sort-{{ sort_order }}{% endif %}">Created</th>
+                            <th data-sort="sample_date" class="{% if sort_by == 'sample_date' %}sort-{{ sort_order }}{% endif %}">Sample Date</th>
                             <th></th>
                         </tr>
                     </thead>
@@ -162,6 +174,7 @@
                         <tr data-url="{% url 'sample:detail' type='aliquot' pk=item.id %}">
                             <td><a href="{% url 'sample:detail' type='aliquot' pk=item.id %}">{{ item.sample.name }} <span style="color:var(--color-dark-variant);font-weight:400">#{{ item.id }}</span></a></td>
                             <td>{% if item.aliquot_type %}<span class="status-badge">{{ item.aliquot_type.name }}</span>{% else %}—{% endif %}</td>
+                            <td>{{ item.passage|default:"—" }}</td>
                             <td>{% if item.disposition %}<span class="status-badge {{ item.disposition.css_class }}">{{ item.disposition.name }}</span>{% else %}—{% endif %}</td>
                             <td>
                                 {% if item.location %}
@@ -173,7 +186,7 @@
                                 </span>
                                 {% else %}—{% endif %}
                             </td>
-                            <td>{{ item.created_at|date:"Y-m-d" }}</td>
+                            <td>{{ item.sample_date|date:"Y-m-d"|default:"—" }}</td>
                             <td>
                                 <a class="action-button view" href="{% url 'sample:detail' type='aliquot' pk=item.id %}" target="_blank" title="Open in new tab">
                                     <span class="material-icons-round">open_in_new</span>
@@ -181,8 +194,8 @@
                             </td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--color-dark-variant)">
-{% if search_query or disposition_filter or aliquot_type_filter %}
+                        <tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--color-dark-variant)">
+{% if search_query or disposition_filter or aliquot_type_filter or hide_finished %}
 No aliquots match your filters — try clearing a filter above.
 {% else %}
 No aliquots yet. <a href="{% url 'sample:sample_create' %}?type=aliquot">Create your first aliquot</a> to get started.
