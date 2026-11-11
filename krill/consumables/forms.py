@@ -3,6 +3,8 @@ from .models.consumable import Consumable
 from .models.consumable_type import ConsumableType
 from .models.location import ConsumableRoom, ConsumableLocation
 from .models.vendor import Vendor
+from sample.widgets import mark_comboboxes
+from sample.widgets import mark_comboboxes
 
 
 class ConsumableForm(forms.ModelForm):
@@ -37,6 +39,12 @@ class ConsumableForm(forms.ModelForm):
         self.fields['access_level'].required = False
         self.fields['vendor'].required = False
         self.fields['location'].required = False
+        # A location is named "Room / Name"; load the room with it instead of one query per option
+        self.fields['location'].queryset = ConsumableLocation.objects.select_related('room')
+        mark_comboboxes(self)
+        # A location is named "Room / Name"; load the room with it instead of one query per option
+        self.fields['location'].queryset = ConsumableLocation.objects.select_related('room')
+        mark_comboboxes(self)
 
         ctype = self._resolve_type(args, kwargs)
         self.spec_field_names = []
@@ -124,6 +132,14 @@ class ConsumableTypeForm(forms.ModelForm):
             'icon': 'Material icon name (e.g. biotech, science)',
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        mark_comboboxes(self)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        mark_comboboxes(self)
+
 
 class VendorForm(forms.ModelForm):
     class Meta:
@@ -164,3 +180,11 @@ class ConsumableLocationForm(forms.ModelForm):
             'name': 'Location name (e.g. Cabinet B, Shelf 3)',
             'kind': 'Type of storage location',
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        mark_comboboxes(self)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        mark_comboboxes(self)

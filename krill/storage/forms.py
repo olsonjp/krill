@@ -1,6 +1,8 @@
 from django import forms
 from .models.storage import Device, Shelf, Rack, Box
 from .models.site import Site
+from sample.widgets import mark_comboboxes
+from sample.widgets import mark_comboboxes
 
 class SiteForm(forms.ModelForm):
     class Meta:
@@ -33,6 +35,8 @@ class DeviceForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         # Make access_level optional by not requiring it
         self.fields['access_level'].required = False
+        mark_comboboxes(self)
+        mark_comboboxes(self)
 
 class ShelfForm(forms.ModelForm):
     class Meta:
@@ -52,6 +56,8 @@ class ShelfForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         # Make access_level optional by not requiring it
         self.fields['access_level'].required = False
+        mark_comboboxes(self)
+        mark_comboboxes(self)
 
 class RackForm(forms.ModelForm):
     class Meta:
@@ -71,6 +77,14 @@ class RackForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         # Make access_level optional by not requiring it
         self.fields['access_level'].required = False
+        # "Device › Shelf": shelves in different devices can share a name
+        self.fields['shelf'].queryset = Shelf.objects.select_related('device')
+        self.fields['shelf'].label_from_instance = lambda shelf: f'{shelf.device.name} › {shelf.name}'
+        mark_comboboxes(self)
+        # "Device › Shelf": shelves in different devices can share a name
+        self.fields['shelf'].queryset = Shelf.objects.select_related('device')
+        self.fields['shelf'].label_from_instance = lambda shelf: f'{shelf.device.name} › {shelf.name}'
+        mark_comboboxes(self)
 
 class BoxForm(forms.ModelForm):
     class Meta:
@@ -92,3 +106,11 @@ class BoxForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         # Make access_level optional by not requiring it
         self.fields['access_level'].required = False
+        # "Device › Shelf › Rack": racks in different shelves can share a name
+        self.fields['rack'].queryset = Rack.objects.select_related('shelf__device')
+        self.fields['rack'].label_from_instance = lambda rack: f'{rack.shelf.device.name} › {rack.shelf.name} › {rack.name}'
+        mark_comboboxes(self)
+        # "Device › Shelf › Rack": racks in different shelves can share a name
+        self.fields['rack'].queryset = Rack.objects.select_related('shelf__device')
+        self.fields['rack'].label_from_instance = lambda rack: f'{rack.shelf.device.name} › {rack.shelf.name} › {rack.name}'
+        mark_comboboxes(self)

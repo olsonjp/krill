@@ -223,3 +223,10 @@ class PagesTest(ComboboxFixture):
     def test_the_box_clearing_script_notifies_the_combobox(self):
         html = self.client.get(reverse('sample:sample_create'), {'type': 'aliquot'}).content.decode()
         self.assertIn("field.dispatchEvent(new Event('change'", html)
+
+    def test_the_text_box_takes_the_selects_classes_and_modals_do_not_clip_the_list(self):
+        source = open(finders.find('js/combobox.js')).read()
+        self.assertIn('var originalClasses = select.className;', source)
+        self.assertIn("input.className = ('combobox-input ' + originalClasses).trim();", source)
+        css = open(finders.find('style.css') or finders.find('krill/style.css')).read()
+        self.assertIn('.modal-body:has(.combobox)', css)

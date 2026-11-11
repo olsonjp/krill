@@ -1,4 +1,5 @@
 {% extends 'base/layout.html' %}
+{% load sample_tags %}
 {% load static %}
 
 {% block content %}
@@ -111,7 +112,7 @@
                 </button>
                 <button type="button" class="btn btn-success" onclick="window.location.href='{% url "sample:sample_create" %}?type={{ request.GET.type|default:"sample" }}'">
                     <span class="material-icons-round">add</span>
-                    Create New {{ model_name|slice:":-1" }}
+                    Create New {{ model_name|singular }}
                 </button>
             </div>
         </form>
@@ -132,7 +133,7 @@
     <div class="search-results">
         <div class="results-header">
             <div class="results-info">
-                <span class="result-count">{{ paginator.count }} {% if paginator.count == 1 %}{{ model_name|lower|slice:":-1" }}{% else %}{{ model_name|lower }}{% endif %} found</span>
+                <span class="result-count">{{ paginator.count }} {% if paginator.count == 1 %}{{ model_name|singular|lower }}{% else %}{{ model_name|lower }}{% endif %} found</span>
                 {% if search_query %}
                     <span class="search-info">(filtered by "{{ search_query }}")</span>
                 {% endif %}
@@ -410,10 +411,10 @@ No aliquots yet. <a href="{% url 'sample:sample_create' %}?type=aliquot">Create 
                 {% elif low_count_on %}
                 <p>No samples are running low.</p>
                 {% else %}
-                <p>Try adjusting your search criteria or create a new {{ model_name|slice:":-1"|lower }}.</p>
+                <p>Try adjusting your search criteria or create a new {{ model_name|singular|lower }}.</p>
                 {% endif %}
                 <button class="btn btn-primary" onclick="window.location.href='{% url "sample:sample_create" %}?type={{ request.GET.type|default:"sample" }}'">
-                    Create New {{ model_name|slice:":-1" }}
+                    Create New {{ model_name|singular }}
                 </button>
             </div>
         {% endif %}
