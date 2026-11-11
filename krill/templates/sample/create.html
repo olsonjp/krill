@@ -234,6 +234,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else {
                     field.required = false;
                     field.value = ''; // Clear values when unchecked
+                    // A type-to-filter box in front of a select must hear about it
+                    field.dispatchEvent(new Event('change', { bubbles: true }));
                 }
             }
         });

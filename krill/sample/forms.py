@@ -2,6 +2,7 @@ from django import forms
 from .models.sample import Sample
 from .models.aliquot import Aliquot, AliquotLocation, AliquotType, AliquotDisposition
 from .models.source import Source
+from .widgets import RemoteSelect, aliquot_choice_label, mark_comboboxes
 
 class SampleForm(forms.ModelForm):
     class Meta:
@@ -25,6 +26,10 @@ class SampleForm(forms.ModelForm):
         widgets = {
             'notes': forms.Textarea(attrs={'rows': 4}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        mark_comboboxes(self)
 
     def clean(self):
         cleaned = super().clean()
@@ -72,6 +77,7 @@ class AliquotForm(forms.ModelForm):
         ]
         widgets = {
             'sample_date': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+            'parent': RemoteSelect('sample:aliquot_options'),
         }
         help_texts = {
             'parent': 'Parent aliquot, if this is a derivative',
@@ -85,8 +91,10 @@ class AliquotForm(forms.ModelForm):
         from storage.models.storage import Box
         super().__init__(*args, **kwargs)
         self.fields['box'].queryset = Box.objects.all().order_by('name')
-        self.fields['parent'].queryset = Aliquot.objects.select_related('sample').all()
+        self.fields['parent'].queryset = Aliquot.objects.select_related('sample', 'aliquot_type')
+        self.fields['parent'].label_from_instance = aliquot_choice_label
         self.fields['disposition'].required = True
+        mark_comboboxes(self)
 
     def clean(self):
         """Validate box assignment fields"""
@@ -177,3 +185,4 @@ class AliquotMoveForm(forms.Form):
         from storage.models.storage import Box
         super().__init__(*args, **kwargs)
         self.fields['box'].queryset = Box.objects.all()
+        mark_comboboxes(self)
