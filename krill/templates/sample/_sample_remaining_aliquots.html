@@ -13,7 +13,7 @@
                 <td>{{ a.aliquot_type.name|default:"—" }}</td>
                 <td>{{ a.passage|default:"—" }}</td>
                 <td>{{ a.sample_date|date:"Y-m-d"|default:"—" }}</td>
-                <td>{{ a.location.box.rack.shelf.device.name }} › {{ a.location.box.name }} › ({{ a.location.row }}, {{ a.location.column }})</td>
+                <td>{% if a.location %}{{ a.location.box.rack.shelf.device.name }} › {{ a.location.box.name }} › ({{ a.location.row }}, {{ a.location.column }}){% else %}—{% endif %}</td>
             </tr>
             {% endfor %}
         </tbody>

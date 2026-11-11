@@ -103,6 +103,7 @@
             {% if request.GET.type %}
                 <input type="hidden" name="type" value="{{ request.GET.type }}">
             {% endif %}
+            {% if low_count_on %}<input type="hidden" name="low_count" value="1">{% endif %}
             <div class="form-row">
                 <div class="form-group">
                     <label for="searchInput">Search</label>
@@ -119,6 +120,7 @@
                             <option value="disposition" {% if sort_by == 'disposition' %}selected{% endif %}>Disposition</option>
                         {% elif model_name == 'Samples' %}
                             <option value="source" {% if sort_by == 'source' %}selected{% endif %}>Source</option>
+                            <option value="stored" {% if sort_by == 'stored' %}selected{% endif %}>Stored aliquots</option>
                             <option value="created_at" {% if sort_by == 'created_at' %}selected{% endif %}>Created Date</option>
                         {% endif %}
                     </select>
@@ -146,6 +148,15 @@
                 </button>
             </div>
         </form>
+        {% if model_type == 'sample' %}
+        <div class="toggle-pills">
+            <a href="{{ low_count_toggle_url }}" class="toggle-pill{% if low_count_on %} on{% endif %}"
+               aria-label="Low count, {% if low_count_on %}on. Select to turn off{% else %}off. Select to turn on{% endif %}">
+                {% if low_count_on %}<span class="material-icons-round">check</span>{% endif %}
+                Low count &middot; {{ low_count_pill_count }}
+            </a>
+        </div>
+        {% endif %}
     </div>
     {% endif %}
 
@@ -245,6 +256,7 @@ No aliquots yet. <a href="{% url 'sample:sample_create' %}?type=aliquot">Create 
                         <tr>
                             <th data-sort="name" class="{% if sort_by == 'name' %}sort-{{ sort_order }}{% endif %}">Name</th>
                             <th data-sort="source" class="{% if sort_by == 'source' %}sort-{{ sort_order }}{% endif %}">Source</th>
+                            <th data-sort="stored" class="{% if sort_by == 'stored' %}sort-{{ sort_order }}{% endif %}">Stored</th>
                             <th>Experiment #</th>
                             <th>Notes</th>
                             <th>Access</th>
@@ -256,6 +268,11 @@ No aliquots yet. <a href="{% url 'sample:sample_create' %}?type=aliquot">Create 
                         <tr>
                             <td><a href="{% url 'sample:detail' type='sample' pk=item.id %}">{{ item.name }}</a></td>
                             <td>{{ item.source.name|default:"—" }}</td>
+                            <td>
+                                {{ item.stored_count }}
+                                {% if item.low_state %}<span class="low-badge {% if item.low_count_check %}{{ item.low_state }}{% else %}silenced{% endif %}"
+                                      title="{% if item.low_count_check %}Low count{% else %}Low count, alerts off{% endif %}">{% if item.low_count_check %}{% if item.low_state == 'alert' %}Alert{% else %}Low{% endif %}{% else %}Silenced{% endif %}</span>{% endif %}
+                            </td>
                             <td>{{ item.experiment|default:"—" }}</td>
                             <td>{{ item.notes|truncatechars:60|default:"—" }}</td>
                             <td>{{ item.get_access_level_display }}</td>
@@ -266,7 +283,7 @@ No aliquots yet. <a href="{% url 'sample:sample_create' %}?type=aliquot">Create 
                             </td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--color-dark-variant)">
+                        <tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--color-dark-variant)">
 {% if search_query %}No samples match "{{ search_query }}".{% else %}No samples yet. <a href="{% url 'sample:sample_create' %}">Create your first sample</a> to get started.{% endif %}
 </td></tr>
                         {% endfor %}
@@ -413,7 +430,11 @@ No aliquots yet. <a href="{% url 'sample:sample_create' %}?type=aliquot">Create 
             <div class="no-results">
                 <span class="material-icons-round">search_off</span>
                 <h3>No {{ model_name|lower }} found</h3>
+                {% if low_count_on and not search_query %}
+                <p>No samples are running low.</p>
+                {% else %}
                 <p>Try adjusting your search criteria or create a new {{ model_name|slice:":-1"|lower }}.</p>
+                {% endif %}
                 <button class="btn btn-primary" onclick="window.location.href='{% url "sample:sample_create" %}?type={{ request.GET.type|default:"sample" }}'">
                     Create New {{ model_name|slice:":-1" }}
                 </button>

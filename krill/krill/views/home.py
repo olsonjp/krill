@@ -289,6 +289,9 @@ class SettingsView(View):
             from django.http import HttpResponseForbidden
             return HttpResponseForbidden("Only lab admins can change site configuration.")
 
+        if request.POST.get('form') == 'alert_levels':
+            return self._save_alert_levels(request)
+
         config = SiteConfiguration.load()
         consumables_enabled = request.POST.get('consumables_enabled') == 'on'
         consumables_ordering_enabled = (
@@ -315,4 +318,34 @@ class SettingsView(View):
 
         from django.contrib import messages
         messages.success(request, 'Site configuration saved.')
+        return redirect('settings')
+
+    def _save_alert_levels(self, request):
+        """Save the lab-wide low-count levels. Leaves the feature switches alone."""
+        from django.contrib import messages
+        try:
+            warn = int(request.POST.get('low_count_warn', ''))
+            alert = int(request.POST.get('low_count_alert', ''))
+        except ValueError:
+            warn = alert = -1
+        if warn < 0 or alert < 0:
+            messages.error(request, 'Enter whole numbers, zero or more, for both levels.')
+        elif alert > warn:
+            messages.error(request, 'The alert level cannot be higher than the warn level.')
+        else:
+            config = SiteConfiguration.load()
+            config.low_count_warn = warn
+            config.low_count_alert = alert
+            config.updated_by = request.user
+            config.save()
+            UserAuditLog.log_action(
+                user=request.user,
+                action='update',
+                target_type='SiteConfiguration',
+                target_id=config.pk,
+                target_name='Site Configuration',
+                details={'low_count_warn': warn, 'low_count_alert': alert},
+                request=request,
+            )
+            messages.success(request, f'Low-count levels saved: warn at {warn} or fewer, alert at {alert} or fewer.')
         return redirect('settings')

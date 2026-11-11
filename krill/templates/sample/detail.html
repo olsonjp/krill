@@ -96,6 +96,15 @@
                 <span>{{ object.notes|default:"No notes" }}</span>
             </div>
             <div class="detail-field">
+                <label>Stored aliquots:</label>
+                <span>{{ low_count.count }}{% if low_count.state and low_count.enabled %}
+                    <span class="low-badge {{ low_count.state }}">{% if low_count.state == 'alert' %}Alert{% else %}Low{% endif %}</span>{% endif %}</span>
+            </div>
+            <div class="detail-field">
+                <label>Low-count alerts:</label>
+                <span>{% if low_count.enabled %}On: warn at {{ low_count.warn }} or fewer, alert at {{ low_count.alert }} or fewer{% else %}Off for this sample{% endif %}</span>
+            </div>
+            <div class="detail-field">
                 <label>Access Level:</label>
                 <span class="access-level-badge access-level-{{ object.access_level }}">
                     <i class="material-icons-round">

@@ -5,9 +5,10 @@ always agree. To add a source, write a function that returns a list of Attention
 register it with register_source(). Each item has a stable `key`, so silencing and email
 de-duplication can refer to the same item over time.
 
-An item is silenced by a flag on the record it is about (for example Consumable.alerts_silenced),
-not by a separate table, because the lab sets such things per record. Silenced items are still
-returned, marked silenced, so the overview can show them; they are left out of the counts.
+An item is silenced by a flag on the record it is about (Consumable.alerts_silenced, or a sample's
+low_count_check being off), not by a separate table, because the lab sets such things per record.
+Silenced items are still returned, marked silenced, so the overview can show them; they are left
+out of the counts.
 """
 from dataclasses import dataclass
 from datetime import date, timedelta
@@ -126,6 +127,34 @@ def expiring_items():
     return items
 
 
+# --- low sample counts -------------------------------------------------------
+
+def low_count_items():
+    from sample import low_count
+    items = []
+    for row in low_count.low_samples():
+        sample, count = row['sample'], row['count']
+        left = 'No stored aliquots left' if count == 0 else f'{count} stored aliquot{"s" if count != 1 else ""} left'
+        items.append(AttentionItem(
+            source='low_count',
+            key=f'low_count:sample:{sample.pk}',
+            title=sample.name,
+            detail=f'{left} (alert at {row["alert"]} or fewer, warn at {row["warn"]} or fewer)',
+            level=LEVEL_ALERT if row['state'] == low_count.ALERT else LEVEL_WARN,
+            url=reverse('sample:detail', kwargs={'type': 'sample', 'pk': sample.pk}),
+            silenced=row['silenced'],
+            target_type='sample',
+            target_id=sample.pk,
+        ))
+    return items
+
+
+def _silence_sample(target_id, silenced):
+    from sample.models.sample import Sample
+    # Silenced means the low-count check is switched off for this sample
+    return bool(Sample.objects.filter(pk=target_id).update(low_count_check=not silenced))
+
+
 def _silence_consumable(target_id, silenced):
     from consumables.models.consumable import Consumable
     return bool(Consumable.objects.filter(pk=target_id, deleted=False).update(alerts_silenced=silenced))
@@ -134,6 +163,8 @@ def _silence_consumable(target_id, silenced):
 register_source('low_stock', 'Low stock', 'production_quantity_limits', low_stock_items, _consumables_enabled)
 register_source('expiring', 'Expiring soon', 'event_busy', expiring_items, _consumables_enabled)
 register_silencer('consumable', _silence_consumable)
+register_source('low_count', 'Low sample counts', 'science', low_count_items)
+register_silencer('sample', _silence_sample)
 
 
 # --- reading it --------------------------------------------------------------

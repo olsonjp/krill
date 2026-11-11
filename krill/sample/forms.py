@@ -6,7 +6,15 @@ from .models.source import Source
 class SampleForm(forms.ModelForm):
     class Meta:
         model = Sample
-        fields = ['name', 'experiment', 'source', 'notes', 'access_level']
+        fields = [
+            'name', 'experiment', 'source', 'notes', 'access_level',
+            'low_count_check', 'low_count_warn', 'low_count_alert',
+        ]
+        labels = {
+            'low_count_check': 'Low-count alerts',
+            'low_count_warn': 'Warn at (stored aliquots)',
+            'low_count_alert': 'Alert at (stored aliquots)',
+        }
         help_texts = {
             'name': 'Unique identifier for this sample (e.g., cell line name)',
             'experiment': 'Experiment identifier or number associated with this sample',
@@ -17,6 +25,13 @@ class SampleForm(forms.ModelForm):
         widgets = {
             'notes': forms.Textarea(attrs={'rows': 4}),
         }
+
+    def clean(self):
+        cleaned = super().clean()
+        warn, alert = cleaned.get('low_count_warn'), cleaned.get('low_count_alert')
+        if warn is not None and alert is not None and alert > warn:
+            self.add_error('low_count_alert', 'The alert level cannot be higher than the warn level.')
+        return cleaned
 
 class AliquotForm(forms.ModelForm):
     # count: number of aliquots to create at once (not a model field)

@@ -117,8 +117,15 @@ class GroupsAndSummaryTest(AttentionFixture):
     def test_consumable_sources_are_hidden_when_the_feature_is_off(self):
         self.consumable(quantity='0', threshold='5')
         self.set_consumables(False)
-        self.assertEqual(attention.groups(), [])
+        # Only the sources that do not depend on Consumables remain
+        self.assertEqual([g['source'].name for g in attention.groups()], ['low_count'])
         self.assertEqual(attention.summary(), {'count': 0, 'level': None})
+
+    def test_no_groups_at_all_when_no_source_is_available(self):
+        from unittest.mock import patch
+        with patch.object(attention, 'SOURCES', []):
+            self.assertEqual(attention.groups(), [])
+            self.assertEqual(attention.summary(), {'count': 0, 'level': None})
 
 
 class SilenceTest(AttentionFixture):
@@ -172,9 +179,18 @@ class OverviewPageTest(AttentionFixture):
         self.assertContains(response, 'Nothing needs attention.')
 
     def test_explains_when_nothing_is_watched(self):
+        from unittest.mock import patch
+        self.client.force_login(self.user)
+        with patch.object(attention, 'SOURCES', []):
+            self.assertContains(self.client.get(self.url), 'Nothing is being watched yet.')
+
+    def test_consumable_groups_are_absent_when_the_feature_is_off(self):
         self.set_consumables(False)
         self.client.force_login(self.user)
-        self.assertContains(self.client.get(self.url), 'Nothing is being watched yet.')
+        response = self.client.get(self.url)
+        self.assertContains(response, 'Low sample counts (0)')
+        self.assertNotContains(response, 'Low stock (')
+        self.assertNotContains(response, 'Expiring soon (')
 
     def test_silenced_items_are_displayed_separately(self):
         self.consumable('Quiet', alerts_silenced=True)

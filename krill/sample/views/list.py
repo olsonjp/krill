@@ -1,11 +1,12 @@
 from django.views.generic import ListView
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import CharField, F, Q
-from django.db.models.functions import Cast
+from django.db.models import CharField, F, Q, Value
+from django.db.models.functions import Cast, Coalesce
+from .. import low_count
 from ..models.sample import Sample
 from ..models.aliquot import Aliquot, AliquotType, AliquotDisposition, AliquotLocation
 from ..models.source import Source
-from person.models import UserRole
+from person.models import SiteConfiguration, UserRole
 
 class SampleListView(LoginRequiredMixin, ListView):
     template_name = 'sample/list.html'
@@ -27,7 +28,7 @@ class SampleListView(LoginRequiredMixin, ListView):
         elif model_type == 'source':
             queryset = Source.objects.all()
         else:
-            queryset = Sample.objects.select_related('source')
+            queryset = Sample.objects.select_related('source').with_stored_count()
 
         # Text search
         search_query = self.request.GET.get('q', '')
@@ -36,6 +37,15 @@ class SampleListView(LoginRequiredMixin, ListView):
                 queryset = self._search_aliquots(queryset, search_query)
             elif model_type in ('sample', 'source', 'aliquot-type'):
                 queryset = queryset.filter(name__icontains=search_query)
+
+        # Samples running low on stored aliquots (and not opted out of the check)
+        if model_type == 'sample' and self.request.GET.get('low_count') == '1':
+            warn_default = SiteConfiguration.load().low_count_warn
+            queryset = (
+                queryset.filter(aliquot_total__gt=0, low_count_check=True)
+                .annotate(warn_level=Coalesce('low_count_warn', Value(warn_default)))
+                .filter(stored_count__lte=F('warn_level'))
+            )
 
         # Aliquot-specific filters
         if model_type == 'aliquot':
@@ -98,6 +108,8 @@ class SampleListView(LoginRequiredMixin, ListView):
             queryset = queryset.order_by(f'{sort_prefix}passage', 'id')
         elif model_type == 'aliquot' and sort_by == 'location':
             queryset = queryset.order_by(f'{sort_prefix}location__box__rack__shelf__device__name', 'id')
+        elif model_type == 'sample' and sort_by == 'stored':
+            queryset = queryset.order_by(f'{sort_prefix}stored_count', 'name', 'id')
         elif model_type == 'sample' and sort_by == 'source':
             queryset = queryset.order_by(f'{sort_prefix}source__name', 'id')
         elif hasattr(queryset.model, sort_by):
@@ -177,6 +189,16 @@ class SampleListView(LoginRequiredMixin, ListView):
             context['model_name'] = 'Sources'
         else:
             context['model_name'] = 'Samples'
+
+        if model_type == 'sample':
+            config = SiteConfiguration.load()
+            items = list(context['items'])
+            for sample in items:
+                sample.low_state = low_count.state_for(sample, config)
+            context['items'] = items
+            context['low_count_on'] = self.request.GET.get('low_count') == '1'
+            context['low_count_toggle_url'] = self._toggle_url('low_count', '1')
+            context['low_count_pill_count'] = sum(1 for row in low_count.low_samples() if not row['silenced'])
 
         context['search_query'] = self.request.GET.get('q', '')
         context['sort_by'] = self.request.GET.get('sort', 'name')

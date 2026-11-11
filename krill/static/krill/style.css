@@ -2697,6 +2697,30 @@ main table tbody tr:last-child td{
     margin: 0;
 }
 
+.low-badge {
+    display: inline-block;
+    margin-left: 0.4rem;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.low-badge.alert {
+    background: rgba(255, 0, 96, 0.2);
+    color: var(--color-danger);
+}
+
+.low-badge.warn {
+    background: rgba(247, 208, 96, 0.2);
+    color: var(--color-warning);
+}
+
+.low-badge.silenced {
+    background: var(--color-light);
+    color: var(--color-dark-variant);
+}
+
 .toggle-pills {
     display: flex;
     flex-wrap: wrap;

@@ -7,6 +7,7 @@ from django.utils import timezone
 
 from consumables.models.consumable import Consumable
 from consumables.models.consumable_type import ConsumableType
+from ..models.sample import Sample
 from person.models import SiteConfiguration
 from ..models.aliquot import Aliquot, AliquotDisposition
 from .test_views import SampleViewTest
@@ -100,6 +101,8 @@ class DashboardAttentionPillTest(SampleViewTest):
         config = SiteConfiguration.load()
         config.consumables_enabled = True
         config.save()
+        # The fixture's sample has one stored aliquot, which would count as low; these tests are about consumables
+        Sample.objects.update(low_count_check=False)
 
     def _consumable(self, quantity='3', threshold='5', **kwargs):
         return Consumable.objects.create(

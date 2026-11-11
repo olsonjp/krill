@@ -95,8 +95,8 @@ class SampleRemainingAliquotsTest(SampleViewTest):
     def _disp(self, name, kind):
         return AliquotDisposition.objects.get_or_create(name=name, defaults={'disposition_type': kind})[0]
 
-    def test_lists_only_stored_aliquots_in_a_box(self):
-        # self.aliquot is 'stored' but has no box position, so it is not "remaining"
+    def test_lists_every_stored_aliquot_whether_or_not_it_has_a_box_position(self):
+        # self.aliquot is 'stored' with no box position: it still counts as remaining
         placed = Aliquot.objects.create(
             sample=self.sample, aliquot_type=self.aliquot_type, disposition=self.stored_disposition,
             passage='p8', sample_date=datetime.date(2024, 3, 5),
@@ -110,15 +110,27 @@ class SampleRemainingAliquotsTest(SampleViewTest):
         other.store_in_location(self.box, 1, 3)
 
         response = self.client.get(self.url)
-        self.assertEqual(response.context['remaining_aliquots'], [placed])
-        self.assertEqual(response.context['remaining_count'], 1)
-        self.assertContains(response, 'Remaining aliquots (1)')
+        self.assertCountEqual(response.context['remaining_aliquots'], [placed, self.aliquot])
+        self.assertEqual(response.context['remaining_count'], 2)
+        self.assertContains(response, 'Remaining aliquots (2)')
         for text in ('p8', '2024-03-05', 'Test Type', 'Test Device', 'Test Box', '(1, 2)'):
             self.assertContains(response, text)
-        for gone in (in_use, exhausted, disposed, other, self.aliquot):
+        for gone in (in_use, exhausted, disposed, other):
             self.assertNotIn(gone, response.context['remaining_aliquots'])
 
+    def test_aliquot_without_a_position_shows_a_dash_for_its_location(self):
+        response = self.client.get(self.url)
+        self.assertEqual(response.context['remaining_aliquots'], [self.aliquot])
+        self.assertRegex(response.content.decode(), r'<td>—</td>\s*</tr>')
+
+    def test_soft_deleted_aliquots_are_not_remaining(self):
+        self.aliquot.deleted = True
+        self.aliquot.save()
+        self.assertEqual(self.client.get(self.url).context['remaining_aliquots'], [])
+
     def test_no_stored_aliquots_shows_zero_and_message(self):
+        self.aliquot.disposition = self._disp('Used', 'exhausted')
+        self.aliquot.save()
         response = self.client.get(self.url)
         self.assertEqual(response.context['remaining_count'], 0)
         self.assertContains(response, 'Remaining aliquots (0)')
