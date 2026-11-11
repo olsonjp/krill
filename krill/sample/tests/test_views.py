@@ -938,14 +938,14 @@ class AliquotSearchViewPageSizeTest(TestCase):
 
 
 class SampleWordingAndExperimentTest(SampleViewTest):
-    """A sample is a cell line or other specimen type; an aliquot is one tube. Experiment is editable."""
+    """A sample is a cell line or other specimen; an aliquot is one portion of it. Experiment is editable."""
 
     def test_sample_list_explains_samples_and_aliquots(self):
         self.client.force_login(self.user)
         page = self.client.get(reverse('sample:sample_list'))
-        self.assertContains(page, 'A sample is a cell line or other specimen type')
+        self.assertContains(page, 'A sample is a cell line or other specimen.')
         page = self.client.get(reverse('sample:sample_list'), {'type': 'aliquot'})
-        self.assertContains(page, 'An aliquot is one tube')
+        self.assertContains(page, 'An aliquot is one portion of a sample.')
 
     def test_create_form_offers_the_experiment_field_and_saves_it(self):
         self.client.force_login(self.user)

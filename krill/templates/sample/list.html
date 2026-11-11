@@ -5,12 +5,7 @@
 <div class="sample-list-container">
     <div class="list-header">
         <h1>{{ model_name }}</h1>
-        <p>Browse and manage {{ model_name|lower }}</p>
-        {% if model_type == 'sample' %}
-        <p class="list-hint">A sample is a cell line or other specimen type. Each tube of it is an aliquot.</p>
-        {% elif model_type == 'aliquot' %}
-        <p class="list-hint">An aliquot is one tube: a single portion of a sample.</p>
-        {% endif %}
+        <p class="list-hint">{% if model_type == 'sample' %}A sample is a cell line or other specimen. Each portion of it is an aliquot.{% elif model_type == 'aliquot' %}An aliquot is one portion of a sample.{% else %}Browse and manage {{ model_name|lower }}.{% endif %}</p>
     </div>
 
     <!-- Filter toolbar (aliquot) / search card (other types) -->
@@ -29,25 +24,25 @@
                 <input type="text" name="q" class="toolbar-search"
                        placeholder="Search aliquots..." value="{{ search_query }}"
                        aria-label="Search aliquots">
-                <select name="disposition" class="toolbar-filter" onchange="this.form.submit()" aria-label="Filter by disposition">
-                    <option value="">+ Disposition</option>
-                    {% for value, label in disposition_choices %}
-                    <option value="{{ value }}" {% if disposition_filter == value %}selected{% endif %}>{{ label }}</option>
-                    {% endfor %}
-                </select>
-                <select name="aliquot_type" class="toolbar-filter" onchange="this.form.submit()" aria-label="Filter by type">
-                    <option value="">+ Type</option>
-                    {% for at in aliquot_types %}
-                    <option value="{{ at.id }}" {% if aliquot_type_filter == at.id|stringformat:"i" %}selected{% endif %}>{{ at.name }}</option>
-                    {% endfor %}
-                </select>
+                {% include 'sample/_filter_fields.html' with fields=filter_bar.inline variant='inline' %}
+                <details class="filter-more" {% if filter_bar.more_active %}open{% endif %}>
+                    <summary aria-controls="filter-more-panel">More filters{% if filter_bar.more_active %}<span class="filter-more-count">{{ filter_bar.more_active }}</span>{% endif %}</summary>
+                </details>
                 <button type="submit" class="toolbar-btn-search" title="Search" aria-label="Search">
                     <span class="material-icons-round">search</span>
                 </button>
-                <a class="btn btn-success" href="{% url 'sample:sample_create' %}?type=aliquot">
+                <a class="btn btn-success toolbar-new" href="{% url 'sample:sample_create' %}?type=aliquot" aria-label="New Aliquot">
                     <span class="material-icons-round">add</span>
-                    New Aliquot
+                    <span class="btn-label">New Aliquot</span>
                 </a>
+            </div>
+            <div class="filter-more-grid" id="filter-more-panel">
+                {% if filter_bar.inline_hints %}
+                <div class="filter-more-notes">
+                    {% for label, hint in filter_bar.inline_hints %}<p><strong>{{ label }}:</strong> {{ hint }}</p>{% endfor %}
+                </div>
+                {% endif %}
+                {% include 'sample/_filter_fields.html' with fields=filter_bar.more variant='panel' %}
             </div>
         </form>
         <div class="toggle-pills">
@@ -62,40 +57,7 @@
                 Hide exhausted
             </a>
         </div>
-        {% if search_query or disposition_filter or aliquot_type_filter or sample_filter or checked_out_all %}
-        <div class="filter-chips">
-            {% if checked_out_all %}
-            <span class="filter-chip">
-                Checked out by anyone
-                <button type="button" class="chip-remove" onclick="removeFilterParam('checked_out_by')" title="Remove">×</button>
-            </span>
-            {% endif %}
-            {% if search_query %}
-            <span class="filter-chip">
-                "{{ search_query }}"
-                <button type="button" class="chip-remove" onclick="removeFilterParam('q')" title="Remove">×</button>
-            </span>
-            {% endif %}
-            {% if disposition_filter %}
-            <span class="filter-chip">
-                Disposition: {{ disposition_filter|title }}
-                <button type="button" class="chip-remove" onclick="removeFilterParam('disposition')" title="Remove">×</button>
-            </span>
-            {% endif %}
-            {% if sample_filter %}
-            <span class="filter-chip">
-                Sample: {{ sample_filter.name }}
-                <button type="button" class="chip-remove" onclick="removeFilterParam('sample')" title="Remove">×</button>
-            </span>
-            {% endif %}
-            {% if aliquot_type_filter %}
-            <span class="filter-chip">
-                Type: {% for at in aliquot_types %}{% if at.id|stringformat:"i" == aliquot_type_filter %}{{ at.name }}{% endif %}{% endfor %}
-                <button type="button" class="chip-remove" onclick="removeFilterParam('aliquot_type')" title="Remove">×</button>
-            </span>
-            {% endif %}
-        </div>
-        {% endif %}
+        {% include 'sample/_filter_chips.html' %}
     </div>
     {% else %}
     <div class="search-form-container">
@@ -133,6 +95,11 @@
                     </select>
                 </div>
             </div>
+            {% if filter_bar %}
+            <div class="form-row filter-row">
+                {% include 'sample/_filter_fields.html' with fields=filter_bar.inline variant='card' %}
+            </div>
+            {% endif %}
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary">
                     <span class="material-icons-round">search</span>
@@ -148,6 +115,7 @@
                 </button>
             </div>
         </form>
+        {% if filter_bar %}{% include 'sample/_filter_chips.html' %}{% endif %}
         {% if model_type == 'sample' %}
         <div class="toggle-pills">
             <a href="{{ low_count_toggle_url }}" class="toggle-pill{% if low_count_on %} on{% endif %}"
@@ -163,11 +131,13 @@
     <!-- Results -->
     <div class="search-results">
         <div class="results-header">
-            <h2>{{ model_name }}</h2>
             <div class="results-info">
                 <span class="result-count">{{ paginator.count }} {% if paginator.count == 1 %}{{ model_name|lower|slice:":-1" }}{% else %}{{ model_name|lower }}{% endif %} found</span>
                 {% if search_query %}
                     <span class="search-info">(filtered by "{{ search_query }}")</span>
+                {% endif %}
+                {% if no_date_excluded %}
+                    <span class="search-info">{{ no_date_excluded }} aliquot{{ no_date_excluded|pluralize }} with no sample date {{ no_date_excluded|pluralize:"is,are" }} excluded</span>
                 {% endif %}
                 <div class="view-toggle">
                     <button class="view-btn toggle-table" onclick="krillToggleView('table')" title="Table view">
@@ -239,7 +209,7 @@
                         </tr>
                         {% empty %}
                         <tr><td colspan="{% if checked_out_all %}9{% elif checked_out_by_me %}8{% else %}7{% endif %}" style="text-align:center;padding:2rem;color:var(--color-dark-variant)">
-{% if search_query or disposition_filter or aliquot_type_filter or hide_finished or sample_filter or checked_out_by_me or checked_out_all %}
+{% if filter_bar.has_filters or hide_finished or checked_out_by_me %}
 No aliquots match your filters — try clearing a filter above.
 {% else %}
 No aliquots yet. <a href="{% url 'sample:sample_create' %}?type=aliquot">Create your first aliquot</a> to get started.
@@ -430,7 +400,14 @@ No aliquots yet. <a href="{% url 'sample:sample_create' %}?type=aliquot">Create 
             <div class="no-results">
                 <span class="material-icons-round">search_off</span>
                 <h3>No {{ model_name|lower }} found</h3>
-                {% if low_count_on and not search_query %}
+                {% if filter_bar.chips %}
+                <p>No {{ model_name|lower }} match all of these filters.</p>
+                <ul class="no-results-filters">
+                    {% for chip in filter_bar.chips %}
+                    <li>{{ chip.text }} &mdash; <a href="{{ chip.remove_url }}">remove</a></li>
+                    {% endfor %}
+                </ul>
+                {% elif low_count_on %}
                 <p>No samples are running low.</p>
                 {% else %}
                 <p>Try adjusting your search criteria or create a new {{ model_name|slice:":-1"|lower }}.</p>
@@ -636,7 +613,7 @@ document.querySelectorAll('th[data-sort]').forEach(function(th) {
     padding: 20px;
     border-bottom: 1px solid var(--color-light);
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;   /* the page heading above already names the list */
     align-items: center;
 }
 

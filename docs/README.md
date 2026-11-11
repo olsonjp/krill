@@ -5,6 +5,7 @@
 - [Database Setup](database.md) - SQLite and PostgreSQL configuration
 
 ## Using Krill
+- [Searching samples and aliquots](../krill/sample/README.md) - search the lists, filter by field, chips and pills
 - [Reports and storage audits](../krill/reports/README.md) - spot-check storage, resume and review audits, alerts
 
 ## Deployment (`deployment/`)
