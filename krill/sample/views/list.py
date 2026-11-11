@@ -53,7 +53,7 @@ class SampleListView(LoginRequiredMixin, ListView):
             if sample_filter.isdigit():
                 queryset = queryset.filter(sample_id=int(sample_filter))
 
-            # ?checked_out_by=me: aliquots the signed-in user has checked out and not yet used up
+            # ?checked_out_by=me: aliquots the signed-in user has checked out and not yet exhausted
             if self.request.GET.get('checked_out_by') == 'me':
                 queryset = queryset.filter(
                     checked_out_by=self.request.user,

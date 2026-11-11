@@ -78,7 +78,7 @@ class Aliquot(models.Model):
         blank=True,
         on_delete=models.SET_NULL,
         related_name='aliquots_checked_out',
-        help_text='User who checked the aliquot out. Kept after it is used up, as a record of who used it.',
+        help_text='User who checked the aliquot out. Kept after it is exhausted, as a record of who used it.',
     )
     checked_out_at = models.DateTimeField(
         null=True,

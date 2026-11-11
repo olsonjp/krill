@@ -21,6 +21,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='aliquot',
             name='checked_out_by',
-            field=models.ForeignKey(blank=True, help_text='User who checked the aliquot out. Kept after it is used up, as a record of who used it.', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='aliquots_checked_out', to=settings.AUTH_USER_MODEL),
+            field=models.ForeignKey(blank=True, help_text='User who checked the aliquot out. Kept after it is exhausted, as a record of who used it.', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='aliquots_checked_out', to=settings.AUTH_USER_MODEL),
         ),
     ]
