@@ -17,10 +17,12 @@
                 Move
             </button>
             {% if aliquot.disposition.disposition_type == 'stored' %}
-            <form method="post" action="{% url 'sample:aliquot_detail' pk=aliquot.id %}" style="display: inline;">
+            <form method="post" action="{% url 'sample:aliquot_detail' pk=aliquot.id %}" style="display: inline;"
+                  data-confirm="Check out this aliquot? This will change its status to In Use."
+                  data-confirm-label="Check out">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="checkout">
-                <button type="submit" class="btn btn-info" onclick="return confirm('Check out this aliquot? This will change its status to In Use.')">
+                <button type="submit" class="btn btn-info">
                     <span class="material-icons-round">shopping_cart</span>
                     Check Out
                 </button>

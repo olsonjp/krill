@@ -60,6 +60,15 @@
             </div>
         </a>
         {% endif %}
+        {% if lab_checkouts is not None %}
+        <a href="{% url 'sample:sample_list' %}?type=aliquot&checked_out_by=all" class="stat-card clickable">
+            <span class="material-icons-round">groups</span>
+            <div class="stat-info">
+                <h3>Lab Checkouts</h3>
+                <p>{% if lab_checkouts.aliquots %}{{ lab_checkouts.aliquots }} aliquot{{ lab_checkouts.aliquots|pluralize }} &middot; {{ lab_checkouts.people }} {{ lab_checkouts.people|pluralize:"person,people" }}{% else %}None checked out{% endif %}</p>
+            </div>
+        </a>
+        {% endif %}
     </div>
 
     <!-- Quick Actions -->
@@ -101,12 +110,13 @@
                         <span class="material-icons-round">add</span>
                         Create child
                     </a>
-                    <form method="post" action="{% url 'sample:aliquot_detail' pk=row.aliquot.id %}">
+                    <form method="post" action="{% url 'sample:aliquot_detail' pk=row.aliquot.id %}"
+                          data-confirm="Mark {{ row.aliquot.sample.name }} #{{ row.aliquot.id }} as exhausted, with no child recorded?"
+                          data-confirm-label="Mark exhausted">
                         {% csrf_token %}
                         <input type="hidden" name="action" value="done">
                         <input type="hidden" name="next" value="{{ home_url }}">
-                        <button type="submit" class="btn btn-sm btn-plain"
-                                onclick="return confirm('Mark {{ row.aliquot.sample.name|escapejs }} #{{ row.aliquot.id }} as exhausted, with no child recorded?')">Done</button>
+                        <button type="submit" class="btn btn-sm btn-plain">Done</button>
                     </form>
                 </div>
             </div>
@@ -206,8 +216,6 @@
     .activity-actions .btn .material-icons-round { color: inherit; font-size: 1.1rem; }
     .activity-actions .btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; line-height: 1.2; }
     .checked-out-card { margin-top: 16px; }
-    .btn-plain { background: transparent; color: var(--color-dark); border: 1px solid var(--color-gray-border); cursor: pointer; }
-    .btn-plain:hover { border-color: var(--color-primary); }
     .checked-out-empty { margin: 8px 0 16px; color: var(--color-dark-variant); }
     .dashboard-header { margin-bottom: 20px; }
     .freezer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }

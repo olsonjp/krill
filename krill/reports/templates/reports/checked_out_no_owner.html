@@ -96,11 +96,13 @@
         update();
     });
     rows.forEach(function (r) { r.addEventListener('change', update); });
-    form.addEventListener('submit', function (e) {
+    // Set the message just before submit; the shared dialog (confirm-dialog.js) shows it
+    form.addEventListener('submit', function () {
         var n = rows.filter(function (r) { return r.checked; }).length;
         var sel = document.getElementById('bulkDisposition');
         var name = sel.options[sel.selectedIndex].text;
-        if (!confirm('Mark ' + n + ' aliquot' + (n === 1 ? '' : 's') + ' as ' + name + '?')) e.preventDefault();
+        form.setAttribute('data-confirm', 'Mark ' + n + ' aliquot' + (n === 1 ? '' : 's') + ' as ' + name + '?');
+        form.setAttribute('data-confirm-label', 'Apply');
     });
     update();
 })();
