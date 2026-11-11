@@ -184,6 +184,129 @@ class SampleListViewTest(SampleViewTest):
         self.assertIn(self.aliquot, items)
         self.assertNotIn(other_aliquot, items)
 
+    # --- Aliquot list: passage, sample date, search, hide exhausted ---
+
+    def _aliquot_list(self, **params):
+        self.client.force_login(self.user)
+        return self.client.get(reverse('sample:sample_list'), {'type': 'aliquot', **params})
+
+    def _disposition(self, name, disposition_type):
+        return AliquotDisposition.objects.get_or_create(
+            name=name, defaults={'disposition_type': disposition_type}
+        )[0]
+
+    def test_aliquot_list_shows_passage_and_sample_date_not_created(self):
+        import datetime
+        self.aliquot.passage = 'p8'
+        self.aliquot.sample_date = datetime.date(2024, 3, 5)
+        self.aliquot.save()
+        response = self._aliquot_list()
+        self.assertContains(response, '<th data-sort="passage"')
+        self.assertContains(response, '<th data-sort="sample_date"')
+        self.assertNotContains(response, '<th data-sort="created_at"')
+        self.assertContains(response, '<td>p8</td>')
+        self.assertContains(response, '<td>2024-03-05</td>')
+
+    def test_aliquot_list_blank_sample_date_and_passage_show_dash(self):
+        response = self._aliquot_list()
+        # Passage and sample date cells (the location dash sits on its own line)
+        self.assertContains(response, '<td>—</td>', count=2)
+
+    def test_aliquot_list_sorts_by_passage(self):
+        self.aliquot.passage = 'p9'
+        self.aliquot.save()
+        other = Aliquot.objects.create(sample=self.sample, disposition=self.stored_disposition, passage='p10')
+        asc = list(self._aliquot_list(sort='passage', order='asc').context['items'])
+        desc = list(self._aliquot_list(sort='passage', order='desc').context['items'])
+        # Passage is text, so this is alphabetical ("p10" before "p9")
+        self.assertEqual(asc, [other, self.aliquot])
+        self.assertEqual(desc, [self.aliquot, other])
+
+    def test_aliquot_list_sorts_by_sample_date_with_blanks_last(self):
+        import datetime
+        self.aliquot.sample_date = None
+        self.aliquot.save()
+        early = Aliquot.objects.create(sample=self.sample, disposition=self.stored_disposition,
+                                       sample_date=datetime.date(2020, 1, 1))
+        late = Aliquot.objects.create(sample=self.sample, disposition=self.stored_disposition,
+                                      sample_date=datetime.date(2024, 1, 1))
+        asc = list(self._aliquot_list(sort='sample_date', order='asc').context['items'])
+        desc = list(self._aliquot_list(sort='sample_date', order='desc').context['items'])
+        self.assertEqual(asc, [early, late, self.aliquot])
+        self.assertEqual(desc, [late, early, self.aliquot])
+
+    def test_aliquot_search_matches_passage(self):
+        self.aliquot.passage = 'p8'
+        self.aliquot.save()
+        other = Aliquot.objects.create(sample=self.sample, disposition=self.stored_disposition, passage='p12')
+        items = self._aliquot_list(q='p8').context['items']
+        self.assertIn(self.aliquot, items)
+        self.assertNotIn(other, items)
+
+    def test_aliquot_search_matches_every_listed_field(self):
+        import datetime
+        self.sample.experiment = 'Zebrafish-exp'
+        self.sample.notes = 'quokka-note'
+        self.sample.save()
+        member = User.objects.create_user(username='mlovelace', password='x', first_name='Ada', last_name='Lovelace')
+        target = Aliquot.objects.create(
+            sample=Sample.objects.create(name='Target Line', source=self.source),
+            aliquot_type=AliquotType.objects.create(name='Pellet'),
+            passage='p77', lab_member=member, lab_member_initials='XYZ',
+            sample_date=datetime.date(2023, 11, 14),
+        )
+        target.sample.experiment = 'Zebrafish-exp'
+        target.sample.notes = 'quokka-note'
+        target.sample.save()
+        target.store_in_location(self.box, 2, 3)  # resets disposition to 'Stored'
+        target.disposition = self._disposition('Frozen Down', 'stored')
+        target.save()
+        self.device.name = 'Freezer-Omega'
+        self.device.save()
+        self.box.name = 'Box-Kappa'
+        self.box.save()
+
+        terms = [
+            'Target Line', 'Pellet', 'Frozen Down', 'p77', 'XYZ', 'Ada', 'Lovelace', 'mlovelace',
+            '2023-11', 'Zebrafish', 'quokka', 'Freezer-Omega', 'Box-Kappa', str(target.id), f'#{target.id}',
+        ]
+        for term in terms:
+            with self.subTest(term=term):
+                items = self._aliquot_list(q=term).context['items']
+                self.assertIn(target, items)
+        # Non-matching term finds nothing
+        self.assertEqual(len(self._aliquot_list(q='no-such-thing').context['items']), 0)
+
+    def test_aliquot_search_number_is_exact_not_substring(self):
+        """'1' must not match aliquot 12 through the number path (text fields may still match)."""
+        a = Aliquot.objects.create(sample=self.sample, disposition=self.stored_disposition)
+        items = self._aliquot_list(q=f'#{a.id}').context['items']
+        self.assertEqual(list(items), [a])
+
+    def test_hide_finished_hides_exhausted_only(self):
+        exhausted = Aliquot.objects.create(sample=self.sample, disposition=self._disposition('Used', 'exhausted'))
+        disposed = Aliquot.objects.create(sample=self.sample, disposition=self._disposition('Disposed', 'disposed'))
+        in_use = Aliquot.objects.create(sample=self.sample, disposition=self._disposition('In Use', 'in_use'))
+        no_disposition = Aliquot.objects.create(sample=self.sample)
+        items = self._aliquot_list(hide_finished='1').context['items']
+        self.assertNotIn(exhausted, items)
+        for visible in (self.aliquot, disposed, in_use, no_disposition):
+            self.assertIn(visible, items)
+
+    def test_hide_finished_is_off_by_default(self):
+        exhausted = Aliquot.objects.create(sample=self.sample, disposition=self._disposition('Used', 'exhausted'))
+        response = self._aliquot_list()
+        self.assertIn(exhausted, response.context['items'])
+        self.assertFalse(response.context['hide_finished'])
+
+    def test_hide_finished_works_with_search_and_sort(self):
+        exhausted = Aliquot.objects.create(sample=self.sample, disposition=self._disposition('Used', 'exhausted'), passage='p5')
+        self.aliquot.passage = 'p5'
+        self.aliquot.save()
+        response = self._aliquot_list(hide_finished='1', q='p5', sort='passage')
+        self.assertEqual(list(response.context['items']), [self.aliquot])
+        self.assertContains(response, 'name="hide_finished" value="1" checked')
+
     def test_aliquot_list_context_includes_filter_choices(self):
         """Context includes disposition_choices, aliquot_types, and active filter values."""
         self.client.force_login(self.user)

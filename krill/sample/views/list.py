@@ -1,6 +1,7 @@
 from django.views.generic import ListView
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Q
+from django.db.models import CharField, F, Q
+from django.db.models.functions import Cast
 from ..models.sample import Sample
 from ..models.aliquot import Aliquot, AliquotType, AliquotDisposition, AliquotLocation
 from ..models.source import Source
@@ -30,10 +31,7 @@ class SampleListView(LoginRequiredMixin, ListView):
         search_query = self.request.GET.get('q', '')
         if search_query:
             if model_type == 'aliquot':
-                queryset = queryset.filter(
-                    Q(sample__name__icontains=search_query) |
-                    Q(aliquot_type__name__icontains=search_query)
-                )
+                queryset = self._search_aliquots(queryset, search_query)
             elif model_type in ('sample', 'source', 'aliquot-type'):
                 queryset = queryset.filter(name__icontains=search_query)
 
@@ -51,6 +49,10 @@ class SampleListView(LoginRequiredMixin, ListView):
                 except (ValueError, TypeError):
                     pass
 
+            # Hide finished (exhausted) aliquots. Disposed ones stay visible.
+            if self.request.GET.get('hide_finished') == '1':
+                queryset = queryset.exclude(disposition__disposition_type='exhausted')
+
         # Sorting
         sort_by = self.request.GET.get('sort', 'name')
         sort_order = self.request.GET.get('order', 'asc')
@@ -66,8 +68,12 @@ class SampleListView(LoginRequiredMixin, ListView):
             queryset = queryset.order_by(f'{sort_prefix}aliquot_type__name', 'id')
         elif model_type == 'aliquot' and sort_by == 'sample':
             queryset = queryset.order_by(f'{sort_prefix}sample__name', 'id')
-        elif model_type == 'aliquot' and sort_by == 'created_at':
-            queryset = queryset.order_by(f'{sort_prefix}created_at', 'id')
+        elif model_type == 'aliquot' and sort_by == 'sample_date':
+            # Blank dates sort last in both directions
+            date_order = F('sample_date').desc(nulls_last=True) if sort_order == 'desc' else F('sample_date').asc(nulls_last=True)
+            queryset = queryset.order_by(date_order, 'id')
+        elif model_type == 'aliquot' and sort_by == 'passage':
+            queryset = queryset.order_by(f'{sort_prefix}passage', 'id')
         elif model_type == 'aliquot' and sort_by == 'location':
             queryset = queryset.order_by(f'{sort_prefix}location__box__rack__shelf__device__name', 'id')
         elif model_type == 'sample' and sort_by == 'source':
@@ -87,6 +93,32 @@ class SampleListView(LoginRequiredMixin, ListView):
                 queryset = queryset.order_by('id')
 
         return queryset
+
+    @staticmethod
+    def _search_aliquots(queryset, term):
+        """Match the term against any aliquot field shown or recorded in Krill."""
+        term = term.strip()
+        queryset = queryset.annotate(sample_date_text=Cast('sample_date', CharField()))
+        match = (
+            Q(sample__name__icontains=term) |
+            Q(sample__experiment__icontains=term) |
+            Q(sample__notes__icontains=term) |
+            Q(aliquot_type__name__icontains=term) |
+            Q(disposition__name__icontains=term) |
+            Q(passage__icontains=term) |
+            Q(lab_member_initials__icontains=term) |
+            Q(lab_member__first_name__icontains=term) |
+            Q(lab_member__last_name__icontains=term) |
+            Q(lab_member__username__icontains=term) |
+            Q(sample_date_text__icontains=term) |
+            Q(location__box__name__icontains=term) |
+            Q(location__box__rack__shelf__device__name__icontains=term)
+        )
+        # Aliquot number: "12" or "#12" matches aliquot 12 exactly
+        number = term.lstrip('#')
+        if number.isdigit():
+            match |= Q(id=int(number))
+        return queryset.filter(match)
 
     def get_paginate_by(self, queryset):
         if self.request.GET.get('page_size') == '20':
@@ -120,11 +152,13 @@ class SampleListView(LoginRequiredMixin, ListView):
         if model_type == 'aliquot':
             context['disposition_filter'] = self.request.GET.get('disposition', '')
             context['aliquot_type_filter'] = self.request.GET.get('aliquot_type', '')
+            context['hide_finished'] = self.request.GET.get('hide_finished') == '1'
             context['disposition_choices'] = AliquotDisposition.DISPOSITION_CHOICES
             context['aliquot_types'] = AliquotType.objects.order_by('name')
         else:
             context['disposition_filter'] = ''
             context['aliquot_type_filter'] = ''
+            context['hide_finished'] = False
             context['disposition_choices'] = []
             context['aliquot_types'] = AliquotType.objects.none()
 
