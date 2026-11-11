@@ -11,6 +11,7 @@ from sample.models.sample import Sample
 from sample.models.aliquot import Aliquot, AliquotLocation
 from storage.models.storage import Box
 from person.models import UserAuditLog, UserPreference, SiteConfiguration, UserRole
+from reports import attention
 from person.decorators import require_minimum_role
 
 __all__ = (
@@ -26,10 +27,12 @@ class HomeView(View):
 
     def get(self, request):
         # Get dashboard statistics
-        stats = get_dashboard_statistics()
+        attention_summary = attention.summary()
+        stats = get_dashboard_statistics(attention_summary)
         freezers = get_freezer_cards()
         return render(request, self.template_name, {
             'stats': stats,
+            'attention': attention_summary,
             'freezers': freezers,
             'show_sites': len({card['device'].site_id for card in freezers}) > 1,
             'checked_out': get_checked_out(request.user),
@@ -44,7 +47,7 @@ def dashboard_stats(request):
     stats = get_dashboard_statistics()
     return JsonResponse(stats)
 
-def get_dashboard_statistics():
+def get_dashboard_statistics(attention_summary=None):
     """Calculate dashboard statistics from database"""
     try:
         # Active samples (non-deleted)
@@ -68,12 +71,8 @@ def get_dashboard_statistics():
             action='report_generated',
             timestamp__gte=timezone.now() - timedelta(days=7)
         ).count()
-        # Alerts (using audit logs for now)
-        # In a real system, you'd have an Alert model
-        alerts = UserAuditLog.objects.filter(
-            action__in=['alert_created', 'warning_created'],
-            timestamp__gte=timezone.now() - timedelta(days=1)
-        ).count()
+        # Items needing attention: the same count the header pill and the overview page use
+        alerts = (attention_summary or attention.summary())['count']
         # Consumables stats (only when feature is enabled)
         low_stock_count = 0
         expiring_soon_count = 0
@@ -85,6 +84,7 @@ def get_dashboard_statistics():
                 expiration_date__isnull=False,
                 expiration_date__lte=date.today() + timedelta(days=30),
                 expiration_date__gte=date.today(),
+                alerts_silenced=False,
             ).count()
 
         return {

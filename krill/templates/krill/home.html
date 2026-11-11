@@ -5,6 +5,11 @@
 <div class="home-container dashboard">
     <div class="dashboard-header">
         <h1>Dashboard</h1>
+        <a href="{% url 'reports:alert_list' %}" class="header-alerts{% if attention.level %} level-{{ attention.level }}{% endif %}"
+           aria-label="{% if attention.count %}{{ attention.count }} item{{ attention.count|pluralize }} need{{ attention.count|pluralize:'s,' }} attention{% else %}Nothing needs attention{% endif %}">
+            <span class="material-icons-round">{% if attention.count %}{% if attention.level == 'alert' %}error{% else %}warning{% endif %}{% else %}check_circle{% endif %}</span>
+            {% if attention.count %}{{ attention.count }} need{{ attention.count|pluralize:'s,' }} attention{% else %}All clear{% endif %}
+        </a>
     </div>
 
     <!-- Quick Actions -->
@@ -105,13 +110,6 @@
             <div class="stat-info">
                 <h3>Audits</h3>
                 <p>{% if audits_in_progress %}{{ audits_in_progress|length }} in progress{% else %}None in progress{% endif %}</p>
-            </div>
-        </a>
-        <a href="{% url 'reports:alert_list' %}" class="stat-card clickable {% if stats.alerts %}stat-card-warning{% endif %}">
-            <span class="material-icons-round">warning</span>
-            <div class="stat-info">
-                <h3>Alerts</h3>
-                <p>{% if stats.alerts %}{{ stats.alerts }} active{% else %}All clear{% endif %}</p>
             </div>
         </a>
     </div>
@@ -226,7 +224,15 @@
     .activity-actions .btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; line-height: 1.2; }
     .checked-out-card { margin-top: 16px; }
     .checked-out-empty { margin: 8px 0 16px; color: var(--color-dark-variant); }
-    .dashboard-header { margin-bottom: 20px; }
+    .dashboard-header { margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .header-alerts { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border: 1px solid var(--color-gray-border);
+        border-radius: 999px; color: var(--color-dark); font-size: 0.85rem; font-weight: 500; text-decoration: none; }
+    .header-alerts:hover { border-color: var(--color-primary); }
+    .header-alerts .material-icons-round { font-size: 1.1rem; color: var(--color-success); }
+    .header-alerts.level-warn { border-color: var(--color-warning); }
+    .header-alerts.level-warn .material-icons-round { color: var(--color-warning); }
+    .header-alerts.level-alert { border-color: var(--color-danger); }
+    .header-alerts.level-alert .material-icons-round { color: var(--color-danger); }
     .dashboard-group-label { margin: 24px 0 10px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.08em;
         text-transform: uppercase; color: var(--color-dark-variant); }
     .freezer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }

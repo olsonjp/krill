@@ -5,7 +5,7 @@ from unittest.mock import patch, MagicMock
 import json
 import logging
 
-from .models import Report, Alert, ReportTemplate
+from .models import Report, ReportTemplate
 from . import views as reports_views
 from sample.models import Sample, Aliquot
 from sample.models.aliquot import AliquotLocation
@@ -108,11 +108,9 @@ class DashboardStatsViewTest(ReportsViewTest):
         mock_sample.objects.count.side_effect = Exception("Sample error")
         mock_report = MagicMock()
         mock_report.objects.filter.return_value.count.side_effect = Exception("Report error")
-        mock_alert = MagicMock()
-        mock_alert.objects.filter.return_value.count.side_effect = Exception("Alert error")
         with patch.object(reports_views, 'Sample', mock_sample), \
              patch.object(reports_views, 'Report', mock_report), \
-             patch.object(reports_views, 'Alert', mock_alert):
+             patch.object(reports_views.attention, 'summary', side_effect=Exception("Alert error")):
             response = self.client.get(reverse('reports:dashboard_stats'))
             self.assertEqual(response.status_code, 200)
             data = response.json()
@@ -174,8 +172,6 @@ class DashboardStatsViewTest(ReportsViewTest):
         mock_box.objects.only.side_effect = Exception("Error 2")
         mock_report = MagicMock()
         mock_report.objects.filter.return_value.count.side_effect = Exception("Error 3")
-        mock_alert = MagicMock()
-        mock_alert.objects.filter.return_value.count.side_effect = Exception("Error 4")
         mock_audit = MagicMock()
         mock_audit.objects.filter.return_value.count.side_effect = Exception("Error 5")
         mock_device = MagicMock()
@@ -187,7 +183,7 @@ class DashboardStatsViewTest(ReportsViewTest):
         with patch.object(reports_views, 'Sample', mock_sample), \
              patch.object(reports_views, 'Box', mock_box), \
              patch.object(reports_views, 'Report', mock_report), \
-             patch.object(reports_views, 'Alert', mock_alert), \
+             patch.object(reports_views.attention, 'summary', side_effect=Exception("Error 4")), \
              patch.object(reports_views, 'UserAuditLog', mock_audit), \
              patch.object(reports_views, 'Device', mock_device), \
              patch.object(reports_views, 'Aliquot', mock_aliquot), \
@@ -270,33 +266,6 @@ class ReportListViewPageSizeTest(TestCase):
         response = self.client.get(reverse('reports:report_list_cbv') + '?page_size=20')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.context['reports']), 20)
-
-
-class AlertListViewPageSizeTest(TestCase):
-    def setUp(self):
-        self.client = Client()
-        self.user = User.objects.create_user(username='alertuser', password='pass')
-
-    def test_alert_list_defaults_to_50(self):
-        Alert.objects.bulk_create([
-            Alert(title=f"Alert{i}", message="msg", severity='low', alert_type='general')
-            for i in range(60)
-        ])
-        self.client.force_login(self.user)
-        response = self.client.get(reverse('reports:alert_list_cbv'))
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.context['alerts']), 50)
-
-    def test_alert_list_grid_returns_20(self):
-        Alert.objects.bulk_create([
-            Alert(title=f"Alert{i}", message="msg", severity='low', alert_type='general')
-            for i in range(30)
-        ])
-        self.client.force_login(self.user)
-        response = self.client.get(reverse('reports:alert_list_cbv') + '?page_size=20')
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.context['alerts']), 20)
-
 
 
 class StorageAuditReportTest(ReportsViewTest):

@@ -20,7 +20,8 @@ from django.views.generic import ListView, DetailView
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 
-from .models import ReportTemplate, Report, ScheduledReport, Alert
+from . import attention
+from .models import ReportTemplate, Report, ScheduledReport
 from sample.models import Sample, Aliquot
 from sample.models.aliquot import AliquotDisposition, AliquotLocation
 from storage.models.storage import Device, Box
@@ -104,8 +105,7 @@ def reports_dashboard(request):
         'audits': audits,
         'audit_count': Report.objects.filter(template__report_type='storage_audit', status='complete').count(),
         'audits_in_progress': in_progress,
-        'active_alerts': Alert.objects.filter(status='active').count(),
-        'recent_alerts': Alert.objects.filter(status='active').order_by('-created_at')[:5],
+        'attention': attention.summary(),
     })
 
 
@@ -157,10 +157,9 @@ def dashboard_stats(request):
         errors.append(f"recent_reports: {str(e)}")
         stats['recent_reports'] = 0
 
-    # Active alerts count
+    # Items needing attention (low stock, expiring, ...)
     try:
-        active_alerts = Alert.objects.filter(status='active').count()
-        stats['alerts'] = active_alerts
+        stats['alerts'] = attention.summary()['count']
     except Exception as e:
         logger.error(f"Error fetching active alerts count: {str(e)}", exc_info=True)
         errors.append(f"alerts: {str(e)}")
@@ -476,76 +475,44 @@ def download_report(request, report_id):
         })
 
 
-# Alert System API
+# Needs attention: the overview behind the Dashboard's header pill
 @login_required
 def alert_list(request):
-    """List all alerts"""
-    alerts = Alert.objects.all().order_by('-created_at')
-
-    # Filter by status if provided
-    status_filter = request.GET.get('status')
-    if status_filter:
-        alerts = alerts.filter(status=status_filter)
-
-    # Pagination
-    paginator = Paginator(alerts, 20)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-
-    context = {
-        'alerts': page_obj,
-        'total_alerts': alerts.count(),
-        'active_alerts': alerts.filter(status='active').count(),
-        'critical_alerts': alerts.filter(severity='critical', status='active').count(),
-    }
-    return render(request, 'reports/alert_list.html', context)
+    """Everything that needs attention, grouped by source, with silenced items listed separately."""
+    can_silence = UserRole.get_or_create_for_user(request.user).role in ('lab_manager', 'lab_admin')
+    groups = attention.groups()
+    active = [i for g in groups for i in g['active']]
+    return render(request, 'reports/alert_list.html', {
+        'groups': groups,
+        'total': len(active),
+        'level': attention.worst_level(active),
+        'silenced_total': sum(len(g['silenced']) for g in groups),
+        'can_silence': can_silence,
+    })
 
 
 @login_required
-@require_http_methods(["POST"])
-def acknowledge_alert(request, alert_id):
-    """Acknowledge an alert"""
-    try:
-        alert = get_object_or_404(Alert, id=alert_id)
-        alert.acknowledge(request.user)
-        return JsonResponse({'success': True, 'message': 'Alert acknowledged'})
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
-
-
-@login_required
-@require_http_methods(["POST"])
-def resolve_alert(request, alert_id):
-    """Resolve an alert"""
-    try:
-        alert = get_object_or_404(Alert, id=alert_id)
-        alert.resolve(request.user)
-        return JsonResponse({'success': True, 'message': 'Alert resolved'})
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
-
-
-@login_required
-@require_http_methods(["POST"])
-def create_alert(request):
-    """Create a new alert"""
-    try:
-        data = json.loads(request.body)
-        alert = Alert.objects.create(
-            title=data['title'],
-            message=data['message'],
-            severity=data.get('severity', 'medium'),
-            alert_type=data.get('alert_type', 'general'),
-            target_type=data.get('target_type', ''),
-            target_id=data.get('target_id'),
+@require_POST
+def silence_attention(request):
+    """Silence or unsilence the alerts about one record. Lab managers and admins only."""
+    if UserRole.get_or_create_for_user(request.user).role not in ('lab_manager', 'lab_admin'):
+        raise PermissionDenied("Only lab managers and admins can silence alerts.")
+    target_type = request.POST.get('target_type', '')
+    target_id = request.POST.get('target_id', '')
+    silenced = request.POST.get('silenced') == '1'
+    if target_id.isdigit() and attention.silence(target_type, int(target_id), silenced):
+        UserAuditLog.log_action(
+            user=request.user,
+            action='alerts_silenced' if silenced else 'alerts_unsilenced',
+            target_type=target_type.title(),
+            target_id=int(target_id),
+            target_name=f'{target_type} {target_id}',
+            request=request,
         )
-        return JsonResponse({
-            'success': True,
-            'alert_id': alert.id,
-            'message': 'Alert created successfully'
-        })
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        messages.success(request, 'Alerts silenced.' if silenced else 'Alerts turned back on.')
+    else:
+        messages.error(request, 'That item could not be found.')
+    return redirect('reports:alert_list')
 
 
 # Storage Management Dashboard API
@@ -766,29 +733,4 @@ class ReportListView(LoginRequiredMixin, ListView):
         context['total_reports'] = Report.objects.filter(created_by=self.request.user).count()
         context['pending_reports'] = Report.objects.filter(created_by=self.request.user, status='pending').count()
         context['completed_reports'] = Report.objects.filter(created_by=self.request.user, status='complete').count()
-        return context
-
-
-class AlertListView(LoginRequiredMixin, ListView):
-    model = Alert
-    template_name = 'reports/alert_list.html'
-    context_object_name = 'alerts'
-
-    def get_paginate_by(self, queryset):
-        if self.request.GET.get('page_size') == '20':
-            return 20
-        return 50
-
-    def get_queryset(self):
-        queryset = Alert.objects.all().order_by('-created_at')
-        status_filter = self.request.GET.get('status')
-        if status_filter:
-            queryset = queryset.filter(status=status_filter)
-        return queryset
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['total_alerts'] = Alert.objects.count()
-        context['active_alerts'] = Alert.objects.filter(status='active').count()
-        context['critical_alerts'] = Alert.objects.filter(severity='critical', status='active').count()
         return context

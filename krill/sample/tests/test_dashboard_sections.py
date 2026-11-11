@@ -1,7 +1,12 @@
+from datetime import date, timedelta
+from decimal import Decimal
+
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.utils import timezone
 
+from consumables.models.consumable import Consumable
+from consumables.models.consumable_type import ConsumableType
 from person.models import SiteConfiguration
 from ..models.aliquot import Aliquot, AliquotDisposition
 from .test_views import SampleViewTest
@@ -57,14 +62,6 @@ class DashboardSectionsTest(SampleViewTest):
         for expected in ('<h3>Storage Used</h3>', '<h3>Audits</h3>', '<h2>Freezers</h2>'):
             self.assertIn(expected, group)
 
-    def test_alerts_tile_is_kept_and_sits_after_audits_in_the_storage_group(self):
-        self._consumables(True)
-        html = self._html()
-        group = html[html.index('class="dashboard-group-label">Storage<'):html.index('class="dashboard-group-label">Consumables<')]
-        self.assertRegex(group, r'<div class="stat-info">\s*<h3>Alerts</h3>')
-        self.assertLess(group.index('<h3>Audits</h3>'), group.index('<h3>Alerts</h3>'))
-        self.assertIn(reverse('reports:alert_list'), group)
-
     def test_consumable_tiles_sit_in_the_consumables_group_when_enabled(self):
         self._consumables(True)
         html = self._html()
@@ -91,3 +88,61 @@ class DashboardSectionsTest(SampleViewTest):
         html = self._html()
         group = html[html.index('>Samples<'):html.index('class="dashboard-group-label">Storage<')]
         self.assertIn('<h3>Lab Checkouts</h3>', group)
+
+
+class DashboardAttentionPillTest(SampleViewTest):
+    """The header pill shows how many items need attention and opens the overview."""
+
+    def setUp(self):
+        super().setUp()
+        self.client.force_login(self.user)
+        self.kind = ConsumableType.objects.create(name='Antibody', category='antibody')
+        config = SiteConfiguration.load()
+        config.consumables_enabled = True
+        config.save()
+
+    def _consumable(self, quantity='3', threshold='5', **kwargs):
+        return Consumable.objects.create(
+            name=kwargs.pop('name', 'Anti-GFP'), consumable_type=self.kind,
+            quantity=Decimal(quantity), low_stock_threshold=Decimal(threshold), **kwargs)
+
+    def test_alerts_are_a_header_pill_not_a_tile(self):
+        response = self.client.get(reverse('home'))
+        # The sidebar has an Alerts item; what must be gone is the stat tile
+        self.assertNotRegex(response.content.decode(), r'<div class="stat-info">\s*<h3>Alerts</h3>')
+        self.assertContains(response, 'class="header-alerts')
+        self.assertContains(response, reverse('reports:alert_list'))
+
+    def test_all_clear_with_nothing_to_report(self):
+        response = self.client.get(reverse('home'))
+        self.assertEqual(response.context['attention'], {'count': 0, 'level': None})
+        self.assertContains(response, 'All clear')
+        self.assertNotContains(response, 'class="header-alerts level-')
+
+    def test_warn_is_amber_and_counts_computed_items(self):
+        self._consumable(quantity='3', threshold='5', expiration_date=date.today() + timedelta(days=4))
+        response = self.client.get(reverse('home'))
+        self.assertEqual(response.context['attention'], {'count': 2, 'level': 'warn'})
+        self.assertContains(response, 'class="header-alerts level-warn"')
+        self.assertRegex(response.content.decode(), r'2 need attention\s*</a>')
+
+    def test_out_of_stock_turns_the_pill_red(self):
+        self._consumable(quantity='0', threshold='5')
+        response = self.client.get(reverse('home'))
+        self.assertContains(response, 'class="header-alerts level-alert"')
+
+    def test_singular_wording(self):
+        self._consumable(quantity='3', threshold='5')
+        self.assertRegex(self.client.get(reverse('home')).content.decode(), r'1 needs attention\s*</a>')
+
+    def test_silenced_items_are_not_counted(self):
+        self._consumable(alerts_silenced=True)
+        response = self.client.get(reverse('home'))
+        self.assertEqual(response.context['attention']['count'], 0)
+        self.assertContains(response, 'All clear')
+
+    def test_dashboard_tiles_skip_silenced_consumables(self):
+        self._consumable(alerts_silenced=True, expiration_date=date.today() + timedelta(days=4))
+        stats = self.client.get(reverse('home')).context['stats']
+        self.assertEqual(stats['low_stock_count'], 0)
+        self.assertEqual(stats['expiring_soon_count'], 0)

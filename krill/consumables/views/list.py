@@ -63,6 +63,7 @@ class ConsumablesListView(ConsumablesEnabledMixin, LoginRequiredMixin, ListView)
                 qs = qs.filter(
                     low_stock_threshold__isnull=False,
                     quantity__lte=F('low_stock_threshold'),
+                    alerts_silenced=False,
                 )
 
             # Expiring soon filter (within 30 days)
@@ -72,6 +73,7 @@ class ConsumablesListView(ConsumablesEnabledMixin, LoginRequiredMixin, ListView)
                     expiration_date__isnull=False,
                     expiration_date__lte=today + timedelta(days=30),
                     expiration_date__gte=today,
+                    alerts_silenced=False,
                 )
 
         # Sorting
