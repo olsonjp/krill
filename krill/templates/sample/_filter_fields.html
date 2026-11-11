@@ -1,0 +1,34 @@
+{% comment %}
+Inputs for a FilterBar's fields (see sample/list_filters.py).
+variant: "inline" = toolbar inputs, "panel" = labelled fields with hints, "card" = fields in the Samples search card
+{% endcomment %}
+{% for f in fields %}
+{% if variant == 'inline' %}
+<input type="text" name="{{ f.param }}" value="{{ f.value }}" class="toolbar-search toolbar-field"
+       placeholder="{{ f.placeholder }}" aria-label="{{ f.label }}" title="{{ f.hint }}">
+{% elif variant == 'card' %}
+<div class="form-group">
+    <label for="filter-{{ f.param }}">{{ f.label }}</label>
+    <input type="text" id="filter-{{ f.param }}" name="{{ f.param }}" value="{{ f.value }}" class="form-control"
+           placeholder="{{ f.placeholder }}" title="{{ f.hint }}">
+</div>
+{% else %}
+<div class="filter-more-field">
+    <label for="filter-{{ f.param }}">{{ f.label }}</label>
+    {% if f.is_select %}
+    <select id="filter-{{ f.param }}" name="{{ f.param }}" class="toolbar-filter" onchange="this.form.submit()">
+        <option value="">Any</option>
+        {% for value, label, selected in f.choices %}
+        <option value="{{ value }}" {% if selected %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    {% elif f.is_date %}
+    <input type="date" id="filter-{{ f.param }}" name="{{ f.param }}" value="{{ f.value }}" class="toolbar-filter">
+    {% else %}
+    <input type="text" id="filter-{{ f.param }}" name="{{ f.param }}" value="{{ f.value }}" class="toolbar-filter"
+           placeholder="{{ f.placeholder }}">
+    {% endif %}
+    {% if f.hint %}<small class="filter-hint">{{ f.hint }}</small>{% endif %}
+</div>
+{% endif %}
+{% endfor %}

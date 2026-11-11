@@ -3,6 +3,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import CharField, F, Q, Value
 from django.db.models.functions import Cast, Coalesce
 from .. import low_count
+from ..list_filters import ALIQUOT_FILTERS, SAMPLE_FILTERS, DATE_KINDS, split_words
 from ..models.sample import Sample
 from ..models.aliquot import Aliquot, AliquotType, AliquotDisposition, AliquotLocation
 from ..models.source import Source
@@ -30,13 +31,18 @@ class SampleListView(LoginRequiredMixin, ListView):
         else:
             queryset = Sample.objects.select_related('source').with_stored_count()
 
-        # Text search
+        # Text search: every word must match ("quoted words" stay together)
         search_query = self.request.GET.get('q', '')
         if search_query:
             if model_type == 'aliquot':
                 queryset = self._search_aliquots(queryset, search_query)
             elif model_type in ('sample', 'source', 'aliquot-type'):
-                queryset = queryset.filter(name__icontains=search_query)
+                for word in split_words(search_query):
+                    queryset = queryset.filter(name__icontains=word)
+
+        # Samples: field filters (source, experiment, notes)
+        if model_type == 'sample':
+            queryset = SAMPLE_FILTERS.apply(queryset, self.request.GET)
 
         # Samples running low on stored aliquots (and not opted out of the check)
         if model_type == 'sample' and self.request.GET.get('low_count') == '1':
@@ -48,18 +54,10 @@ class SampleListView(LoginRequiredMixin, ListView):
             )
 
         # Aliquot-specific filters
+        self.no_date_excluded = None
         if model_type == 'aliquot':
-            disposition_filter = self.request.GET.get('disposition', '')
-            valid_dispositions = [c[0] for c in AliquotDisposition.DISPOSITION_CHOICES]
-            if disposition_filter and disposition_filter in valid_dispositions:
-                queryset = queryset.filter(disposition__disposition_type=disposition_filter)
-
-            aliquot_type_filter = self.request.GET.get('aliquot_type', '')
-            if aliquot_type_filter:
-                try:
-                    queryset = queryset.filter(aliquot_type__id=int(aliquot_type_filter))
-                except (ValueError, TypeError):
-                    pass
+            # Field filters (sample, passage, member, location, number, disposition, type) ...
+            queryset = ALIQUOT_FILTERS.apply(queryset, self.request.GET, skip_kinds=DATE_KINDS)
 
             sample_filter = self.request.GET.get('sample', '')
             if sample_filter.isdigit():
@@ -81,6 +79,11 @@ class SampleListView(LoginRequiredMixin, ListView):
             # Hide finished (exhausted) aliquots. Disposed ones stay visible.
             if self.request.GET.get('hide_finished') == '1':
                 queryset = queryset.exclude(disposition__disposition_type='exhausted')
+
+            # ... and last, the date range, so we can say how many aliquots with no date it leaves out
+            if any(f.kind in DATE_KINDS for f, _ in ALIQUOT_FILTERS.active(self.request.GET)):
+                self.no_date_excluded = queryset.filter(sample_date__isnull=True).count()
+                queryset = ALIQUOT_FILTERS.apply(queryset, self.request.GET, only_kinds=DATE_KINDS)
 
         # Sorting
         sort_by = self.request.GET.get('sort', 'name')
@@ -130,29 +133,34 @@ class SampleListView(LoginRequiredMixin, ListView):
 
     @staticmethod
     def _search_aliquots(queryset, term):
-        """Match the term against any aliquot field shown or recorded in Krill."""
-        term = term.strip()
+        """Search every aliquot field shown or recorded in Krill.
+
+        Every word must match something, so "hela p8" finds the p8 aliquots of HeLa. Put words in
+        "quotes" to match them as one phrase.
+        """
         queryset = queryset.annotate(sample_date_text=Cast('sample_date', CharField()))
-        match = (
-            Q(sample__name__icontains=term) |
-            Q(sample__experiment__icontains=term) |
-            Q(sample__notes__icontains=term) |
-            Q(aliquot_type__name__icontains=term) |
-            Q(disposition__name__icontains=term) |
-            Q(passage__icontains=term) |
-            Q(lab_member_initials__icontains=term) |
-            Q(lab_member__first_name__icontains=term) |
-            Q(lab_member__last_name__icontains=term) |
-            Q(lab_member__username__icontains=term) |
-            Q(sample_date_text__icontains=term) |
-            Q(location__box__name__icontains=term) |
-            Q(location__box__rack__shelf__device__name__icontains=term)
-        )
-        # Aliquot number: "12" or "#12" matches aliquot 12 exactly
-        number = term.lstrip('#')
-        if number.isdigit():
-            match |= Q(id=int(number))
-        return queryset.filter(match)
+        for word in split_words(term):
+            match = (
+                Q(sample__name__icontains=word) |
+                Q(sample__experiment__icontains=word) |
+                Q(sample__notes__icontains=word) |
+                Q(aliquot_type__name__icontains=word) |
+                Q(disposition__name__icontains=word) |
+                Q(passage__icontains=word) |
+                Q(lab_member_initials__icontains=word) |
+                Q(lab_member__first_name__icontains=word) |
+                Q(lab_member__last_name__icontains=word) |
+                Q(lab_member__username__icontains=word) |
+                Q(sample_date_text__icontains=word) |
+                Q(location__box__name__icontains=word) |
+                Q(location__box__rack__shelf__device__name__icontains=word)
+            )
+            # Aliquot number: "12" or "#12" matches aliquot 12 exactly
+            number = word.lstrip('#')
+            if number.isdigit():
+                match |= Q(id=int(number))
+            queryset = queryset.filter(match)
+        return queryset
 
     def _checked_out_by_everyone(self):
         """True for ?checked_out_by=all, which only lab managers and admins may use."""
@@ -201,6 +209,7 @@ class SampleListView(LoginRequiredMixin, ListView):
             context['low_count_pill_count'] = sum(1 for row in low_count.low_samples() if not row['silenced'])
 
         context['search_query'] = self.request.GET.get('q', '')
+        context['no_date_excluded'] = getattr(self, 'no_date_excluded', None)
         context['sort_by'] = self.request.GET.get('sort', 'name')
         context['sort_order'] = self.request.GET.get('order', 'asc')
 
@@ -224,6 +233,14 @@ class SampleListView(LoginRequiredMixin, ListView):
             ).count()
             sample_filter = self.request.GET.get('sample', '')
             context['sample_filter'] = Sample.objects.filter(pk=int(sample_filter)).first() if sample_filter.isdigit() else None
+            extra_chips = []
+            if context['checked_out_all']:
+                extra_chips.append(('Checked out by anyone', 'checked_out_by'))
+            if context['search_query']:
+                extra_chips.append((f'"{context["search_query"]}"', 'q'))
+            if context['sample_filter']:
+                extra_chips.append((f'Sample: {context["sample_filter"].name}', 'sample'))
+            context['filter_bar'] = ALIQUOT_FILTERS.bind(self.request, extra_chips)
             context['disposition_choices'] = AliquotDisposition.DISPOSITION_CHOICES
             context['aliquot_types'] = AliquotType.objects.order_by('name')
         else:
@@ -233,6 +250,9 @@ class SampleListView(LoginRequiredMixin, ListView):
             context['checked_out_by_me'] = False
             context['checked_out_all'] = False
             context['sample_filter'] = None
+            if model_type == 'sample':
+                extra_chips = [(f'"{context["search_query"]}"', 'q')] if context['search_query'] else []
+                context['filter_bar'] = SAMPLE_FILTERS.bind(self.request, extra_chips)
             context['disposition_choices'] = []
             context['aliquot_types'] = AliquotType.objects.none()
 
