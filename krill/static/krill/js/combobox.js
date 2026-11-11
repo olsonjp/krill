@@ -53,6 +53,7 @@
         var searchUrl = select.getAttribute('data-search-url');
         if (!searchUrl && select.options.length - 1 < MIN_OPTIONS) { return; }
         select.dataset.comboboxReady = '1';
+        var originalClasses = select.className;   // the text box takes the select's look (for example form-control)
 
         var id = 'combobox-' + (++counter);
         var wrapper = document.createElement('div');
@@ -66,7 +67,7 @@
         var input = document.createElement('input');
         input.type = 'text';
         input.id = id + '-input';
-        input.className = 'combobox-input';
+        input.className = ('combobox-input ' + originalClasses).trim();
         input.autocomplete = 'off';
         input.spellcheck = false;
         input.disabled = select.disabled;

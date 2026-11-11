@@ -327,6 +327,14 @@ function showAssignModal(row, column) {
     currentColumn = column;
     document.getElementById('assignModal').style.display = 'block';
     document.getElementById('assignPosition').textContent = `Position (${row}, ${column})`;
+    // Start each assignment with an empty picker, and put the cursor in it
+    const select = document.getElementById('aliquotSelect');
+    while (select.options.length > 1) { select.remove(1); }
+    select.value = '';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    const box = select.closest('.combobox');
+    const input = box && box.querySelector('input');
+    if (input) { input.focus(); }
 }
 
 function closeAssignModal() {
@@ -385,11 +393,9 @@ window.onclick = function(event) {
             <p>Assign an aliquot to position: <strong id="assignPosition"></strong></p>
             <div class="form-field">
                 <label for="aliquotSelect">Select Aliquot:</label>
-                <select id="aliquotSelect" class="form-control">
+                <select id="aliquotSelect" class="form-control" data-combobox="1"
+                        data-search-url="{% url 'sample:aliquot_options' %}">
                     <option value="">-- Select an aliquot --</option>
-                    {% for aliquot in available_aliquots %}
-                    <option value="{{ aliquot.id }}">{{ aliquot.sample.name }} - {{ aliquot.aliquot_type.name|default:"No type" }} (Aliquot {{ aliquot.id }})</option>
-                    {% endfor %}
                 </select>
             </div>
         </div>
@@ -429,10 +435,11 @@ window.onclick = function(event) {
 }
 
 .modal-content {
-    background-color: #fefefe;
+    background-color: var(--color-white);
+    color: var(--color-dark);
     margin: 15% auto;
     padding: 0;
-    border: 1px solid #888;
+    border: 1px solid var(--color-light);
     width: 90%;
     max-width: 500px;
     border-radius: 8px;
@@ -441,8 +448,9 @@ window.onclick = function(event) {
 
 .modal-header {
     padding: 20px;
-    background-color: #f8f9fa;
-    border-bottom: 1px solid #dee2e6;
+    background-color: var(--color-white);
+    color: var(--color-dark);
+    border-bottom: 1px solid var(--color-light);
     border-radius: 8px 8px 0 0;
     display: flex;
     justify-content: space-between;
@@ -452,10 +460,11 @@ window.onclick = function(event) {
 .modal-header h2 {
     margin: 0;
     font-size: 1.5rem;
+    color: var(--color-dark);
 }
 
 .close {
-    color: #aaa;
+    color: var(--color-dark-variant);
     font-size: 28px;
     font-weight: bold;
     cursor: pointer;
@@ -463,17 +472,20 @@ window.onclick = function(event) {
 
 .close:hover,
 .close:focus {
-    color: #000;
+    color: var(--color-dark);
 }
 
 .modal-body {
     padding: 20px;
+    /* This modal is short; the global 60vh scroll box would only clip the open picker list */
+    max-height: none;
+    overflow: visible;
 }
 
 .modal-footer {
     padding: 20px;
-    background-color: #f8f9fa;
-    border-top: 1px solid #dee2e6;
+    background-color: var(--color-white);
+    border-top: 1px solid var(--color-light);
     border-radius: 0 0 8px 8px;
     display: flex;
     justify-content: flex-end;
@@ -493,16 +505,18 @@ window.onclick = function(event) {
 .form-control {
     width: 100%;
     padding: 8px 12px;
-    border: 1px solid #ced4da;
+    border: 1px solid var(--color-gray-border);
     border-radius: 4px;
     font-size: 14px;
+    background: var(--color-white);
+    color: var(--color-dark);
 }
 
 .help-text {
     display: block;
     margin-top: 5px;
     font-size: 12px;
-    color: #6c757d;
+    color: var(--color-dark-variant);
 }
 </style>
 {% endblock %}

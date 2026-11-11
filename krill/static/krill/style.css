@@ -2677,6 +2677,12 @@ main table tbody tr:last-child td{
     position: relative;
 }
 
+/* A modal body scrolls and would clip the open list, so let it show in full */
+.modal-body:has(.combobox) {
+    max-height: none;
+    overflow: visible;
+}
+
 /* Keep the real <select> for form submission and validation, but out of sight */
 .combobox select.combobox-native {
     position: absolute;

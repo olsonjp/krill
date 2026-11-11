@@ -39,44 +39,37 @@ class StorageDetailView(DetailView):
         # Add storage information for boxes
         if self.kwargs.get('type') == 'box':
             box = self.object
-            # Only show tubes that are currently stored (disposition is "Stored")
-            locations = AliquotLocation.objects.filter(
-                box=box
-            ).select_related('aliquot__sample')
+            # One query for every position in the box, with what the page shows about each aliquot.
+            # The grid is then built from this list; it must not query per slot (an N+1).
+            locations = list(
+                AliquotLocation.objects.filter(box=box)
+                .select_related('aliquot__sample', 'aliquot__aliquot_type', 'aliquot__disposition')
+                .order_by('row', 'column')
+            )
+            by_position = {(loc.row, loc.column): loc for loc in locations}
             # Create a grid representation of the box
             box_grid = []
             for row in range(1, box.rows + 1):
                 row_data = []
                 for col in range(1, box.columns + 1):
-                    try:
-                        location = locations.get(row=row, column=col)
-                        row_data.append({
-                            'row': row,
-                            'column': col,
-                            'occupied': True,
-                            'aliquot': location.aliquot,
-                            'sample': location.aliquot.sample,
-                            'tube_number': None
-                        })
-                    except AliquotLocation.DoesNotExist:
-                        row_data.append({
-                            'row': row,
-                            'column': col,
-                            'occupied': False,
-                            'aliquot': None,
-                            'sample': None,
-                            'tube_number': None
-                        })
+                    location = by_position.get((row, col))
+                    row_data.append({
+                        'row': row,
+                        'column': col,
+                        'occupied': location is not None,
+                        'aliquot': location.aliquot if location else None,
+                        'sample': location.aliquot.sample if location else None,
+                        'tube_number': None
+                    })
                 box_grid.append(row_data)
             context['box_grid'] = box_grid
             context['total_slots'] = box.rows * box.columns
-            context['used_slots'] = locations.count()
+            context['used_slots'] = len(locations)
             context['available_slots'] = context['total_slots'] - context['used_slots']
             context['storage_percentage'] = (context['used_slots'] / context['total_slots']) * 100 if context['total_slots'] > 0 else 0
             context['locations'] = locations
-            # Add available aliquots for assignment
-            from sample.models.aliquot import Aliquot
-            context['available_aliquots'] = Aliquot.objects.all().select_related('sample', 'aliquot_type').order_by('sample__name')
+            # The "assign aliquot" picker searches the server as you type (sample:aliquot_options),
+            # so the page no longer carries every aliquot in the database
         return context
 
     def post(self, request, *args, **kwargs):
