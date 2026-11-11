@@ -42,11 +42,11 @@ Code: `reports/views.py` (`generate_audit_report`, `generate_storage_audit_data`
 
 **Reports > Checked Out, No Owner** (`/reports/checked-out-no-owner/`) lists aliquots whose disposition is In Use but that have no recorded owner. Since Krill started recording who checks an aliquot out (the Check Out button saves the person and the time), every new checkout has an owner. The ones listed here were set to In Use before that, or by editing the aliquot by hand.
 
-A checked-out aliquot is used and discarded, so most of this list is tubes that were used long ago and never marked Exhausted. Open one to mark it Exhausted. The page shows the total and 50 aliquots per page, with sample, type, passage, sample date and last-updated date.
+A checked-out aliquot is used and discarded, so most of this list is tubes that were used long ago and never marked Exhausted. Lab managers and admins can clear them from the page: tick the rows (the box in the header ticks everything on the page), pick a status, and press **Apply**. The status list is every status except Stored and In Use (Exhausted and Disposed), because a checked-out tube is never put back in storage. Each change is saved as an "Aliquot Updated" entry in the audit log, and only tubes that are still In Use with no owner are changed, so a stale page cannot overwrite someone else's edit. Other people see the list without the tick boxes and can still open one aliquot at a time. The page shows the total and 50 aliquots per page, with sample, type, passage, sample date and last-updated date.
 
 A person's own checked-out aliquots are in the Aliquots list with the **Checked out by me** filter (`/samples/list/?type=aliquot&checked_out_by=me`). The owner and time stay on the aliquot after it is used up, as a record of who used it.
 
-Code: `checked_out_no_owner` in `reports/views.py`, template `reports/templates/reports/checked_out_no_owner.html`, tests in `reports/test_checked_out_no_owner.py`.
+Code: `checked_out_no_owner` in `reports/views.py` (handles the list and the status change), template `reports/templates/reports/checked_out_no_owner.html`, tests in `reports/test_checked_out_no_owner.py`.
 
 ## Alerts
 

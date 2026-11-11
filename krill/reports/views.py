@@ -22,23 +22,67 @@ from django.utils.decorators import method_decorator
 
 from .models import ReportTemplate, Report, ScheduledReport, Alert
 from sample.models import Sample, Aliquot
-from sample.models.aliquot import AliquotLocation
+from sample.models.aliquot import AliquotDisposition, AliquotLocation
 from storage.models.storage import Device, Box
 from person.models import UserAuditLog, UserRole
 
 logger = logging.getLogger(__name__)
 
 
+def _no_owner_aliquots():
+    return Aliquot.objects.filter(disposition__disposition_type='in_use', checked_out_by__isnull=True)
+
+
 @login_required
 def checked_out_no_owner(request):
-    """In Use aliquots with no recorded owner: a cleanup list, mostly checkouts from before Krill tracked who."""
-    aliquots = (
-        Aliquot.objects.filter(disposition__disposition_type='in_use', checked_out_by__isnull=True)
-        .select_related('sample', 'aliquot_type')
-        .order_by('sample__name', 'id')
-    )
+    """In Use aliquots with no recorded owner: a cleanup list, mostly checkouts from before Krill tracked who.
+
+    Lab managers and admins can tick rows and move them to another status (Exhausted, Disposed).
+    """
+    can_change = UserRole.get_or_create_for_user(request.user).role in ('lab_manager', 'lab_admin')
+    # Statuses a tube can move to from here: anything but Stored and In Use
+    target_dispositions = AliquotDisposition.objects.filter(
+        disposition_type__in=('exhausted', 'disposed')
+    ).order_by('disposition_type', 'name')
+
+    if request.method == 'POST':
+        if not can_change:
+            raise PermissionDenied("Only lab managers and admins can change the status of aliquots in bulk.")
+        target = target_dispositions.filter(pk=request.POST.get('disposition') or 0).first()
+        ids = [int(i) for i in request.POST.getlist('aliquot_ids') if i.isdigit()]
+        if not target or not ids:
+            messages.error(request, 'Choose at least one aliquot and a status.')
+        else:
+            # Only aliquots that are still In Use with no owner: the list may be out of date
+            with transaction.atomic():
+                changed = list(_no_owner_aliquots().filter(pk__in=ids).select_related('sample'))
+                for aliquot in changed:
+                    aliquot.disposition = target
+                    aliquot.save()
+                    UserAuditLog.log_action(
+                        user=request.user,
+                        action='aliquot_updated',
+                        target_type='Aliquot',
+                        target_id=aliquot.id,
+                        target_name=str(aliquot),
+                        details={'disposition': target.name, 'source': 'checked_out_no_owner_report'},
+                        request=request,
+                    )
+            skipped = len(ids) - len(changed)
+            note = f' {skipped} skipped: no longer In Use without an owner.' if skipped else ''
+            messages.success(request, f'Marked {len(changed)} aliquot{"s" if len(changed) != 1 else ""} as {target.name}.{note}')
+        page_number = request.POST.get('page', '')
+        url = reverse('reports:checked_out_no_owner')
+        return redirect(f'{url}?page={page_number}' if page_number.isdigit() else url)
+
+    aliquots = _no_owner_aliquots().select_related('sample', 'aliquot_type').order_by('sample__name', 'id')
     page = Paginator(aliquots, 50).get_page(request.GET.get('page'))
-    return render(request, 'reports/checked_out_no_owner.html', {'page_obj': page, 'total': page.paginator.count})
+    return render(request, 'reports/checked_out_no_owner.html', {
+        'page_obj': page,
+        'total': page.paginator.count,
+        'can_change': can_change,
+        'target_dispositions': target_dispositions,
+    })
 
 
 # Main Reports Dashboard

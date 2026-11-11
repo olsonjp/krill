@@ -14,16 +14,34 @@
             and discarded, so these are mostly tubes that were used long ago and never marked Exhausted. Open one
             to mark it Exhausted.
         </p>
+        {% for message in messages %}
+        <p class="no-owner-message no-owner-{{ message.level_tag }}" role="status">{{ message }}</p>
+        {% endfor %}
         <div class="detail-section">
             {% if page_obj %}
+            {% if can_change %}<form method="post" id="bulkStatusForm">{% csrf_token %}<input type="hidden" name="page" value="{{ page_obj.number }}">{% endif %}
+            {% if can_change %}
+            <div class="bulk-bar">
+                <label for="bulkDisposition">Move ticked aliquots to</label>
+                <select id="bulkDisposition" name="disposition" class="toolbar-filter">
+                    {% for d in target_dispositions %}<option value="{{ d.id }}">{{ d.name }}</option>{% endfor %}
+                </select>
+                <button type="submit" class="btn btn-sm btn-primary" id="bulkApply" disabled>Apply</button>
+                <span id="bulkCount" class="bulk-count">None ticked</span>
+            </div>
+            {% endif %}
             <div class="detail-table-wrap">
             <table class="detail-table">
                 <thead>
-                    <tr><th>Aliquot</th><th>Type</th><th>Passage</th><th>Sample Date</th><th>Last Updated</th></tr>
+                    <tr>
+                        {% if can_change %}<th><input type="checkbox" id="bulkSelectAll" aria-label="Select all on this page"></th>{% endif %}
+                        <th>Aliquot</th><th>Type</th><th>Passage</th><th>Sample Date</th><th>Last Updated</th>
+                    </tr>
                 </thead>
                 <tbody>
                     {% for a in page_obj %}
                     <tr>
+                        {% if can_change %}<td><input type="checkbox" name="aliquot_ids" value="{{ a.id }}" class="bulk-row" aria-label="Select aliquot {{ a.id }}"></td>{% endif %}
                         <td><a href="{% url 'sample:detail' type='aliquot' pk=a.id %}" class="detail-link">{{ a.sample.name }} #{{ a.id }}</a></td>
                         <td>{{ a.aliquot_type.name|default:"—" }}</td>
                         <td>{{ a.passage|default:"—" }}</td>
@@ -34,6 +52,7 @@
                 </tbody>
             </table>
             </div>
+            {% if can_change %}</form>{% endif %}
             {% if page_obj.paginator.num_pages > 1 %}
             <div class="detail-section-actions">
                 {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}" class="detail-link">&larr; Previous</a>{% endif %}
@@ -47,4 +66,44 @@
         </div>
     </div>
 </div>
+
+<style>
+.bulk-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; margin-bottom: 1rem; }
+.bulk-count { color: var(--color-dark-variant); font-size: 0.85rem; }
+.no-owner-message { padding: 0.6rem 0.9rem; border-radius: var(--border-radius-1); margin: 0.75rem 0; }
+.no-owner-success { background: rgba(27, 156, 133, 0.2); color: var(--color-success); }
+.no-owner-error { background: rgba(255, 0, 96, 0.2); color: var(--color-danger); }
+</style>
+
+{% if can_change %}
+<script>
+(function () {
+    var form = document.getElementById('bulkStatusForm');
+    if (!form) return;
+    var rows = Array.prototype.slice.call(form.querySelectorAll('.bulk-row'));
+    var all = document.getElementById('bulkSelectAll');
+    var apply = document.getElementById('bulkApply');
+    var count = document.getElementById('bulkCount');
+    function update() {
+        var n = rows.filter(function (r) { return r.checked; }).length;
+        apply.disabled = n === 0;
+        count.textContent = n === 0 ? 'None ticked' : n + ' ticked';
+        all.checked = n > 0 && n === rows.length;
+        all.indeterminate = n > 0 && n < rows.length;
+    }
+    all.addEventListener('change', function () {
+        rows.forEach(function (r) { r.checked = all.checked; });
+        update();
+    });
+    rows.forEach(function (r) { r.addEventListener('change', update); });
+    form.addEventListener('submit', function (e) {
+        var n = rows.filter(function (r) { return r.checked; }).length;
+        var sel = document.getElementById('bulkDisposition');
+        var name = sel.options[sel.selectedIndex].text;
+        if (!confirm('Mark ' + n + ' aliquot' + (n === 1 ? '' : 's') + ' as ' + name + '?')) e.preventDefault();
+    });
+    update();
+})();
+</script>
+{% endif %}
 {% endblock %}
