@@ -60,6 +60,12 @@
                 <label>Lab Member:</label>
                 <span>{{ aliquot.lab_member_display|default:"Not recorded" }}</span>
             </div>
+            {% if aliquot.checked_out_at or aliquot.checked_out_by %}
+            <div class="detail-field">
+                <label>Checked out by:</label>
+                <span>{{ aliquot.checked_out_by_display|default:"Unknown" }}{% if aliquot.checked_out_at %} on {{ aliquot.checked_out_at|date:"M d, Y H:i" }}{% endif %}</span>
+            </div>
+            {% endif %}
             <div class="detail-field">
                 <label>Created:</label>
                 <span>{{ aliquot.created_at|date:"M d, Y H:i" }}</span>
