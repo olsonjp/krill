@@ -124,7 +124,7 @@ class ToggleKeyPillsTest(SampleViewTest):
 
     def test_pills_start_off_with_aria_state(self):
         response = self._list()
-        self.assertContains(response, 'aria-label="Checked out by me, off. Select to turn on"')
+        self.assertContains(response, 'aria-label="Checked out by me, 0 aliquots, off. Select to turn on"')
         self.assertContains(response, 'aria-label="Hide exhausted, off. Select to turn on"')
         self.assertNotContains(response, 'toggle-pill on')
 
@@ -163,7 +163,7 @@ class ToggleKeyPillsTest(SampleViewTest):
                                    checked_out_by=owner, checked_out_at=timezone.now())
         response = self._list()
         self.assertEqual(response.context['checked_out_count'], 2)
-        self.assertContains(response, 'Checked out by me · 2')
+        self.assertContains(response, 'Checked out by me &middot; 2')
 
     def test_search_button_has_aria_label_and_singular_count(self):
         response = self._list(q='Test Sample')

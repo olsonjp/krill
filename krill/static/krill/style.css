@@ -2832,6 +2832,8 @@ main table tbody tr:last-child td{
 .toggle-pill {
     display: inline-flex;
     align-items: center;
+    box-sizing: border-box;
+    min-height: 32px;
     gap: 0.25rem;
     padding: 0.3rem 0.8rem;
     border: 1px solid var(--color-gray-border);
@@ -2843,6 +2845,10 @@ main table tbody tr:last-child td{
     font-family: var(--font-family);
     text-decoration: none;
     white-space: nowrap;
+}
+
+.results-header .toggle-pills {
+    margin-top: 0;
 }
 
 .toggle-pill:hover {
