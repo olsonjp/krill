@@ -65,12 +65,28 @@
                     </div>
                 {% endif %}
             {% endfor %}
+            {% if parent_aliquot %}
+            <!-- Parent exhausted: same card and toggle as 'Assign to storage box' -->
+            <div class="box-assignment-section">
+                <div class="box-assignment-toggle">
+                    <label class="checkbox-label" for="parentUsedUp">
+                        <input type="checkbox" id="parentUsedUp" name="parent_used_up" value="1" checked>
+                        <span class="checkbox-custom"></span>
+                        <span class="checkbox-text">
+                            <i class="material-icons-round">check_circle_outline</i>
+                            Parent aliquot is exhausted
+                        </span>
+                    </label>
+                    <small class="help-text">Marks {{ parent_aliquot.sample.name }} #{{ parent_aliquot.id }} Exhausted when you create this aliquot. Untick to leave it In Use.</small>
+                </div>
+            </div>
+            {% endif %}
             <div class="form-buttons">
                 <button type="submit" class="btn btn-success">
                     <span class="material-icons-round">save</span>
                     Create
                 </button>
-                <button type="button" class="btn btn-danger" onclick="window.location.href='{% url 'sample:sample_list' %}?type={{ model_type }}'">
+                <button type="button" class="btn btn-danger" onclick="window.location.href='{{ cancel_url|escapejs }}'">
                     <span class="material-icons-round">close</span>
                     Cancel
                 </button>

@@ -11,6 +11,7 @@ from ..models.aliquot import Aliquot, AliquotType, AliquotDisposition, AliquotLo
 from ..models.source import Source
 from ..forms import SampleForm, AliquotForm, AliquotTypeForm, SourceForm
 from person.models import UserAuditLog
+from .next_url import safe_next
 
 @method_decorator(login_required, name='dispatch')
 class ModelCreateView(CreateView):
@@ -28,24 +29,36 @@ class ModelCreateView(CreateView):
     def get_initial(self):
         """?type=aliquot&parent=<id> opens the form with the parent and its sample filled in."""
         initial = super().get_initial()
-        if self.request.GET.get('type') == 'aliquot':
-            parent_id = self.request.GET.get('parent', '')
-            if parent_id.isdigit():
-                parent = Aliquot.objects.filter(pk=int(parent_id)).first()
-                if parent:
-                    initial['parent'] = parent.pk
-                    initial['sample'] = parent.sample_id
+        parent = self._parent_aliquot()
+        if parent:
+            initial['parent'] = parent.pk
+            initial['sample'] = parent.sample_id
+            initial['aliquot_type'] = parent.aliquot_type_id
+            initial['passage'] = parent.passage  # often the same, sometimes not: editable
         return initial
+
+    def _parent_aliquot(self):
+        """The aliquot named by ?parent=<id> when creating an aliquot, if it exists."""
+        if self.request.GET.get('type') != 'aliquot':
+            return None
+        parent_id = self.request.GET.get('parent', '')
+        if not parent_id.isdigit():
+            return None
+        return Aliquot.objects.filter(pk=int(parent_id)).select_related('disposition').first()
 
     def get_success_url(self):
         model_type = self.request.GET.get('type', 'sample')
-        return f"{reverse('sample:sample_list')}?type={model_type}"
+        return safe_next(self.request, f"{reverse('sample:sample_list')}?type={model_type}")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         model_type = self.request.GET.get('type', 'sample')
         context['model_type'] = model_type
         context['model_name'] = model_type.replace('-', ' ').title()
+        parent = self._parent_aliquot()
+        if parent and parent.disposition and parent.disposition.disposition_type == 'in_use':
+            context['parent_aliquot'] = parent  # offers 'Parent aliquot is exhausted'
+        context['cancel_url'] = safe_next(self.request, f"{reverse('sample:sample_list')}?type={model_type}")
         return context
 
     def form_valid(self, form):
@@ -86,6 +99,21 @@ class ModelCreateView(CreateView):
             target_name=str(first_aliquot),
             request=self.request,
         )
+
+        # The parent was checked out and used to make this: optionally mark it used up
+        parent = first_aliquot.parent
+        if (self.request.POST.get('parent_used_up') and parent
+                and parent.disposition and parent.disposition.disposition_type == 'in_use'):
+            parent.mark_exhausted()
+            UserAuditLog.log_action(
+                user=self.request.user,
+                action='aliquot_updated',
+                target_type='Aliquot',
+                target_id=parent.id,
+                target_name=str(parent),
+                details={'disposition': parent.disposition.name, 'source': 'create_child'},
+                request=self.request,
+            )
 
         # Create additional aliquots if count > 1
         created_aliquots = [first_aliquot]

@@ -110,6 +110,15 @@ class Aliquot(models.Model):
             return self.checked_out_by.get_full_name() or self.checked_out_by.get_username()
         return ''
 
+    def mark_exhausted(self):
+        """Mark the aliquot used up. Frees its box slot if it still has one."""
+        exhausted = AliquotDisposition.objects.filter(disposition_type='exhausted').order_by('id').first()
+        if exhausted is None:
+            exhausted = AliquotDisposition.objects.create(name='Exhausted', disposition_type='exhausted')
+        AliquotLocation.objects.filter(aliquot=self).delete()
+        self.disposition = exhausted
+        self.save()
+
     def store_in_location(self, box, row, column):
         """Store this aliquot in a location"""
         stored_disposition, _ = AliquotDisposition.objects.get_or_create(

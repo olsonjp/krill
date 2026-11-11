@@ -32,6 +32,7 @@ class HomeView(View):
             'stats': stats,
             'freezers': freezers,
             'show_sites': len({card['device'].site_id for card in freezers}) > 1,
+            'checked_out': get_checked_out(request.user),
             'audits_in_progress': get_audits_in_progress(),
             'recent_activity': get_recent_activity(),
         })
@@ -165,6 +166,25 @@ def get_freezer_cards():
             'last_activity': time_ago(usage.get(device.pk, {}).get('last')) if used else 'Empty',
         })
     return cards
+
+
+def get_checked_out(user, limit=5):
+    """The signed-in user's In Use aliquots, newest checkout first, with how many children each has."""
+    from django.db.models import Count
+
+    mine = Aliquot.objects.filter(checked_out_by=user, disposition__disposition_type='in_use')
+    rows = (
+        mine.select_related('sample', 'aliquot_type')
+        .annotate(child_count=Count('children'))
+        .order_by('-checked_out_at', '-id')[:limit]
+    )
+    return {
+        'total': mine.count(),
+        'items': [
+            {'aliquot': a, 'out': time_ago(a.checked_out_at), 'children': a.child_count}
+            for a in rows
+        ],
+    }
 
 
 def get_audits_in_progress(limit=3):
