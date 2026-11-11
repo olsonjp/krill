@@ -23,9 +23,7 @@ urlpatterns = [
 
     # Alert System
     path('alerts/', views.alert_list, name='alert_list'),
-    path('alerts/<int:alert_id>/acknowledge/', views.acknowledge_alert, name='acknowledge_alert'),
-    path('alerts/<int:alert_id>/resolve/', views.resolve_alert, name='resolve_alert'),
-    path('alerts/create/', views.create_alert, name='create_alert'),
+    path('alerts/silence/', views.silence_attention, name='silence_attention'),
 
 
     # Aliquots checked out with no recorded owner
@@ -36,6 +34,5 @@ urlpatterns = [
 
     # Class-based views
     path('reports/', views.ReportListView.as_view(), name='report_list_cbv'),
-    path('alerts/list/', views.AlertListView.as_view(), name='alert_list_cbv'),
 
 ]

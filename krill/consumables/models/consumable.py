@@ -12,9 +12,11 @@ class ConsumableQuerySet(models.QuerySet):
         return self.filter(deleted=False)
 
     def low_stock(self):
+        """Low-stock consumables that still raise alerts (silenced ones are left out)."""
         return self.active().filter(
             low_stock_threshold__isnull=False,
             quantity__lte=F('low_stock_threshold'),
+            alerts_silenced=False,
         )
 
 
@@ -55,6 +57,12 @@ class Consumable(models.Model):
         decimal_places=3,
         null=True,
         blank=True,
+    )
+
+    alerts_silenced = models.BooleanField(
+        default=False,
+        help_text='Stop low-stock and expiry alerts and reorder suggestions for this consumable, '
+                  'for example one the lab is phasing out',
     )
 
     expiration_date = models.DateField(null=True, blank=True)

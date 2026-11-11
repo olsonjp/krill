@@ -1,6 +1,6 @@
 # Reports app
 
-Reports is where you check that what Krill says is in storage is really there (the **storage audit**), where alerts are listed, and where aliquots checked out with no recorded owner are listed. Open it from **Reports** in the sidebar.
+Reports is where you check that what Krill says is in storage is really there (the **storage audit**), where the items that need attention are listed, and where aliquots checked out with no recorded owner are listed. Open it from **Reports** in the sidebar.
 
 ## Storage audit
 
@@ -48,9 +48,18 @@ A person's own checked-out aliquots are in the Aliquots list with the **Checked 
 
 Code: `checked_out_no_owner` in `reports/views.py` (handles the list and the status change), template `reports/templates/reports/checked_out_no_owner.html`, tests in `reports/test_checked_out_no_owner.py`.
 
-## Alerts
+## Needs attention
 
-**Reports > View Alerts** lists alerts with their severity (low, medium, high, critical), type (storage, sample, system, security, general) and status (active, acknowledged, resolved, dismissed). An active alert can be acknowledged and then resolved. The Reports page shows the count of active alerts and the latest five.
+The pill in the Dashboard header ("All clear", or "N need attention", amber for a warning and red for an alert) opens **Needs Attention** (`/reports/alerts/`). It lists everything that needs action, grouped by what it is about:
+
+- **Low stock:** a consumable at or below its low-stock threshold. It is an alert when it is out of stock and a warning otherwise.
+- **Expiring soon:** a consumable that expires within 30 days (warning).
+
+These two only appear when Consumables are turned on in Settings. Items come from your data; nobody types them in. The older manually created alerts are gone (the table was empty in the lab's backup, and the data model is kept).
+
+**Silence.** Lab managers and admins can press **Silence** on an item when the lab does not want to hear about it, for example a consumable it is phasing out. The switch lives on the consumable itself (`alerts_silenced`), so it also leaves the Low Stock and Expiring Soon tiles, their filtered lists and the reorder list. Silenced items stay on the page under **Silenced**, with **Turn back on**. Silencing is saved to the audit log.
+
+**How it is built.** `reports/attention.py` works everything out, and the pill, this page and the Reports page all read from it, so they always agree. Each item has a stable key such as `low_stock:consumable:12`. To add a source, write a function that returns a list of `AttentionItem`, register it with `register_source()`, and (if it can be silenced) register a silencer for its record type. Email notifications, when added, should use the same items and keys to avoid sending the same alert twice.
 
 ## Other pieces
 
