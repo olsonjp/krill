@@ -107,12 +107,34 @@
             </div>
             {% endif %}
 
-            <a href="{% url 'reports:reports_dashboard' %}" class="{% if 'reports' in request.path %}active{% endif %}">
-                <span class="material-icons-round">
-                    description
-                </span>
-                <h3>Reports</h3>
-            </a>
+            <!-- Reports section -->
+            <div class="sidebar-section">
+                <a href="{% url 'reports:reports_dashboard' %}" class="sidebar-toggle {% if '/reports/' in request.path %}active{% endif %}">
+                    <span class="material-icons-round">
+                        description
+                    </span>
+                    <h3>Reports</h3>
+                    <span class="material-icons-round expand-icon">expand_more</span>
+                </a>
+                <div id="reports-section" class="sidebar-submenu {% if '/reports/' in request.path %}show{% endif %}">
+                    <a href="{% url 'reports:reports_dashboard' %}" class="submenu-item {% if request.path == '/reports/' %}active{% endif %}">
+                        <span class="material-icons-round">insights</span>
+                        <h3>Overview</h3>
+                    </a>
+                    <a href="{% url 'reports:audit_list' %}" class="submenu-item {% if '/reports/audit' in request.path %}active{% endif %}">
+                        <span class="material-icons-round">fact_check</span>
+                        <h3>Storage Audits</h3>
+                    </a>
+                    <a href="{% url 'reports:alert_list' %}" class="submenu-item {% if '/reports/alerts' in request.path %}active{% endif %}">
+                        <span class="material-icons-round">notifications</span>
+                        <h3>Alerts</h3>
+                    </a>
+                    <a href="{% url 'reports:checked_out_no_owner' %}" class="submenu-item {% if '/reports/checked-out-no-owner' in request.path %}active{% endif %}">
+                        <span class="material-icons-round">person_off</span>
+                        <h3>Checked Out, No Owner</h3>
+                    </a>
+                </div>
+            </div>
             <a href="{% url 'settings' %}" class="{% if 'settings' in request.path %}active{% endif %}">
                 <span class="material-icons-round">
                     settings
