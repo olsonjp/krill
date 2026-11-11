@@ -5,6 +5,7 @@ from django.db.models.functions import Cast
 from ..models.sample import Sample
 from ..models.aliquot import Aliquot, AliquotType, AliquotDisposition, AliquotLocation
 from ..models.source import Source
+from person.models import UserRole
 
 class SampleListView(LoginRequiredMixin, ListView):
     template_name = 'sample/list.html'
@@ -19,6 +20,7 @@ class SampleListView(LoginRequiredMixin, ListView):
                 'aliquot_type',
                 'disposition',
                 'location__box__rack__shelf__device__site',
+                'checked_out_by',
             )
         elif model_type == 'aliquot-type':
             queryset = AliquotType.objects.all()
@@ -59,6 +61,12 @@ class SampleListView(LoginRequiredMixin, ListView):
                     checked_out_by=self.request.user,
                     disposition__disposition_type='in_use',
                 )
+            elif self._checked_out_by_everyone():
+                # ?checked_out_by=all: everyone's, for lab managers and admins
+                queryset = queryset.filter(
+                    checked_out_by__isnull=False,
+                    disposition__disposition_type='in_use',
+                )
 
             # Hide finished (exhausted) aliquots. Disposed ones stay visible.
             if self.request.GET.get('hide_finished') == '1':
@@ -73,7 +81,10 @@ class SampleListView(LoginRequiredMixin, ListView):
         else:
             sort_prefix = ''
 
-        if model_type == 'aliquot' and sort_by == 'disposition':
+        if model_type == 'aliquot' and self._checked_out_by_everyone() and 'sort' not in self.request.GET:
+            # Group by person unless a column sort was chosen
+            queryset = queryset.order_by('checked_out_by__username', '-checked_out_at', 'id')
+        elif model_type == 'aliquot' and sort_by == 'disposition':
             queryset = queryset.order_by(f'{sort_prefix}disposition__disposition_type', 'id')
         elif model_type == 'aliquot' and sort_by == 'type':
             queryset = queryset.order_by(f'{sort_prefix}aliquot_type__name', 'id')
@@ -131,6 +142,12 @@ class SampleListView(LoginRequiredMixin, ListView):
             match |= Q(id=int(number))
         return queryset.filter(match)
 
+    def _checked_out_by_everyone(self):
+        """True for ?checked_out_by=all, which only lab managers and admins may use."""
+        if self.request.GET.get('checked_out_by') != 'all':
+            return False
+        return UserRole.get_or_create_for_user(self.request.user).role in ('lab_manager', 'lab_admin')
+
     def _toggle_url(self, param, value):
         """Link that flips one yes/no filter, keeps every other parameter, and goes back to page 1."""
         params = self.request.GET.copy()
@@ -176,6 +193,7 @@ class SampleListView(LoginRequiredMixin, ListView):
             context['aliquot_type_filter'] = self.request.GET.get('aliquot_type', '')
             context['hide_finished'] = self.request.GET.get('hide_finished') == '1'
             context['checked_out_by_me'] = self.request.GET.get('checked_out_by') == 'me'
+            context['checked_out_all'] = self._checked_out_by_everyone()
             context['checked_out_toggle_url'] = self._toggle_url('checked_out_by', 'me')
             context['hide_finished_toggle_url'] = self._toggle_url('hide_finished', '1')
             context['checked_out_count'] = Aliquot.objects.filter(
@@ -191,6 +209,7 @@ class SampleListView(LoginRequiredMixin, ListView):
             context['aliquot_type_filter'] = ''
             context['hide_finished'] = False
             context['checked_out_by_me'] = False
+            context['checked_out_all'] = False
             context['sample_filter'] = None
             context['disposition_choices'] = []
             context['aliquot_types'] = AliquotType.objects.none()

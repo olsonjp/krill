@@ -247,6 +247,9 @@ class AliquotDetailView(DetailView):
     def _handle_checkout(self, request):
         """Handle checkout action - change disposition to 'in_use'"""
         was_stored = self.object.disposition and self.object.disposition.disposition_type == 'stored'
+        if not was_stored:
+            # Another person may have checked it out since this page was loaded: do not take it over
+            return redirect(safe_next(request, reverse('sample:aliquot_detail', kwargs={'pk': self.object.pk})))
 
         in_use_disposition, _ = AliquotDisposition.objects.get_or_create(
             name='In Use',
@@ -262,4 +265,4 @@ class AliquotDetailView(DetailView):
         if was_stored:
             AliquotLocation.objects.filter(aliquot=self.object).delete()
 
-        return redirect('sample:aliquot_detail', pk=self.object.pk)
+        return redirect(safe_next(request, reverse('sample:aliquot_detail', kwargs={'pk': self.object.pk})))

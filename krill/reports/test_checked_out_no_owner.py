@@ -90,6 +90,13 @@ class BulkStatusChangeTest(ReportTestBase):
         self.assertNotContains(member_page, 'id="bulkApply"')
         self.assertNotContains(member_page, 'name="aliquot_ids"')
 
+    def test_apply_uses_the_shared_confirm_dialog(self):
+        self._aliquot('in_use')
+        self.client.force_login(self.manager)
+        html = self.client.get(self.url).content.decode()
+        self.assertIn("form.setAttribute('data-confirm'", html)
+        self.assertNotIn('confirm(', html.replace("setAttribute('data-confirm'", ''))
+
     def test_dropdown_offers_only_exhausted_and_disposed(self):
         self.client.force_login(self.manager)
         offered = {d.disposition_type for d in self.client.get(self.url).context['target_dispositions']}

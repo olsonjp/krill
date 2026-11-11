@@ -10,7 +10,7 @@ from django.utils import timezone
 from sample.models.sample import Sample
 from sample.models.aliquot import Aliquot, AliquotLocation
 from storage.models.storage import Box
-from person.models import UserAuditLog, UserPreference, SiteConfiguration
+from person.models import UserAuditLog, UserPreference, SiteConfiguration, UserRole
 from person.decorators import require_minimum_role
 
 __all__ = (
@@ -33,6 +33,7 @@ class HomeView(View):
             'freezers': freezers,
             'show_sites': len({card['device'].site_id for card in freezers}) > 1,
             'checked_out': get_checked_out(request.user),
+            'lab_checkouts': get_lab_checkouts(request.user),
             'audits_in_progress': get_audits_in_progress(),
             'recent_activity': get_recent_activity(),
         })
@@ -184,6 +185,17 @@ def get_checked_out(user, limit=5):
             {'aliquot': a, 'out': time_ago(a.checked_out_at), 'children': a.child_count}
             for a in rows
         ],
+    }
+
+
+def get_lab_checkouts(user):
+    """Everyone's checked-out aliquots and how many people have them. Only for lab managers and admins."""
+    if UserRole.get_or_create_for_user(user).role not in ('lab_manager', 'lab_admin'):
+        return None
+    out = Aliquot.objects.filter(checked_out_by__isnull=False, disposition__disposition_type='in_use')
+    return {
+        'aliquots': out.count(),
+        'people': out.values('checked_out_by').distinct().count(),
     }
 
 

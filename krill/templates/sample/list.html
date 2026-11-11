@@ -20,6 +20,7 @@
             <input type="hidden" name="type" value="aliquot">
             {% if sample_filter %}<input type="hidden" name="sample" value="{{ sample_filter.id }}">{% endif %}
             {% if checked_out_by_me %}<input type="hidden" name="checked_out_by" value="me">{% endif %}
+            {% if checked_out_all %}<input type="hidden" name="checked_out_by" value="all">{% endif %}
             {% if hide_finished %}<input type="hidden" name="hide_finished" value="1">{% endif %}
             {% if request.GET.sort %}<input type="hidden" name="sort" value="{{ request.GET.sort }}">{% endif %}
             {% if request.GET.order %}<input type="hidden" name="order" value="{{ request.GET.order }}">{% endif %}
@@ -61,8 +62,14 @@
                 Hide exhausted
             </a>
         </div>
-        {% if search_query or disposition_filter or aliquot_type_filter or sample_filter %}
+        {% if search_query or disposition_filter or aliquot_type_filter or sample_filter or checked_out_all %}
         <div class="filter-chips">
+            {% if checked_out_all %}
+            <span class="filter-chip">
+                Checked out by anyone
+                <button type="button" class="chip-remove" onclick="removeFilterParam('checked_out_by')" title="Remove">×</button>
+            </span>
+            {% endif %}
             {% if search_query %}
             <span class="filter-chip">
                 "{{ search_query }}"
@@ -176,7 +183,8 @@
                             <th data-sort="disposition" class="{% if sort_by == 'disposition' %}sort-{{ sort_order }}{% endif %}">Disposition</th>
                             <th data-sort="location" class="{% if sort_by == 'location' %}sort-{{ sort_order }}{% endif %}">Location</th>
                             <th data-sort="sample_date" class="{% if sort_by == 'sample_date' %}sort-{{ sort_order }}{% endif %}">Sample Date</th>
-                            {% if checked_out_by_me %}<th>Checked Out</th>{% endif %}
+                            {% if checked_out_all %}<th>Checked Out By</th>{% endif %}
+                            {% if checked_out_by_me or checked_out_all %}<th>Checked Out</th>{% endif %}
                             <th></th>
                         </tr>
                     </thead>
@@ -198,16 +206,29 @@
                                 {% else %}—{% endif %}
                             </td>
                             <td>{{ item.sample_date|date:"Y-m-d"|default:"—" }}</td>
-                            {% if checked_out_by_me %}<td>{{ item.checked_out_at|date:"Y-m-d H:i"|default:"—" }}</td>{% endif %}
+                            {% if checked_out_all %}<td>{{ item.checked_out_by_display|default:"—" }}</td>{% endif %}
+                            {% if checked_out_by_me or checked_out_all %}<td>{{ item.checked_out_at|date:"Y-m-d H:i"|default:"—" }}</td>{% endif %}
                             <td>
-                                <a class="action-button view" href="{% url 'sample:detail' type='aliquot' pk=item.id %}" target="_blank" title="Open in new tab">
-                                    <span class="material-icons-round">open_in_new</span>
-                                </a>
+                                <div class="row-actions">
+                                    {% if item.disposition.disposition_type == 'stored' %}
+                                    <form method="post" action="{% url 'sample:aliquot_detail' pk=item.id %}"
+                                          data-confirm="Check out {{ item.sample.name }} #{{ item.id }}? This changes its status to In Use and frees its box position."
+                                          data-confirm-label="Check out">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="checkout">
+                                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                        <button type="submit" class="btn btn-sm btn-plain">Check out</button>
+                                    </form>
+                                    {% endif %}
+                                    <a class="action-button view" href="{% url 'sample:detail' type='aliquot' pk=item.id %}" target="_blank" title="Open in new tab">
+                                        <span class="material-icons-round">open_in_new</span>
+                                    </a>
+                                </div>
                             </td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="{% if checked_out_by_me %}8{% else %}7{% endif %}" style="text-align:center;padding:2rem;color:var(--color-dark-variant)">
-{% if search_query or disposition_filter or aliquot_type_filter or hide_finished or sample_filter or checked_out_by_me %}
+                        <tr><td colspan="{% if checked_out_all %}9{% elif checked_out_by_me %}8{% else %}7{% endif %}" style="text-align:center;padding:2rem;color:var(--color-dark-variant)">
+{% if search_query or disposition_filter or aliquot_type_filter or hide_finished or sample_filter or checked_out_by_me or checked_out_all %}
 No aliquots match your filters — try clearing a filter above.
 {% else %}
 No aliquots yet. <a href="{% url 'sample:sample_create' %}?type=aliquot">Create your first aliquot</a> to get started.
