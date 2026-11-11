@@ -6,6 +6,7 @@ from django.db.models import Q
 from ..models.sample import Sample
 from ..models.aliquot import Aliquot, AliquotType, AliquotLocation
 from ..models.source import Source
+from ..widgets import aliquot_choice_label
 
 
 @login_required
@@ -127,3 +128,45 @@ def aliquot_search(request):
         'total_count': aliquots.count(),
     }
     return render(request, 'sample/search.html', context)
+
+
+OPTION_LIMIT = 20
+
+
+@login_required
+def aliquot_options(request):
+    """JSON for the Parent aliquot picker: aliquots matching what was typed.
+
+    Every word typed must match something (sample name, type or passage), so "HeLa p8" finds the p8
+    aliquots of HeLa. A word that is a number, with or without a leading #, also matches the aliquot
+    number, and an aliquot with exactly that number is listed first. At most OPTION_LIMIT results come
+    back, with `more` set when there are others, so the page never loads thousands of options.
+    """
+    query = request.GET.get('q', '').strip()
+    if not query:
+        return JsonResponse({'results': [], 'more': False})
+
+    aliquots = Aliquot.objects.filter(deleted=False).select_related('sample', 'aliquot_type')
+    words = query.split()
+    for word in words:
+        match = (
+            Q(sample__name__icontains=word) |
+            Q(aliquot_type__name__icontains=word) |
+            Q(passage__icontains=word)
+        )
+        number = word.lstrip('#')
+        if number.isdigit():
+            match |= Q(pk=int(number))
+        aliquots = aliquots.filter(match)
+
+    exact = []
+    only = words[0].lstrip('#') if len(words) == 1 else ''
+    if only.isdigit():
+        exact = list(aliquots.filter(pk=int(only)))
+        aliquots = aliquots.exclude(pk=int(only))
+
+    rows = exact + list(aliquots.order_by('sample__name', '-pk')[:OPTION_LIMIT + 1])
+    return JsonResponse({
+        'results': [{'id': a.pk, 'label': aliquot_choice_label(a)} for a in rows[:OPTION_LIMIT]],
+        'more': len(rows) > OPTION_LIMIT,
+    })

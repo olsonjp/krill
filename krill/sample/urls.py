@@ -3,7 +3,7 @@ from django.views.generic import RedirectView
 from .views.list import SampleListView
 from .views.detail import ModelDetailView, AliquotDetailView
 from .views.create import ModelCreateView
-from .views.search import sample_search, aliquot_search
+from .views.search import sample_search, aliquot_search, aliquot_options
 from .views.access_level_demo import sample_access_demo, aliquot_access_demo, access_level_info
 from .views.views import SampleView
 
@@ -14,6 +14,7 @@ urlpatterns = [
     path('list/', SampleListView.as_view(), name='sample_list'),
     path('search/', sample_search, name='sample_search'),
     path('aliquot-search/', aliquot_search, name='aliquot_search'),
+    path('aliquot-options/', aliquot_options, name='aliquot_options'),
     path('detail/<str:type>/<int:pk>/', ModelDetailView.as_view(), name='detail'),
     path('aliquot/<int:pk>/', AliquotDetailView.as_view(), name='aliquot_detail'),
     # Backward-compatibility redirect: tube/<pk>/ -> aliquot/<pk>/
