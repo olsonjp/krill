@@ -40,7 +40,7 @@ def checked_out_no_owner(request):
     Lab managers and admins can tick rows and move them to another status (Exhausted, Disposed).
     """
     can_change = UserRole.get_or_create_for_user(request.user).role in ('lab_manager', 'lab_admin')
-    # Statuses a tube can move to from here: anything but Stored and In Use
+    # Statuses an aliquot can move to from here: anything but Stored and In Use
     target_dispositions = AliquotDisposition.objects.filter(
         disposition_type__in=('exhausted', 'disposed')
     ).order_by('disposition_type', 'name')

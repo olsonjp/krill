@@ -81,7 +81,7 @@ class CheckedOutByMeFilterTest(SampleViewTest):
     def test_lists_only_my_in_use_aliquots(self):
         mine = self._make(self.user, passage='p3')
         self._make(self.other_user)                                  # someone else's
-        self._make(self.user, disposition=self.exhausted)             # mine, but used up
+        self._make(self.user, disposition=self.exhausted)             # mine, but exhausted
         Aliquot.objects.create(sample=self.sample, disposition=self.in_use)  # in use, no owner
         response = self._list()
         self.assertEqual(list(response.context['items']), [mine])

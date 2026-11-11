@@ -78,7 +78,7 @@ class Aliquot(models.Model):
         blank=True,
         on_delete=models.SET_NULL,
         related_name='aliquots_checked_out',
-        help_text='User who checked the aliquot out. Kept after it is used up, as a record of who used it.',
+        help_text='User who checked the aliquot out. Kept after it is exhausted, as a record of who used it.',
     )
     checked_out_at = models.DateTimeField(
         null=True,
@@ -111,7 +111,7 @@ class Aliquot(models.Model):
         return ''
 
     def mark_exhausted(self):
-        """Mark the aliquot used up. Frees its box slot if it still has one."""
+        """Mark the aliquot exhausted. Frees its box slot if it still has one."""
         exhausted = AliquotDisposition.objects.filter(disposition_type='exhausted').order_by('id').first()
         if exhausted is None:
             exhausted = AliquotDisposition.objects.create(name='Exhausted', disposition_type='exhausted')
