@@ -204,6 +204,14 @@ class SiteConfiguration(models.Model):
     """Singleton site-wide feature flags. Access via SiteConfiguration.load()."""
     consumables_enabled = models.BooleanField(default=False)
     consumables_ordering_enabled = models.BooleanField(default=False)
+    low_count_warn = models.PositiveIntegerField(
+        default=5,
+        help_text='Warn when a sample has this many stored aliquots or fewer',
+    )
+    low_count_alert = models.PositiveIntegerField(
+        default=3,
+        help_text='Alert when a sample has this many stored aliquots or fewer',
+    )
     updated_at = models.DateTimeField(auto_now=True)
     updated_by = models.ForeignKey(
         User,

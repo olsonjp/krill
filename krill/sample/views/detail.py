@@ -11,16 +11,20 @@ from ..models.aliquot import Aliquot, AliquotType, AliquotLocation
 from ..models.source import Source
 from ..forms import SampleForm, AliquotForm, AliquotTypeForm, SourceForm, AliquotMoveForm
 from ..models.aliquot import AliquotDisposition
-from person.models import UserAuditLog
+from person.models import SiteConfiguration, UserAuditLog
+from .. import low_count
 from .next_url import safe_next
 
 def remaining_aliquots(sample):
-    """Aliquots of a sample still in the freezer: stored disposition and a box position."""
+    """The aliquots of a sample that are still stored (disposition Stored; a box position is not required).
+
+    This is the same count the low-count alerts use.
+    """
     return (
         Aliquot.objects.filter(
             sample=sample,
+            deleted=False,
             disposition__disposition_type='stored',
-            location__isnull=False,
         )
         .select_related(
             'aliquot_type',
@@ -62,6 +66,16 @@ class ModelDetailView(DetailView):
             remaining = list(remaining_aliquots(self.object))
             context['remaining_aliquots'] = remaining
             context['remaining_count'] = len(remaining)
+            counted = Sample.objects.with_stored_count().get(pk=self.object.pk)
+            config = SiteConfiguration.load()
+            warn, alert = low_count.levels_for(counted, config)
+            context['low_count'] = {
+                'count': counted.stored_count,
+                'warn': warn,
+                'alert': alert,
+                'state': low_count.state_for(counted, config),
+                'enabled': counted.low_count_check,
+            }
         # Add storage location information for aliquots
         if self.kwargs.get('type') == 'aliquot':
             context['children'] = self.object.children.select_related('aliquot_type', 'disposition')
