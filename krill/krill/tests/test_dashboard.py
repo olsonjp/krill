@@ -72,10 +72,18 @@ class DashboardTest(TestCase):
         Device.objects.create(name='Other', site=Site.objects.create(name='Annex'))
         self.assertTrue(self.page().context['show_sites'])
 
-    def test_quick_actions_drop_settings_and_offer_an_audit(self):
+    def test_quick_actions_are_new_aliquot_and_find_aliquot_only(self):
         page = self.page()
         self.assertNotContains(page, 'class="action-btn">\n                <span class="material-icons-round">settings')
-        self.assertContains(page, reverse('reports:generate_audit_report'))
+        html = page.content.decode()
+        actions = html[html.index('class="action-grid"'):html.index('<!-- Samples -->')]
+        self.assertIn('New Aliquot', actions)
+        self.assertIn('Find Aliquot', actions)
+        self.assertNotIn('Start Audit', actions)
+        self.assertEqual(actions.count('class="action-btn"'), 2)
+        # Starting an audit is still one click away from the Audits tile and the sidebar
+        self.assertNotContains(page, f'href="{reverse("reports:generate_audit_report")}"')
+        self.assertContains(page, f'href="{reverse("reports:audit_list")}"')
 
     def test_recent_activity_reads_as_a_sentence_with_where_it_is_stored(self):
         aliquot = self.store(1)[0]
