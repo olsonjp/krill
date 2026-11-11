@@ -7,70 +7,6 @@
         <h1>Dashboard</h1>
     </div>
 
-    <!-- Quick Stats: every card leads somewhere useful -->
-    <div class="stats-container">
-        <a href="{% url 'sample:sample_list' %}" class="stat-card clickable">
-            <span class="material-icons-round">science</span>
-            <div class="stat-info">
-                <h3>Samples</h3>
-                <p>{{ stats.active_samples|default:"0" }}</p>
-            </div>
-        </a>
-        <a href="{% url 'sample:sample_list' %}?type=aliquot" class="stat-card clickable">
-            <span class="material-icons-round">biotech</span>
-            <div class="stat-info">
-                <h3>Aliquots</h3>
-                <p>{{ stats.aliquots|default:"0" }}</p>
-            </div>
-        </a>
-        <a href="{% url 'storage:storage_list' %}" class="stat-card clickable {% if stats.storage_usage > 90 %}stat-card-warning{% endif %}">
-            <span class="material-icons-round">inventory_2</span>
-            <div class="stat-info">
-                <h3>Storage Used</h3>
-                <p>{{ stats.storage_usage|default:"0" }}%</p>
-            </div>
-        </a>
-        <a href="{% url 'reports:audit_list' %}" class="stat-card clickable {% if audits_in_progress %}stat-card-warning{% endif %}">
-            <span class="material-icons-round">fact_check</span>
-            <div class="stat-info">
-                <h3>Audits</h3>
-                <p>{% if audits_in_progress %}{{ audits_in_progress|length }} in progress{% else %}None in progress{% endif %}</p>
-            </div>
-        </a>
-        <a href="{% url 'reports:alert_list' %}" class="stat-card clickable {% if stats.alerts %}stat-card-warning{% endif %}">
-            <span class="material-icons-round">warning</span>
-            <div class="stat-info">
-                <h3>Alerts</h3>
-                <p>{% if stats.alerts %}{{ stats.alerts }} active{% else %}All clear{% endif %}</p>
-            </div>
-        </a>
-        {% if site_config.consumables_enabled %}
-        <a href="{% url 'consumables:list' %}?type=consumable&low_stock=1" class="stat-card clickable {% if stats.low_stock_count %}stat-card-warning{% endif %}">
-            <span class="material-icons-round">production_quantity_limits</span>
-            <div class="stat-info">
-                <h3>Low Stock</h3>
-                <p>{% if stats.low_stock_count %}{{ stats.low_stock_count }} item{{ stats.low_stock_count|pluralize }}{% else %}All stocked{% endif %}</p>
-            </div>
-        </a>
-        <a href="{% url 'consumables:list' %}?type=consumable&expiring=1" class="stat-card clickable {% if stats.expiring_soon_count %}stat-card-warning{% endif %}">
-            <span class="material-icons-round">event_busy</span>
-            <div class="stat-info">
-                <h3>Expiring Soon</h3>
-                <p>{% if stats.expiring_soon_count %}{{ stats.expiring_soon_count }} item{{ stats.expiring_soon_count|pluralize }}{% else %}None in 30 days{% endif %}</p>
-            </div>
-        </a>
-        {% endif %}
-        {% if lab_checkouts is not None %}
-        <a href="{% url 'sample:sample_list' %}?type=aliquot&checked_out_by=all" class="stat-card clickable">
-            <span class="material-icons-round">groups</span>
-            <div class="stat-info">
-                <h3>Lab Checkouts</h3>
-                <p>{% if lab_checkouts.aliquots %}{{ lab_checkouts.aliquots }} aliquot{{ lab_checkouts.aliquots|pluralize }} &middot; {{ lab_checkouts.people }} {{ lab_checkouts.people|pluralize:"person,people" }}{% else %}None checked out{% endif %}</p>
-            </div>
-        </a>
-        {% endif %}
-    </div>
-
     <!-- Quick Actions -->
     <div class="quick-actions">
         <div class="action-grid">
@@ -89,6 +25,33 @@
         </div>
     </div>
 
+    <!-- Samples -->
+    <h2 class="dashboard-group-label">Samples</h2>
+    <div class="stats-container">
+        <a href="{% url 'sample:sample_list' %}" class="stat-card clickable">
+            <span class="material-icons-round">science</span>
+            <div class="stat-info">
+                <h3>Samples</h3>
+                <p>{{ stats.active_samples|default:"0" }}</p>
+            </div>
+        </a>
+        <a href="{% url 'sample:sample_list' %}?type=aliquot" class="stat-card clickable">
+            <span class="material-icons-round">biotech</span>
+            <div class="stat-info">
+                <h3>Aliquots</h3>
+                <p>{{ stats.aliquots|default:"0" }}</p>
+            </div>
+        </a>
+        {% if lab_checkouts is not None %}
+        <a href="{% url 'sample:sample_list' %}?type=aliquot&checked_out_by=all" class="stat-card clickable">
+            <span class="material-icons-round">groups</span>
+            <div class="stat-info">
+                <h3>Lab Checkouts</h3>
+                <p>{% if lab_checkouts.aliquots %}{{ lab_checkouts.aliquots }} aliquot{{ lab_checkouts.aliquots|pluralize }} &middot; {{ lab_checkouts.people }} {{ lab_checkouts.people|pluralize:"person,people" }}{% else %}None checked out{% endif %}</p>
+            </div>
+        </a>
+        {% endif %}
+    </div>
     <!-- Checked out by you -->
     {% url 'home' as home_url %}
     {% if checked_out.total %}
@@ -127,6 +90,31 @@
     <p class="checked-out-empty">Nothing checked out. <a href="{% url 'sample:sample_list' %}?type=aliquot" class="detail-link">Find an aliquot</a> to check one out.</p>
     {% endif %}
 
+    <!-- Storage -->
+    <h2 class="dashboard-group-label">Storage</h2>
+    <div class="stats-container">
+        <a href="{% url 'storage:storage_list' %}" class="stat-card clickable {% if stats.storage_usage > 90 %}stat-card-warning{% endif %}">
+            <span class="material-icons-round">inventory_2</span>
+            <div class="stat-info">
+                <h3>Storage Used</h3>
+                <p>{{ stats.storage_usage|default:"0" }}%</p>
+            </div>
+        </a>
+        <a href="{% url 'reports:audit_list' %}" class="stat-card clickable {% if audits_in_progress %}stat-card-warning{% endif %}">
+            <span class="material-icons-round">fact_check</span>
+            <div class="stat-info">
+                <h3>Audits</h3>
+                <p>{% if audits_in_progress %}{{ audits_in_progress|length }} in progress{% else %}None in progress{% endif %}</p>
+            </div>
+        </a>
+        <a href="{% url 'reports:alert_list' %}" class="stat-card clickable {% if stats.alerts %}stat-card-warning{% endif %}">
+            <span class="material-icons-round">warning</span>
+            <div class="stat-info">
+                <h3>Alerts</h3>
+                <p>{% if stats.alerts %}{{ stats.alerts }} active{% else %}All clear{% endif %}</p>
+            </div>
+        </a>
+    </div>
     <!-- Freezers -->
     <div class="recent-activity">
         <div class="section-header">
@@ -180,6 +168,27 @@
     </div>
     {% endif %}
 
+    <!-- Consumables (only when the feature is on) -->
+    {% if site_config.consumables_enabled %}
+    <h2 class="dashboard-group-label">Consumables</h2>
+    <div class="stats-container">
+        <a href="{% url 'consumables:list' %}?type=consumable&low_stock=1" class="stat-card clickable {% if stats.low_stock_count %}stat-card-warning{% endif %}">
+            <span class="material-icons-round">production_quantity_limits</span>
+            <div class="stat-info">
+                <h3>Low Stock</h3>
+                <p>{% if stats.low_stock_count %}{{ stats.low_stock_count }} item{{ stats.low_stock_count|pluralize }}{% else %}All stocked{% endif %}</p>
+            </div>
+        </a>
+        <a href="{% url 'consumables:list' %}?type=consumable&expiring=1" class="stat-card clickable {% if stats.expiring_soon_count %}stat-card-warning{% endif %}">
+            <span class="material-icons-round">event_busy</span>
+            <div class="stat-info">
+                <h3>Expiring Soon</h3>
+                <p>{% if stats.expiring_soon_count %}{{ stats.expiring_soon_count }} item{{ stats.expiring_soon_count|pluralize }}{% else %}None in 30 days{% endif %}</p>
+            </div>
+        </a>
+    </div>
+    {% endif %}
+
     <!-- Recent Activity -->
     <div class="recent-activity">
         <div class="section-header">
@@ -218,6 +227,8 @@
     .checked-out-card { margin-top: 16px; }
     .checked-out-empty { margin: 8px 0 16px; color: var(--color-dark-variant); }
     .dashboard-header { margin-bottom: 20px; }
+    .dashboard-group-label { margin: 24px 0 10px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.08em;
+        text-transform: uppercase; color: var(--color-dark-variant); }
     .freezer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
     .freezer-card { display: flex; flex-direction: column; gap: 10px; padding: 16px; text-decoration: none;
         background: var(--color-white); color: var(--color-dark); border: 1px solid var(--color-light);
