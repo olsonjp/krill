@@ -91,6 +91,10 @@ Feature suggestions are welcome! Please create an issue with:
   ```bash
   cd krill && uv run python manage.py test
   ```
+- `manage.py test` swaps in a fast password hasher (see `PASSWORD_HASHERS` in
+  `krill/settings.py`). Password hashing is deliberately slow and was nearly all of the
+  suite's run time. Only the `test` command is affected; the running app keeps Django's
+  default hashers. If a test must exercise real hashing, use `override_settings`.
 - The test suite also runs on every pull request through GitHub Actions
   (`.github/workflows/tests.yml`). Pull requests from forks wait for a maintainer
   to approve the run before it starts.
