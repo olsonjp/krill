@@ -93,6 +93,10 @@
                         <span class="material-icons-round">store</span>
                         <h3>Vendors</h3>
                     </a>
+                    <a href="{% url 'consumables:list' %}?type=room" class="submenu-item {% if request.GET.type == 'room' and 'consumables' in request.path %}active{% endif %}">
+                        <span class="material-icons-round">meeting_room</span>
+                        <h3>Rooms</h3>
+                    </a>
                     <a href="{% url 'consumables:list' %}?type=location" class="submenu-item {% if request.GET.type == 'location' and 'consumables' in request.path %}active{% endif %}">
                         <span class="material-icons-round">place</span>
                         <h3>Locations</h3>
