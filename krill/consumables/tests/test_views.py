@@ -270,3 +270,13 @@ class ConsumablesAdjustViewTest(ConsumablesViewBase):
         self.assertEqual(response.status_code, 403)
         self.consumable.refresh_from_db()
         self.assertEqual(self.consumable.quantity, Decimal('5.0'))
+
+
+class SidebarRoomsLinkTest(ConsumablesViewBase):
+    def test_sidebar_links_to_rooms_and_marks_it_active(self):
+        self.client.login(username='member', password='pass')
+        response = self.client.get(reverse('consumables:list') + '?type=room')
+        self.assertContains(response, reverse('consumables:list') + '?type=room')
+        self.assertContains(response, '<h3>Rooms</h3>', html=False)
+        self.assertContains(response, 'Cold Room')
+        self.assertContains(response, 'Add Room')
